@@ -49,7 +49,7 @@ export function TextField({ label, value, onChange, error, hint, maxLength, show
         maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={cn(error && errId, hint && hintId) || undefined}
+        aria-describedby={cn(error ? errId : null, hint ? hintId : null) || undefined}
         className={cn('input-base', error && 'border-rose/70 focus:border-rose focus:ring-rose/20')}
         {...rest}
       />
@@ -93,7 +93,7 @@ export function TextAreaField({ label, value, onChange, error, hint, maxLength, 
         maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
-        aria-describedby={cn(error && errId, hint && hintId) || undefined}
+        aria-describedby={cn(error ? errId : null, hint ? hintId : null) || undefined}
         className={cn('input-base resize-y leading-relaxed', error && 'border-rose/70')}
         {...rest}
       />
