@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
 import { updateGuestStatus } from '../services/adminService'
-import type { GuestStatus, GuestWithInvitation } from '../types/rsvp'
+import type { GuestSource, GuestStatus, GuestWithInvitation } from '../types/rsvp'
 import { toFriendlyMessage } from '../utils/errors'
 import { formatShortDate, formatTable } from '../utils/formatting'
 import { normalizeName } from '../utils/validation'
@@ -10,6 +10,8 @@ import { ResponsiveTable, type Column } from '../components/ui/ResponsiveTable'
 import { TableSkeleton } from '../components/ui/Skeleton'
 import { Spinner } from '../components/ui/Spinner'
 import { GuestStatusBadge } from '../components/admin/StatusBadges'
+import { Badge } from '../components/ui/Badge'
+import { guestSourceLabel } from '../utils/guests'
 import { PageHeader, Panel } from '../components/admin/PageHeader'
 import { FilterTabs, SearchInput } from '../components/admin/FilterTabs'
 
@@ -19,6 +21,7 @@ export default function AdminGuests() {
   const { data, loading, error, reload } = useAdminData()
   const toast = useToast()
   const [filter, setFilter] = useState<Filter>('all')
+  const [source, setSource] = useState<'all' | GuestSource>('all')
   const [query, setQuery] = useState('')
   const [savingId, setSavingId] = useState<string | null>(null)
 
@@ -33,8 +36,9 @@ export default function AdminGuests() {
     const q = normalizeName(query)
     return list
       .filter((g) => filter === 'all' || g.status === filter)
+      .filter((g) => source === 'all' || g.addedBy === source)
       .filter((g) => !q || normalizeName(g.guestName).includes(q) || normalizeName(g.invitedBy).includes(q))
-  }, [list, filter, query])
+  }, [list, filter, source, query])
 
   const changeStatus = async (guest: GuestWithInvitation, status: GuestStatus) => {
     if (guest.status === status) return
@@ -73,6 +77,11 @@ export default function AdminGuests() {
   const columns: Column<GuestWithInvitation>[] = [
     { key: 'name', header: 'Guest Name', cell: (g) => <span className="font-medium text-ink">{g.guestName}</span>, hideOnMobile: true },
     { key: 'by', header: 'Invited By', cell: (g) => g.invitedBy },
+    {
+      key: 'source',
+      header: 'Added By',
+      cell: (g) => <Badge tone={g.addedBy === 'admin' ? 'ink' : 'gold'}>{guestSourceLabel(g.addedBy)}</Badge>,
+    },
     { key: 'table', header: 'Table', cell: (g) => (g.tableNumber ? formatTable(g.tableNumber) : '—') },
     { key: 'status', header: 'Status', cell: (g) => <GuestStatusBadge status={g.status} /> },
     { key: 'created', header: 'Created', cell: (g) => formatShortDate(g.createdAt), className: 'whitespace-nowrap' },
@@ -81,7 +90,10 @@ export default function AdminGuests() {
 
   return (
     <>
-      <PageHeader title="Additional Guests" description="Review requests to bring an additional guest (₱799 each)." />
+      <PageHeader
+        title="Additional Guests"
+        description="Guests included by you are confirmed automatically. Guest requests (₱799 each) need your approval."
+      />
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <FilterTabs
           label="Filter by status"
@@ -94,7 +106,22 @@ export default function AdminGuests() {
             { value: 'declined', label: 'Declined', count: count('declined') },
           ]}
         />
-        <SearchInput label="Search guests" placeholder="Search guest or invitee…" value={query} onChange={setQuery} />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="sr-only" htmlFor="guest-source">
+            Filter by who added the guest
+          </label>
+          <select
+            id="guest-source"
+            value={source}
+            onChange={(e) => setSource(e.target.value as 'all' | GuestSource)}
+            className="input-base min-h-11 py-2.5 sm:w-auto"
+          >
+            <option value="all">Added by anyone</option>
+            <option value="admin">Included by couple</option>
+            <option value="invitee">Guest requests</option>
+          </select>
+          <SearchInput label="Search guests" placeholder="Search guest or invitee…" value={query} onChange={setQuery} />
+        </div>
       </div>
       {error && (
         <p role="alert" className="mb-4 rounded-lg border border-rose/30 bg-rose/5 px-4 py-3 text-sm text-rose">

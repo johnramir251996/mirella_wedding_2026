@@ -1,6 +1,6 @@
 import { supabase, WEDDING_ASSETS_BUCKET } from '../lib/supabase'
 import type { Json, Tables } from '../types/database'
-import type { InfoSection, SectionIconName, WeddingSettings, WeddingSettingsInput } from '../types/wedding'
+import type { InfoSection, OutfitSectionSettings, SectionIconName, WeddingSettings, WeddingSettingsInput } from '../types/wedding'
 import { FriendlyError, logError } from '../utils/errors'
 
 export const SECTION_ICONS: { value: SectionIconName; label: string }[] = [
@@ -64,6 +64,9 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     storyText: row.story_text ?? '',
     closingMessage: row.closing_message ?? '',
     sections: parseSections(row.additional_info),
+    outfitTitle: row.outfit_title ?? 'Attire Inspiration',
+    outfitSubtitle: row.outfit_subtitle ?? '',
+    outfitSectionVisible: row.outfit_section_visible !== false,
     updatedAt: row.updated_at,
   }
 }
@@ -115,11 +118,30 @@ export async function updateWeddingSettings(id: string, input: WeddingSettingsIn
   return fromRow(data as Tables<'wedding_settings'>)
 }
 
+/** Admin: saves the title/subtitle/visibility of the outfit inspiration section. */
+export async function updateOutfitSectionSettings(id: string, input: OutfitSectionSettings): Promise<WeddingSettings> {
+  const { data, error } = await supabase
+    .from('wedding_settings')
+    .update({
+      outfit_title: emptyToNull(input.outfitTitle),
+      outfit_subtitle: emptyToNull(input.outfitSubtitle),
+      outfit_section_visible: input.outfitSectionVisible,
+    })
+    .eq('id', id)
+    .select('*')
+    .single()
+  if (error || !data) {
+    logError('updateOutfitSectionSettings', error)
+    throw new FriendlyError('We couldn’t save the section settings. Please try again.')
+  }
+  return fromRow(data as Tables<'wedding_settings'>)
+}
+
 /**
  * Admin: uploads an image to the public `wedding-assets` bucket and returns its
  * public URL. `name` is the logical file name, e.g. "hero".
  */
-export async function uploadWeddingAsset(file: File, name: 'hero' | 'logo' | 'background' = 'hero'): Promise<string> {
+export async function uploadWeddingAsset(file: File, name: 'hero' | 'logo' | 'background' | 'outfits/male' | 'outfits/female' = 'hero'): Promise<string> {
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif']
   if (!allowed.includes(file.type)) throw new FriendlyError('Please choose a JPG, PNG, WebP or AVIF image.')
   if (file.size > 10 * 1024 * 1024) throw new FriendlyError('Please choose an image smaller than 10 MB.')

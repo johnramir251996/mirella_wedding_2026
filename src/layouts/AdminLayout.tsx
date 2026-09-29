@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ExternalLink, Heart, LayoutDashboard, LogOut, Mail, Menu, MessageSquareHeart, Settings, UserPlus, X } from 'lucide-react'
+import { ExternalLink, Heart, LayoutDashboard, LogOut, Mail, Menu, MessageSquareHeart, Settings, Shirt, UserPlus, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import type { AdminOutletContext } from '../hooks/useAdminData'
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/admin/invitations', label: 'Invitations', icon: Mail },
   { to: '/admin/responses', label: 'Responses', icon: MessageSquareHeart },
   { to: '/admin/guests', label: 'Additional Guests', icon: UserPlus },
+  { to: '/admin/outfits', label: 'Outfit Gallery', icon: Shirt },
   { to: '/admin/settings', label: 'Website Settings', icon: Settings },
 ]
 

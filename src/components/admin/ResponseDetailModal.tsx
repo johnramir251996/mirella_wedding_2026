@@ -11,6 +11,7 @@ import {
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { AttendanceBadge, GuestStatusBadge } from './StatusBadges'
+import { includedGuests, requestedGuests } from '../../utils/guests'
 
 export function ResponseDetailModal({ invitation, onClose }: { invitation: InvitationWithRSVP | null; onClose: () => void }) {
   const r = invitation?.response ?? null
@@ -28,7 +29,10 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
           <Item label="RSVP">
             <AttendanceBadge status={invitation.status} />
           </Item>
-          <Item label="Allowed additional guests">{invitation.maxAdditionalGuests}</Item>
+          <Item label="Allowed guest requests">{invitation.maxAdditionalGuests}</Item>
+          <Item label="Included by the couple" wide>
+            {includedGuests(invitation).length ? includedGuests(invitation).map((g) => g.guestName).join(', ') : 'None'}
+          </Item>
           {!r && <Item label="Response" wide>This invitation has not responded yet.</Item>}
           {r && r.attendanceStatus === 'attending' && (
             <>
@@ -43,10 +47,10 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
               <Item label="Accessibility needs" wide>
                 {r.accessibilityNeeds || 'None'}
               </Item>
-              <Item label="Additional guests" wide>
-                {invitation.guests.length ? (
+              <Item label="Requested additional guests (₱799)" wide>
+                {requestedGuests(invitation).length ? (
                   <ul className="space-y-1.5">
-                    {invitation.guests.map((g) => (
+                    {requestedGuests(invitation).map((g) => (
                       <li key={g.id} className="flex flex-wrap items-center gap-2">
                         <span>{g.guestName}</span>
                         <GuestStatusBadge status={g.status} />
@@ -57,6 +61,9 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
                 ) : (
                   'None requested'
                 )}
+              </Item>
+              <Item label="Message to the couple" wide>
+                {r.messageToCouple ? <span className="font-serif text-lg italic">“{r.messageToCouple}”</span> : 'No message'}
               </Item>
             </>
           )}

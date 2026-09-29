@@ -8,6 +8,7 @@ import type { InvitationWithRSVP, RSVPStatus } from '../types/rsvp'
 import { toFriendlyMessage } from '../utils/errors'
 import { foodLabel, formatDateTime, transportationSummary } from '../utils/formatting'
 import { normalizeName } from '../utils/validation'
+import { includedGuests, requestedGuests } from '../utils/guests'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { ResponsiveTable, type Column } from '../components/ui/ResponsiveTable'
@@ -117,8 +118,27 @@ export default function AdminResponses() {
     {
       key: 'guests',
       header: 'Additional Guest',
-      cell: (r) => (r.guests.length ? r.guests.map((g) => g.guestName).join(', ') : r.response ? 'None' : '—'),
+      cell: (r) => {
+        const inc = includedGuests(r)
+        const req = requestedGuests(r)
+        if (!inc.length && !req.length) return r.response ? 'None' : '—'
+        return (
+          <div className="space-y-0.5">
+            {inc.length > 0 && (
+              <p>
+                {inc.map((g) => g.guestName).join(', ')} <span className="text-xs text-muted">(included)</span>
+              </p>
+            )}
+            {req.length > 0 && (
+              <p>
+                {req.map((g) => g.guestName).join(', ')} <span className="text-xs text-muted">(requested)</span>
+              </p>
+            )}
+          </div>
+        )
+      },
     },
+    { key: 'message', header: 'Message', cell: (r) => attendingOnly(r, clip(r.response?.messageToCouple, 60) === '—' ? 'None' : clip(r.response?.messageToCouple, 60)) },
     { key: 'submitted', header: 'Submitted', cell: (r) => formatDateTime(r.response?.submittedAt), className: 'whitespace-nowrap' },
     { key: 'updated', header: 'Updated', cell: (r) => formatDateTime(r.response?.updatedAt), className: 'whitespace-nowrap' },
     { key: 'actions', header: 'Actions', cell: actions, hideOnMobile: true },

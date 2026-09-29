@@ -6,7 +6,7 @@ import { Reveal } from './Reveal'
 export function Introduction({ settings }: { settings: WeddingSettings }) {
   const days = daysUntil(settings.weddingDate)
   return (
-    <section id="details" aria-labelledby="intro-heading" className="scroll-mt-6 px-6 py-24 sm:py-32">
+    <section id="details" aria-labelledby="intro-heading" className="scroll-mt-6 px-6 py-24 focus:outline-none sm:py-32">
       <Reveal className="mx-auto max-w-2xl text-center">
         <p className="eyebrow">The Celebration</p>
         <h2 id="intro-heading" className="sr-only">

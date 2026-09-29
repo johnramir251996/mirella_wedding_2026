@@ -10,8 +10,9 @@ export interface DashboardAnalytics {
   pendingGuestRequests: number
   approvedGuests: number
   declinedGuests: number
-  /** Primary invitees on active invitations. */
+  /** Primary invitees + couple-included guests on active invitations. */
   invitedGuests: number
+  includedGuests: number
   /** Attending invitees + approved additional guests. */
   expectedAttendees: number
   transportation: { ownVehicle: number; needTransport: number; notSure: number; noAssistance: number }
@@ -32,9 +33,14 @@ export function computeAnalytics(invitations: InvitationWithRSVP[], guests: Gues
   const pending = totalInvitations - attending - declining
 
   const attendingIds = new Set(attendingInv.map((i) => i.id))
-  const pendingGuestRequests = guests.filter((g) => g.status === 'pending').length
-  const approvedGuests = guests.filter((g) => g.status === 'approved').length
-  const declinedGuests = guests.filter((g) => g.status === 'declined').length
+  // Request statistics only cover guests the invitee asked for; couple-included
+  // guests are approved automatically and counted separately.
+  const requests = guests.filter((g) => g.addedBy === 'invitee')
+  const pendingGuestRequests = requests.filter((g) => g.status === 'pending').length
+  const approvedGuests = requests.filter((g) => g.status === 'approved').length
+  const declinedGuests = requests.filter((g) => g.status === 'declined').length
+  const activeIds = new Set(active.map((i) => i.id))
+  const includedOnActive = guests.filter((g) => g.addedBy === 'admin' && activeIds.has(g.invitationId)).length
 
   const transportation = { ownVehicle: 0, needTransport: 0, notSure: 0, noAssistance: 0 }
   const foodCounts = new Map<FoodOption, number>()
@@ -66,7 +72,8 @@ export function computeAnalytics(invitations: InvitationWithRSVP[], guests: Gues
     pendingGuestRequests,
     approvedGuests,
     declinedGuests,
-    invitedGuests: active.length,
+    invitedGuests: active.length + includedOnActive,
+    includedGuests: includedOnActive,
     expectedAttendees: attending + guests.filter((g) => g.status === 'approved' && attendingIds.has(g.invitationId)).length,
     transportation,
     food: FOOD_OPTIONS.map((o) => ({ value: o.value, label: o.label, count: foodCounts.get(o.value) ?? 0 })),

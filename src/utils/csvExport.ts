@@ -6,6 +6,7 @@ import {
   needsTransportLabel,
   vehicleLabel,
 } from './formatting'
+import { includedGuests, requestedGuests } from './guests'
 
 const HEADERS = [
   'Invitee Name',
@@ -18,9 +19,11 @@ const HEADERS = [
   'Food Preferences',
   'Food Restrictions',
   'Accessibility Needs',
+  'Included Guests (added by couple)',
   'Additional Guest',
   'Additional Guest Names',
   'Guest Status',
+  'Message to the Couple',
   'Submitted Date',
   'Updated Date',
 ] as const
@@ -46,7 +49,8 @@ export function buildRSVPCsv(invitations: InvitationWithRSVP[]): string {
   for (const inv of invitations) {
     const r = inv.response
     const attending = r?.attendanceStatus === 'attending'
-    const guests = inv.guests
+    const guests = requestedGuests(inv)
+    const included = includedGuests(inv)
     lines.push(
       [
         inv.inviteeName,
@@ -59,9 +63,11 @@ export function buildRSVPCsv(invitations: InvitationWithRSVP[]): string {
         attending ? (r?.foodPreferences ?? []).map(foodLabel).join('; ') : '',
         attending ? (r?.hasFoodRestrictions ? (r.foodRestrictions ?? 'Yes') : 'None') : '',
         attending ? (r?.accessibilityNeeds ?? '') : '',
+        included.map((g) => g.guestName).join('; '),
         r ? (guests.length > 0 ? 'Yes' : 'No') : '',
         guests.map((g) => g.guestName).join('; '),
         guests.map((g) => `${g.guestName}: ${guestStatusLabel(g.status)}`).join('; '),
+        attending ? (r?.messageToCouple ?? '') : '',
         iso(r?.submittedAt),
         iso(r?.updatedAt),
       ]

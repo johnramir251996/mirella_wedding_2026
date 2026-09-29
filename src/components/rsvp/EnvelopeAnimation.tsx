@@ -7,6 +7,7 @@ import { CoupleNames } from '../wedding/CoupleNames'
 interface Props {
   guestName: string
   tableNumber: string | null
+  includedGuests?: string[]
   coupleNames: string
   weddingDate: string
   onComplete: () => void
@@ -17,11 +18,12 @@ interface Props {
  * 0 closed envelope · 1 flap opens · 2 paper emerges · 3 guest name
  * 4 table number · 5 invitation content · 6 fade away → onComplete
  */
-const TIMELINE = [0, 500, 1100, 1800, 2200, 2550, 3700]
-const DONE_AT = 4200
+// Total length ≈ 5 seconds.
+const TIMELINE = [0, 650, 1400, 2250, 2850, 3450, 4500]
+const DONE_AT = 5000
 const EASE = [0.22, 1, 0.36, 1] as const
 
-export function EnvelopeAnimation({ guestName, tableNumber, coupleNames, weddingDate, onComplete }: Props) {
+export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [], coupleNames, weddingDate, onComplete }: Props) {
   const reduce = useReducedMotion()
   const [stage, setStage] = useState(0)
   const doneRef = useRef(onComplete)
@@ -34,8 +36,8 @@ export function EnvelopeAnimation({ guestName, tableNumber, coupleNames, wedding
     const timers: number[] = []
     if (reduce) {
       setStage(5)
-      timers.push(window.setTimeout(() => setStage(6), 1400))
-      timers.push(window.setTimeout(() => doneRef.current(), 1800))
+      timers.push(window.setTimeout(() => setStage(6), 2200))
+      timers.push(window.setTimeout(() => doneRef.current(), 2600))
     } else {
       TIMELINE.forEach((t, i) => timers.push(window.setTimeout(() => setStage(i), t)))
       timers.push(window.setTimeout(() => doneRef.current(), DONE_AT))
@@ -52,6 +54,7 @@ export function EnvelopeAnimation({ guestName, tableNumber, coupleNames, wedding
     <div className="relative flex min-h-[78svh] flex-col items-center justify-center overflow-hidden px-4 py-10" aria-live="polite">
       <p className="sr-only">
         Opening your invitation. {guestName}, {formatTable(tableNumber)}.
+        {includedGuests.length > 0 ? ` Together with ${joinNames(includedGuests)}.` : ''}
       </p>
 
       <motion.div
@@ -147,6 +150,16 @@ export function EnvelopeAnimation({ guestName, tableNumber, coupleNames, wedding
             >
               {formatTable(tableNumber)}
             </motion.p>
+            {includedGuests.length > 0 && (
+              <motion.p
+                className="mt-3 font-serif text-lg italic leading-snug text-ink-soft"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: stage >= 4 ? 1 : 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+              >
+                together with {joinNames(includedGuests)}
+              </motion.p>
+            )}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: stage >= 5 ? 1 : 0 }} transition={{ duration: 0.7 }}>
               <Ornament className="mt-6" />
               <p className="mt-6 font-serif text-lg italic leading-snug text-ink-soft">to celebrate the wedding of</p>
@@ -168,4 +181,9 @@ export function EnvelopeAnimation({ guestName, tableNumber, coupleNames, wedding
       </button>
     </div>
   )
+}
+
+function joinNames(names: string[]): string {
+  if (names.length <= 1) return names.join('')
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
 }

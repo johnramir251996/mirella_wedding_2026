@@ -9,6 +9,7 @@ type LookupRow = {
   table_number: string | null
   max_additional_guests: number
   has_existing_response: boolean
+  included_guests: string[] | null
 }
 
 function toLookup(row: LookupRow): InvitationLookup {
@@ -18,6 +19,7 @@ function toLookup(row: LookupRow): InvitationLookup {
     tableNumber: row.table_number,
     maxAdditionalGuests: Math.max(0, row.max_additional_guests ?? 0),
     hasExistingResponse: Boolean(row.has_existing_response),
+    includedGuests: Array.isArray(row.included_guests) ? row.included_guests.filter(Boolean) : [],
   }
 }
 

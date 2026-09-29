@@ -37,7 +37,27 @@ export interface WeddingSettings {
   storyText: string
   closingMessage: string
   sections: InfoSection[]
+  outfitTitle: string
+  outfitSubtitle: string
+  outfitSectionVisible: boolean
   updatedAt: string
 }
 
-export type WeddingSettingsInput = Omit<WeddingSettings, 'id' | 'updatedAt'>
+export type OutfitGender = 'male' | 'female'
+
+export interface OutfitImage {
+  id: string
+  gender: OutfitGender
+  imageUrl: string
+  caption: string
+  sortOrder: number
+  isVisible: boolean
+}
+
+export type WeddingSettingsInput = Omit<WeddingSettings, 'id' | 'updatedAt' | 'outfitTitle' | 'outfitSubtitle' | 'outfitSectionVisible'>
+
+export interface OutfitSectionSettings {
+  outfitTitle: string
+  outfitSubtitle: string
+  outfitSectionVisible: boolean
+}

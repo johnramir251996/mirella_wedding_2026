@@ -12,4 +12,5 @@ export const EMPTY_RSVP: RSVPFormState = {
   accessibilityNeeds: '',
   bringingGuest: null,
   guestNames: [],
+  messageToCouple: '',
 }

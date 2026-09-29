@@ -20,6 +20,7 @@ export async function submitRSVP(payload: RSVPSubmission): Promise<{ rsvpId: str
     p_food_restrictions: payload.foodRestrictions,
     p_accessibility_needs: payload.accessibilityNeeds,
     p_additional_guests: payload.additionalGuests,
+    p_message_to_couple: payload.messageToCouple,
   })
 
   if (error) {

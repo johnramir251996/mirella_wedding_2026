@@ -128,6 +128,7 @@ export default function RSVP() {
               <EnvelopeAnimation
                 guestName={invitation.inviteeName}
                 tableNumber={invitation.tableNumber}
+                includedGuests={invitation.includedGuests}
                 coupleNames={coupleNames}
                 weddingDate={weddingDate}
                 onComplete={() => setStep('form')}

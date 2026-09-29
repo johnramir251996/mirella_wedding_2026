@@ -41,9 +41,13 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
           {initials(settings.coupleNames)}
         </Link>
         <div className="flex items-center gap-1 text-[0.72rem] font-medium uppercase tracking-[0.28em] sm:gap-4">
-          <a href="#details" className="hidden rounded px-2 py-2 text-ivory/85 transition hover:text-ivory sm:inline-block">
+          <button
+            type="button"
+            onClick={() => scrollToSection('details', reduce)}
+            className="hidden rounded px-2 py-2 uppercase tracking-[0.28em] text-ivory/85 transition hover:text-ivory sm:inline-block"
+          >
             Details
-          </a>
+          </button>
           <Link
             to="/rsvp"
             className="rounded-full border border-ivory/50 px-5 py-2.5 text-ivory transition hover:border-ivory hover:bg-ivory/10"
@@ -73,15 +77,30 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
         </motion.div>
       </div>
 
-      <a
-        href="#details"
+      <button
+        type="button"
+        onClick={() => scrollToSection('details', reduce)}
+        aria-label="Scroll to wedding details"
         className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 rounded p-2 text-[0.65rem] uppercase tracking-[0.3em] text-ivory/70 transition hover:text-ivory"
       >
         <span>Scroll</span>
         <ChevronDown aria-hidden="true" className="size-4 motion-safe:animate-bounce" strokeWidth={1.5} />
-      </a>
+      </button>
     </header>
   )
+}
+
+/**
+ * In-page scrolling. Plain "#details" links don't work with hash routing
+ * (the router would treat "details" as a page), so scroll programmatically.
+ */
+function scrollToSection(id: string, reduceMotion: boolean | null) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+  // Move focus for keyboard and screen-reader users without jumping again.
+  el.setAttribute('tabindex', '-1')
+  el.focus({ preventScroll: true })
 }
 
 function initials(names: string): string {

@@ -8,6 +8,7 @@ export const LIMITS = {
   foodRestrictions: 120,
   accessibility: 255,
   guestName: 150,
+  messageToCouple: 500,
   maxFoodSelections: 4,
   maxAdditionalGuestsPerInvitation: 10,
 } as const
@@ -34,7 +35,8 @@ export type RSVPErrors = Partial<
     | 'foodRestrictions'
     | 'accessibilityNeeds'
     | 'bringingGuest'
-    | 'guestNames',
+    | 'guestNames'
+    | 'messageToCouple',
     string
   >
 > & { guestNameAt?: Record<number, string> }
@@ -74,6 +76,10 @@ export function validateRSVP(form: RSVPFormState, maxAdditionalGuests: number): 
 
   if (form.accessibilityNeeds.trim().length > LIMITS.accessibility) {
     errors.accessibilityNeeds = `Please keep this under ${LIMITS.accessibility} characters.`
+  }
+
+  if (form.messageToCouple.trim().length > LIMITS.messageToCouple) {
+    errors.messageToCouple = `Please keep your message under ${LIMITS.messageToCouple} characters.`
   }
 
   if (maxAdditionalGuests > 0) {
@@ -122,6 +128,7 @@ export function toSubmission(invitationId: string, form: RSVPFormState, maxAddit
       foodRestrictions: null,
       accessibilityNeeds: null,
       additionalGuests: [],
+      messageToCouple: null,
     }
   }
   const ownVehicle = form.hasTransportation === 'yes'
@@ -142,6 +149,7 @@ export function toSubmission(invitationId: string, form: RSVPFormState, maxAddit
       maxAdditionalGuests > 0 && form.bringingGuest === 'yes'
         ? form.guestNames.map(normalizeSpaces).filter(Boolean).slice(0, maxAdditionalGuests)
         : [],
+    messageToCouple: form.messageToCouple.trim() ? form.messageToCouple.trim() : null,
   }
 }
 

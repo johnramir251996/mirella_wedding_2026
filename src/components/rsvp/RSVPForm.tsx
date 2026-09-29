@@ -109,6 +109,17 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
         <p className="eyebrow">Répondez s’il vous plaît</p>
         <h1 className="mt-4 text-[2.6rem] leading-tight text-ink sm:text-5xl">{invitation.inviteeName}</h1>
         <p className="mt-2 text-sm uppercase tracking-[0.3em] text-gold">{formatTable(invitation.tableNumber)}</p>
+        {invitation.includedGuests.length > 0 && (
+          <div className="mx-auto mt-7 max-w-md rounded-xl border border-champagne/40 bg-paper px-5 py-5 shadow-soft">
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.3em] text-gold">Your invitation also includes</p>
+            <ul className="mt-3 space-y-1 font-serif text-[1.45rem] leading-snug text-ink">
+              {invitation.includedGuests.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted">Already confirmed by the couple — no need to add them below.</p>
+          </div>
+        )}
         <Ornament className="mt-7" />
         {invitation.hasExistingResponse && (
           <p className="mx-auto mt-6 max-w-md rounded-lg border border-champagne/40 bg-champagne-light/30 px-4 py-3 text-sm text-ink-soft">
@@ -293,7 +304,7 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
           </Question>
 
           {maxGuests > 0 && (
-            <Question last>
+            <Question>
               <OptionGroup
                 legend={
                   <>
@@ -370,6 +381,25 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               </Collapse>
             </Question>
           )}
+
+          <Question last>
+            <TextAreaField
+              id="message-to-couple"
+              label={
+                <span className="text-[1.05rem] text-ink">
+                  Leave a message for the couple <span aria-hidden="true">💌</span>{' '}
+                  <span className="text-sm font-normal text-muted">(optional)</span>
+                </span>
+              }
+              value={form.messageToCouple}
+              onChange={(v) => update({ messageToCouple: v })}
+              maxLength={LIMITS.messageToCouple}
+              showCounter
+              rows={4}
+              placeholder="Share your wishes, a favourite memory, or a word of advice…"
+              error={errors.messageToCouple}
+            />
+          </Question>
         </div>
       </Collapse>
 

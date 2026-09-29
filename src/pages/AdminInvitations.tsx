@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
-import { createInvitation, deleteInvitation, updateInvitation } from '../services/adminService'
+import { createInvitation, deleteInvitation, setIncludedGuests, updateInvitation } from '../services/adminService'
 import type { InvitationInput, InvitationWithRSVP } from '../types/rsvp'
 import { toFriendlyMessage } from '../utils/errors'
 import { formatShortDate } from '../utils/formatting'
 import { normalizeName } from '../utils/validation'
+import { includedGuestNames } from '../utils/guests'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
@@ -48,14 +49,18 @@ export default function AdminInvitations() {
     setFormOpen(true)
   }
 
-  const save = async (input: InvitationInput) => {
+  const save = async (input: InvitationInput, included: string[]) => {
     setSaving(true)
     try {
       if (editing) {
         await updateInvitation(editing.id, input)
+        const before = includedGuestNames(editing)
+        const changed = before.length !== included.length || before.some((n, i) => n !== included[i])
+        if (changed) await setIncludedGuests(editing.id, included)
         toast.success('Invitation updated.')
       } else {
-        await createInvitation(input)
+        const created = await createInvitation(input)
+        if (included.length) await setIncludedGuests(created.id, included)
         toast.success('Invitation added.')
       }
       setFormOpen(false)
@@ -117,6 +122,14 @@ export default function AdminInvitations() {
   const columns: Column<InvitationWithRSVP>[] = [
     { key: 'name', header: 'Invitee', cell: (r) => <span className="font-medium text-ink">{r.inviteeName}</span>, hideOnMobile: true },
     { key: 'table', header: 'Table', cell: (r) => r.tableNumber || '—' },
+    {
+      key: 'included',
+      header: 'Included Guests',
+      cell: (r) => {
+        const names = includedGuestNames(r)
+        return names.length ? <span className="text-ink-soft">{names.join(', ')}</span> : '—'
+      },
+    },
     { key: 'max', header: 'Allowed Additional Guests', cell: (r) => r.maxAdditionalGuests, className: 'text-center md:w-28' },
     { key: 'rsvp', header: 'RSVP', cell: (r) => <AttendanceBadge status={r.status} /> },
     { key: 'active', header: 'Active', cell: (r) => (r.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>) },

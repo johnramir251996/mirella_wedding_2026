@@ -5,6 +5,8 @@ export type VehicleType = 'sedan' | 'suv' | 'van' | 'motorcycle' | 'other'
 export type FoodOption = 'vegetable' | 'pasta' | 'fish' | 'pork' | 'beef' | 'chicken'
 export type GuestStatus = 'pending' | 'approved' | 'declined'
 export type YesNo = 'yes' | 'no'
+/** admin = included in the invitation by the couple; invitee = requested on the RSVP form. */
+export type GuestSource = 'admin' | 'invitee'
 
 /** The only invitation information the public RSVP page ever receives. */
 export interface InvitationLookup {
@@ -13,6 +15,8 @@ export interface InvitationLookup {
   tableNumber: string | null
   maxAdditionalGuests: number
   hasExistingResponse: boolean
+  /** Guests the couple included in this invitation (already confirmed). */
+  includedGuests: string[]
 }
 
 /** Client-side form state (strings/unions, before conversion for the RPC). */
@@ -28,6 +32,7 @@ export interface RSVPFormState {
   accessibilityNeeds: string
   bringingGuest: YesNo | null
   guestNames: string[]
+  messageToCouple: string
 }
 
 /** Clean payload that is sent to the submit_rsvp RPC. */
@@ -43,6 +48,7 @@ export interface RSVPSubmission {
   foodRestrictions: string | null
   accessibilityNeeds: string | null
   additionalGuests: string[]
+  messageToCouple: string | null
 }
 
 // ----- Admin-side shapes ------------------------------------------------------
@@ -78,6 +84,7 @@ export interface RSVPResponse {
   foodRestrictions: string | null
   accessibilityNeeds: string | null
   bringingAdditionalGuest: boolean
+  messageToCouple: string | null
   submittedAt: string
   updatedAt: string
 }
@@ -85,9 +92,10 @@ export interface RSVPResponse {
 export interface AdditionalGuest {
   id: string
   invitationId: string
-  rsvpResponseId: string
+  rsvpResponseId: string | null
   guestName: string
   status: GuestStatus
+  addedBy: GuestSource
   createdAt: string
   updatedAt: string
 }

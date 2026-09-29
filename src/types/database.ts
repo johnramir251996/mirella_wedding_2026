@@ -22,6 +22,9 @@ export type Database = {
           reception_map_url: string | null
           story_text: string | null
           closing_message: string | null
+          outfit_title: string | null
+          outfit_subtitle: string | null
+          outfit_section_visible: boolean
           additional_info: Json
           updated_at: string
         }
@@ -39,6 +42,9 @@ export type Database = {
           reception_map_url?: string | null
           story_text?: string | null
           closing_message?: string | null
+          outfit_title?: string | null
+          outfit_subtitle?: string | null
+          outfit_section_visible?: boolean
           additional_info?: Json
           updated_at?: string
         }
@@ -56,6 +62,9 @@ export type Database = {
           reception_map_url?: string | null
           story_text?: string | null
           closing_message?: string | null
+          outfit_title?: string | null
+          outfit_subtitle?: string | null
+          outfit_section_visible?: boolean
           additional_info?: Json
           updated_at?: string
         }
@@ -109,6 +118,7 @@ export type Database = {
           food_restrictions: string | null
           accessibility_needs: string | null
           bringing_additional_guest: boolean
+          message_to_couple: string | null
           submitted_at: string
           updated_at: string
         }
@@ -125,6 +135,7 @@ export type Database = {
           food_restrictions?: string | null
           accessibility_needs?: string | null
           bringing_additional_guest?: boolean
+          message_to_couple?: string | null
           submitted_at?: string
           updated_at?: string
         }
@@ -141,6 +152,7 @@ export type Database = {
           food_restrictions?: string | null
           accessibility_needs?: string | null
           bringing_additional_guest?: boolean
+          message_to_couple?: string | null
           submitted_at?: string
           updated_at?: string
         }
@@ -158,27 +170,30 @@ export type Database = {
         Row: {
           id: string
           invitation_id: string
-          rsvp_response_id: string
+          rsvp_response_id: string | null
           guest_name: string
           status: string
+          added_by: string
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           invitation_id: string
-          rsvp_response_id: string
+          rsvp_response_id?: string | null
           guest_name: string
           status?: string
+          added_by?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           invitation_id?: string
-          rsvp_response_id?: string
+          rsvp_response_id?: string | null
           guest_name?: string
           status?: string
+          added_by?: string
           created_at?: string
           updated_at?: string
         }
@@ -198,6 +213,39 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      outfit_images: {
+        Row: {
+          id: string
+          gender: string
+          image_url: string
+          caption: string | null
+          sort_order: number
+          is_visible: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          gender: string
+          image_url: string
+          caption?: string | null
+          sort_order?: number
+          is_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          gender?: string
+          image_url?: string
+          caption?: string | null
+          sort_order?: number
+          is_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       admin_activity_logs: {
         Row: {
@@ -260,6 +308,7 @@ export type Database = {
           table_number: string | null
           max_additional_guests: number
           has_existing_response: boolean
+          included_guests: string[]
         }[]
       }
       find_invitation_by_code: {
@@ -270,6 +319,7 @@ export type Database = {
           table_number: string | null
           max_additional_guests: number
           has_existing_response: boolean
+          included_guests: string[]
         }[]
       }
       submit_rsvp: {
@@ -285,11 +335,16 @@ export type Database = {
           p_food_restrictions?: string | null
           p_accessibility_needs?: string | null
           p_additional_guests?: string[]
+          p_message_to_couple?: string | null
         }
         Returns: {
           rsvp_id: string
           attendance_status: string
         }[]
+      }
+      admin_set_included_guests: {
+        Args: { p_invitation_id: string; p_names: string[] }
+        Returns: number
       }
       is_admin: {
         Args: Record<PropertyKey, never>

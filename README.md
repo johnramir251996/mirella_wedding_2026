@@ -44,7 +44,23 @@ GitHub Pages only serves the built HTML/JS/CSS. **Every RSVP, invitation and set
 
 **RSVP (`/#/rsvp`)** — Search → *Your Invitation Has Arrived* → *Open Invitation* (envelope animation; a simple fade for reduced-motion users) → RSVP form with conditional questions → *Are you sure?* modal → success page. Re-submitting updates the guest's single existing response.
 
-**Admin (`/#/admin`)** — Supabase email/password login, dashboard with live counts, catering headcount and charts, invitation CRUD, responses (filter, view, delete), additional-guest approvals, website settings (including hero image upload and section add/edit/delete/reorder/show-hide), CSV export, and an automatic activity log.
+**Admin (`/#/admin`)** — Supabase email/password login, dashboard with live counts, catering headcount, charts and guests' messages, invitation CRUD (including **included guests** per invitation), responses (filter, view, delete), additional-guest approvals, an **Outfit Gallery** manager, website settings (including hero image upload and section add/edit/delete/reorder/show-hide), CSV export, and an automatic activity log.
+
+### Guests on an invitation — two kinds
+
+| | Included guests | Guest requests |
+|---|---|---|
+| Added by | the couple, in *Admin → Invitations → Edit* | the invitee, on the RSVP form (₱799 each) |
+| Shown to the invitee | yes — on the invitation card and at the top of the RSVP form | only what they entered |
+| Approval | confirmed automatically | *Pending* until you approve or decline in *Additional Guests* |
+| Limit | up to 20 per invitation | *Maximum Additional Guests* on the invitation |
+| Stored as | `additional_guests.added_by = 'admin'` | `additional_guests.added_by = 'invitee'` |
+
+If you include a name the invitee had already requested, that request becomes an included (approved) guest.
+
+### Outfit gallery
+
+*Admin → Outfit Gallery* manages the "Attire Inspiration" carousel shown under the wedding details (For Him / For Her). Upload photos (stored in the `wedding-assets` bucket under `outfits/`) or paste image links, add captions, reorder, hide/show or remove them, and edit the section title/description or hide the whole section. The six illustrations that ship with the site (`public/samples/outfits/`) are placeholders — hide or remove them once you've added real photos.
 
 ---
 
@@ -91,6 +107,7 @@ cp .env.example .env.local
    - the default `wedding_settings` row (names, date, church, reception, map links, the 5 default sections)
 
    The script is safe to run again on the same project.
+   **Then run every file in `supabase/migrations/` in order** (currently `002_outfits_messages_included_guests.sql`), which adds the outfit gallery, the "message to the couple" question and admin-included guests.
 4. **Run `supabase/seed.sql` if testing** — adds sample invitations: *Juan Dela Cruz* (Table 5, 1 guest), *Maria Santos* (VIP, 2 guests), *Pedro Reyes* (Family Table, 0 guests), *Ana Villanueva* (A1, 3 guests) and an **inactive** *Carlos Mendoza* (must not be found by search).
 5. **Create the admin user** — see [section 5](#5-admin-account).
 6. **Configure Storage (hero image uploads)** — already done by `schema.sql` (bucket `wedding-assets`, public read, admin-only upload). Check it exists under **Storage**. If your project didn't allow the SQL to create the bucket, create it manually: *Storage → New bucket → name `wedding-assets` → Public bucket ON*, then run `schema.sql` again so the policies are added.
@@ -199,6 +216,8 @@ Run the seed first. Use a phone (or browser dev-tools device mode) for the mobil
 - [ ] Church and reception *View Location* buttons open the correct Google Maps links
 - [ ] RSVP button (hero nav and bottom section) opens `/#/rsvp`
 - [ ] Mobile layout: no sideways scrolling, text readable, buttons easy to tap
+- [ ] Desktop: the *Details* link and the *Scroll* arrow in the hero glide down to the wedding details
+- [ ] The *Attire Inspiration* carousel shows under the wedding details; *For Him / For Her* switch; swipe on phones, arrows on desktop; tapping a photo enlarges it
 
 **Invitation search**
 - [ ] `Juan Dela Cruz` is found (shows *Your Invitation Has Arrived*, name, *Table 5*)
@@ -216,6 +235,8 @@ Run the seed first. Use a phone (or browser dev-tools device mode) for the mobil
 - [ ] `Pedro Reyes` (0 allowed) never sees the additional-guest question
 - [ ] `Juan Dela Cruz` (1 allowed) gets one guest field and no "+" button
 - [ ] `Ana Villanueva` (3 allowed) can add up to 3 guests; empty/duplicate names are rejected
+- [ ] Give an invitation included guests in admin → search that name → the names appear on the invitation card and at the top of the form
+- [ ] The last question for attending guests is the optional message to the couple (500 characters) → it shows on the dashboard and in the response
 - [ ] *Confirm My Response* opens *Are you sure?*; *Cancel* saves nothing; *Confirm Response* shows "Saving your RSVP..." then the success page
 - [ ] Searching the same name again shows "We already have your RSVP"; submitting again **updates** (Responses page still shows one row, with a new *Updated* time)
 

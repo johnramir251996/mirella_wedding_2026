@@ -4,7 +4,7 @@ import { Reveal } from './Reveal'
 
 export function RSVPCallout({ weddingDate }: { weddingDate: string }) {
   return (
-    <section aria-labelledby="rsvp-heading" className="px-5 pb-28 sm:px-8">
+    <section aria-labelledby="rsvp-heading" className="px-5 pb-28 pt-20 sm:px-8">
       <Reveal>
         <div className="fine-frame paper-texture mx-auto max-w-3xl rounded-sm px-6 py-16 text-center shadow-card sm:px-12 sm:py-20">
           <p className="eyebrow">Kindly Respond</p>

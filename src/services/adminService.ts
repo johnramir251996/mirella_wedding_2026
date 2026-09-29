@@ -5,6 +5,7 @@ import type {
   AdditionalGuest,
   AttendanceStatus,
   FoodOption,
+  GuestSource,
   GuestStatus,
   GuestWithInvitation,
   Invitation,
@@ -73,6 +74,7 @@ const mapResponse = (r: Tables<'rsvp_responses'>): RSVPResponse => ({
   foodRestrictions: r.food_restrictions,
   accessibilityNeeds: r.accessibility_needs,
   bringingAdditionalGuest: r.bringing_additional_guest,
+  messageToCouple: r.message_to_couple ?? null,
   submittedAt: r.submitted_at,
   updatedAt: r.updated_at,
 })
@@ -83,6 +85,7 @@ const mapGuest = (r: Tables<'additional_guests'>): AdditionalGuest => ({
   rsvpResponseId: r.rsvp_response_id,
   guestName: r.guest_name,
   status: r.status as GuestStatus,
+  addedBy: (r.added_by === 'admin' ? 'admin' : 'invitee') as GuestSource,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 })
@@ -193,6 +196,24 @@ export async function updateInvitation(id: string, input: InvitationInput): Prom
   const { data, error } = await supabase.from('invitations').update(toInvitationRow(input)).eq('id', id).select('*').single()
   if (error || !data) invitationError('updateInvitation', error)
   return mapInvitation(data as Tables<'invitations'>)
+}
+
+/**
+ * Replaces the list of guests the couple included in an invitation.
+ * Included guests are approved automatically and are shown to the invitee
+ * after the invitation animation. A matching guest request is converted.
+ */
+export async function setIncludedGuests(invitationId: string, names: string[]): Promise<void> {
+  const { error } = await supabase.rpc('admin_set_included_guests', {
+    p_invitation_id: invitationId,
+    p_names: names.map(normalizeSpaces).filter(Boolean),
+  })
+  if (error) {
+    logError('setIncludedGuests', error)
+    if ((error.message ?? '').includes('GUEST_NAME_TOO_LONG')) throw new FriendlyError('Guest names must be 150 characters or fewer.')
+    if ((error.message ?? '').includes('TOO_MANY_INCLUDED_GUESTS')) throw new FriendlyError('An invitation can include at most 20 guests.')
+    throw new FriendlyError('The invitation was saved, but its included guests could not be updated. Please try again.')
+  }
 }
 
 /** Deletes the invitation; its RSVP and additional guests are removed by ON DELETE CASCADE. */

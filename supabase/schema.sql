@@ -3,6 +3,10 @@
 --  Run this whole file once in: Supabase Dashboard → SQL Editor → New query.
 --  It is idempotent where practical (safe to re-run on an empty project).
 --
+--  THEN ALSO RUN every file in supabase/migrations/ in order
+--  (002_outfits_messages_included_guests.sql adds the outfit gallery, the
+--  message to the couple and admin-included guests).
+--
 --  Contents
 --    1. Extensions
 --    2. Helper functions (name normalisation, updated_at)

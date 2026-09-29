@@ -20,6 +20,9 @@ const ACTION_LABEL: Record<string, string> = {
   rsvp_deleted: 'RSVP deleted',
   guest_status_changed: 'Guest status changed',
   settings_updated: 'Website settings changed',
+  included_guests_updated: 'Included guests updated',
+  outfit_image_added: 'Outfit image added',
+  outfit_image_removed: 'Outfit image removed',
   rsvp_exported: 'RSVP data exported',
 }
 
@@ -42,6 +45,14 @@ export default function AdminDashboard() {
   }, [data])
 
   const stats = useMemo(() => (data ? computeAnalytics(data.invitations, data.guests) : null), [data])
+  const messages = useMemo(
+    () =>
+      (data?.invitations ?? [])
+        .filter((i) => i.response?.attendanceStatus === 'attending' && i.response.messageToCouple)
+        .map((i) => ({ id: i.id, name: i.inviteeName, message: i.response!.messageToCouple!, at: i.response!.updatedAt }))
+        .sort((a, b) => b.at.localeCompare(a.at)),
+    [data],
+  )
 
   const exportCsv = () => {
     if (!data) return
@@ -95,13 +106,18 @@ export default function AdminDashboard() {
               Headcount for catering
             </h2>
             <div className="grid gap-3 sm:grid-cols-3">
-              <StatCard label="Invited Guests" value={stats.invitedGuests} icon={<Users className="size-5" />} hint="Primary invitees on active invitations" />
+              <StatCard
+                label="Invited Guests"
+                value={stats.invitedGuests}
+                icon={<Users className="size-5" />}
+                hint={`${stats.invitedGuests - stats.includedGuests} invitees + ${stats.includedGuests} included guests`}
+              />
               <StatCard
                 emphasis
                 label="Expected Attendees"
                 value={stats.expectedAttendees}
                 icon={<CalendarHeart className="size-5" />}
-                hint={`${stats.attending} attending + ${stats.expectedAttendees - stats.attending} approved guests`}
+                hint={`${stats.attending} attending invitees + ${stats.expectedAttendees - stats.attending} of their confirmed guests`}
               />
               <StatCard label="Pending Additional Guest Requests" value={stats.pendingGuestRequests} icon={<Clock className="size-5" />} hint="Not counted until approved" />
             </div>
@@ -154,6 +170,28 @@ export default function AdminDashboard() {
             </div>
           </section>
 
+          <section aria-labelledby="messages-heading">
+            <h2 id="messages-heading" className="mb-3 font-sans text-sm font-semibold uppercase tracking-[0.14em] text-muted">
+              Messages from guests
+            </h2>
+            <Panel>
+              {messages.length === 0 ? (
+                <p className="px-5 py-8 text-center text-sm text-muted">No messages yet. They’ll appear here as guests RSVP.</p>
+              ) : (
+                <ul className="grid gap-px bg-line/60 sm:grid-cols-2">
+                  {messages.map((m) => (
+                    <li key={m.id} className="bg-paper px-5 py-4">
+                      <p className="font-serif text-lg italic leading-snug text-ink">“{m.message}”</p>
+                      <p className="mt-2 text-xs text-muted">
+                        — {m.name} · {formatDateTime(m.at)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </section>
+
           <section aria-labelledby="activity-heading">
             <h2 id="activity-heading" className="mb-3 font-sans text-sm font-semibold uppercase tracking-[0.14em] text-muted">
               Recent admin activity
@@ -191,6 +229,8 @@ function describe(a: ActivityLog): string {
   const d = a.details
   if (typeof d.invitee_name === 'string') return d.invitee_name
   if (typeof d.guest_name === 'string') return `${d.guest_name}: ${String(d.from)} → ${String(d.to)}`
+  if (Array.isArray(d.included_guests)) return (d.included_guests as string[]).join(', ') || 'none'
+  if (typeof d.caption === 'string') return d.caption
   const after = d.after as Record<string, unknown> | undefined
   if (after && typeof after.invitee_name === 'string') return after.invitee_name
   if (Array.isArray(d.changed_fields)) return (d.changed_fields as string[]).join(', ').replace(/_/g, ' ')
