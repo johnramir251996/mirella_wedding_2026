@@ -1,4 +1,5 @@
 import { cn } from './cn'
+import { Monogram } from '../wedding/Monogram'
 
 export function Spinner({ className, label }: { className?: string; label?: string }) {
   return (
@@ -15,7 +16,7 @@ export function Spinner({ className, label }: { className?: string; label?: stri
 export function PageLoader({ label = 'Loading' }: { label?: string }) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-muted">
-      <span aria-hidden="true" className="font-serif text-3xl italic text-champagne">M &amp; E</span>
+      <Monogram className="font-serif text-3xl italic text-champagne" />
       <Spinner label={label} className="text-sm tracking-wide" />
     </div>
   )

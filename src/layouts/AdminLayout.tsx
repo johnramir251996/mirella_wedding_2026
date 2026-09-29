@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ExternalLink, Heart, LayoutDashboard, LogOut, Mail, Menu, MessageSquareHeart, Settings, Shirt, UserPlus, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import type { AdminOutletContext } from '../hooks/useAdminData'
 import { loadAdminData, type AdminData } from '../services/adminService'
 import { toFriendlyMessage } from '../utils/errors'
@@ -23,6 +24,7 @@ export default function AdminLayout() {
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
+  const { settings } = useWeddingSettings()
   const [menuOpen, setMenuOpen] = useState(false)
   const [data, setData] = useState<AdminData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -103,7 +105,7 @@ export default function AdminLayout() {
         <Heart aria-hidden="true" className="size-4" strokeWidth={1.5} />
       </span>
       <div className="leading-tight">
-        <p className="font-serif text-xl text-ink">Mir &amp; Ella</p>
+        <p className="font-serif text-xl text-ink">{settings?.coupleNames || 'Our Wedding'}</p>
         <p className="text-[0.65rem] uppercase tracking-[0.22em] text-muted">Wedding admin</p>
       </div>
     </div>

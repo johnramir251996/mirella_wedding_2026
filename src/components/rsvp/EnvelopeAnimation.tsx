@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { formatTable, formatWeddingDate } from '../../utils/formatting'
+import { formatTable, formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from '../wedding/CoupleNames'
 
@@ -121,7 +121,7 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
             animate={{ opacity: stage >= 1 ? 0 : 1, scale: stage >= 1 ? 0.8 : 1 }}
             transition={{ duration: 0.35 }}
           >
-            <span className="font-serif text-lg italic text-[#f6ecd9]">M&amp;E</span>
+            <span className="font-serif text-lg italic text-[#f6ecd9]">{monogram(coupleNames, '&')}</span>
           </motion.div>
         </motion.div>
 

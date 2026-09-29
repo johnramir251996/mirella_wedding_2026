@@ -186,7 +186,7 @@ function Carousel({ images, onOpen, label }: { images: OutfitImage[]; onOpen: (i
         <>
           <ArrowButton side="left" disabled={!canPrev} onClick={() => go(-1)} />
           <ArrowButton side="right" disabled={!canNext} onClick={() => go(1)} />
-          <div className="mt-6 flex justify-center gap-2" aria-hidden="true">
+          <div className={cn('mt-6 flex justify-center gap-2', !canPrev && !canNext && 'invisible')} aria-hidden="true">
             {images.map((img, i) => (
               <button
                 key={img.id}

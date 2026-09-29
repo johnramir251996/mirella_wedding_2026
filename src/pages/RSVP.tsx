@@ -48,7 +48,12 @@ export default function RSVP() {
   // Future-ready personal links: /#/rsvp?invite=abc123
   const inviteCode = params.get('invite')
   useEffect(() => {
-    if (inviteCode) void searchByCode(inviteCode)
+    if (!inviteCode) return
+    setForm(EMPTY_RSVP)
+    setSubmitError(null)
+    setResult(null)
+    setStep('search')
+    void searchByCode(inviteCode)
   }, [inviteCode, searchByCode])
 
   // Move to the "found" state whenever a lookup succeeds.

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { Monogram } from './Monogram'
 
 export function PublicHeader() {
   return (
@@ -9,7 +10,7 @@ export function PublicHeader() {
         <span>Wedding details</span>
       </Link>
       <Link to="/" aria-label="Home" className="font-serif text-2xl italic text-champagne">
-        M &amp; E
+        <Monogram />
       </Link>
     </header>
   )

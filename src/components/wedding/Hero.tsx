@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import type { WeddingSettings } from '../../types/wedding'
-import { formatWeddingDate } from '../../utils/formatting'
+import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from './CoupleNames'
 
@@ -38,7 +38,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
 
       <nav aria-label="Primary" className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
         <Link to="/" className="font-serif text-2xl italic tracking-wide text-ivory/95" aria-label={`${settings.coupleNames} — home`}>
-          {initials(settings.coupleNames)}
+          {monogram(settings.coupleNames)}
         </Link>
         <div className="flex items-center gap-1 text-[0.72rem] font-medium uppercase tracking-[0.28em] sm:gap-4">
           <button
@@ -101,10 +101,4 @@ function scrollToSection(id: string, reduceMotion: boolean | null) {
   // Move focus for keyboard and screen-reader users without jumping again.
   el.setAttribute('tabindex', '-1')
   el.focus({ preventScroll: true })
-}
-
-function initials(names: string): string {
-  const parts = names.split(/\s*&\s*|\s+and\s+/i).filter(Boolean)
-  if (parts.length === 2) return `${parts[0][0]} & ${parts[1][0]}`
-  return names.slice(0, 1)
 }

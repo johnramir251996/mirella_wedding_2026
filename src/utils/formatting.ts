@@ -114,3 +114,10 @@ export function daysUntil(isoDate: string): number | null {
   today.setHours(0, 0, 0, 0)
   return Math.round((d.getTime() - today.getTime()) / 86_400_000)
 }
+
+/** "Mir & Ella" → "M & E". Returns '' when the names can't be split. */
+export function monogram(names: string, separator = ' & '): string {
+  const parts = names.split(/\s*&\s*|\s+and\s+/i).map((p) => p.trim()).filter(Boolean)
+  if (parts.length === 2) return `${parts[0][0]}${separator}${parts[1][0]}`
+  return names.trim().slice(0, 1)
+}

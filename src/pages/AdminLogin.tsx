@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { FieldError, TextField } from '../components/ui/FormField'
 import { Ornament } from '../components/ui/Ornament'
 import { PageLoader } from '../components/ui/Spinner'
+import { Monogram } from '../components/wedding/Monogram'
 
 export default function AdminLogin() {
   const { session, isAdmin, loading, signIn } = useAuth()
@@ -18,7 +19,7 @@ export default function AdminLogin() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    document.title = 'Admin login · Mir & Ella'
+    document.title = 'Admin login · Wedding'
   }, [])
 
   if (loading) return <PageLoader />
@@ -47,7 +48,9 @@ export default function AdminLogin() {
     <main className="flex min-h-[100svh] items-center justify-center px-5 py-12">
       <div className="w-full max-w-md">
         <div className="text-center">
-          <p className="font-serif text-4xl italic text-champagne">M &amp; E</p>
+          <p className="font-serif text-4xl italic text-champagne">
+            <Monogram />
+          </p>
           <Ornament className="mt-5" />
           <h1 className="mt-6 text-4xl text-ink">Admin Login</h1>
           <p className="mt-2 text-sm text-muted">Sign in to manage invitations and RSVPs.</p>
