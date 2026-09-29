@@ -1,0 +1,38 @@
+import { motion, useReducedMotion } from 'framer-motion'
+import { MailOpen } from 'lucide-react'
+import type { InvitationLookup } from '../../types/rsvp'
+import { formatTable } from '../../utils/formatting'
+import { Button } from '../ui/Button'
+import { Ornament } from '../ui/Ornament'
+
+interface Props {
+  invitation: InvitationLookup
+  onOpen: () => void
+  onReset: () => void
+}
+
+export function InvitationFound({ invitation, onOpen, onReset }: Props) {
+  const reduce = useReducedMotion()
+  return (
+    <motion.div
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="fine-frame paper-texture mx-auto w-full max-w-md rounded-sm px-7 py-12 text-center shadow-card sm:px-10"
+      aria-live="polite"
+    >
+      <p className="eyebrow">Your Invitation Has Arrived</p>
+      <Ornament className="mt-6" />
+      <h2 className="mt-7 text-[2.4rem] leading-tight text-ink">{invitation.inviteeName}</h2>
+      <p className="mt-3 text-sm uppercase tracking-[0.3em] text-gold">{formatTable(invitation.tableNumber)}</p>
+      <div className="relative z-10 mt-10 flex flex-col items-center gap-3">
+        <Button size="lg" onClick={onOpen} icon={<MailOpen aria-hidden="true" className="size-5" strokeWidth={1.5} />} fullWidth autoFocus>
+          Open Invitation
+        </Button>
+        <button type="button" onClick={onReset} className="rounded px-3 py-2 text-sm text-muted underline-offset-4 hover:text-ink hover:underline">
+          Not you? Search again
+        </button>
+      </div>
+    </motion.div>
+  )
+}

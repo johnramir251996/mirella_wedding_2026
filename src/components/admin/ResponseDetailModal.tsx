@@ -1,0 +1,82 @@
+import type { ReactNode } from 'react'
+import type { InvitationWithRSVP } from '../../types/rsvp'
+import {
+  attendanceLabel,
+  foodLabel,
+  formatDateTime,
+  formatTable,
+  guestStatusLabel,
+  transportationSummary,
+} from '../../utils/formatting'
+import { Button } from '../ui/Button'
+import { Modal } from '../ui/Modal'
+import { AttendanceBadge, GuestStatusBadge } from './StatusBadges'
+
+export function ResponseDetailModal({ invitation, onClose }: { invitation: InvitationWithRSVP | null; onClose: () => void }) {
+  const r = invitation?.response ?? null
+  return (
+    <Modal
+      open={Boolean(invitation)}
+      onClose={onClose}
+      title={invitation?.inviteeName ?? ''}
+      description={invitation ? `${formatTable(invitation.tableNumber)} · ${attendanceLabel(invitation.status)}` : undefined}
+      size="lg"
+      footer={<Button onClick={onClose}>Close</Button>}
+    >
+      {invitation && (
+        <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+          <Item label="RSVP">
+            <AttendanceBadge status={invitation.status} />
+          </Item>
+          <Item label="Allowed additional guests">{invitation.maxAdditionalGuests}</Item>
+          {!r && <Item label="Response" wide>This invitation has not responded yet.</Item>}
+          {r && r.attendanceStatus === 'attending' && (
+            <>
+              <Item label="Transportation">{transportationSummary(r.hasTransportation, r.needsTransportation, r.vehicleType)}</Item>
+              <Item label="Coming from">{r.comingFrom || '—'}</Item>
+              <Item label="Food preferences" wide>
+                {r.foodPreferences.length ? r.foodPreferences.map(foodLabel).join(', ') : 'No preference'}
+              </Item>
+              <Item label="Dietary restrictions" wide>
+                {r.hasFoodRestrictions ? r.foodRestrictions : 'None'}
+              </Item>
+              <Item label="Accessibility needs" wide>
+                {r.accessibilityNeeds || 'None'}
+              </Item>
+              <Item label="Additional guests" wide>
+                {invitation.guests.length ? (
+                  <ul className="space-y-1.5">
+                    {invitation.guests.map((g) => (
+                      <li key={g.id} className="flex flex-wrap items-center gap-2">
+                        <span>{g.guestName}</span>
+                        <GuestStatusBadge status={g.status} />
+                        <span className="sr-only">{guestStatusLabel(g.status)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  'None requested'
+                )}
+              </Item>
+            </>
+          )}
+          {r && (
+            <>
+              <Item label="Submitted">{formatDateTime(r.submittedAt)}</Item>
+              <Item label="Last updated">{formatDateTime(r.updatedAt)}</Item>
+            </>
+          )}
+        </dl>
+      )}
+    </Modal>
+  )
+}
+
+function Item({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+  return (
+    <div className={wide ? 'sm:col-span-2' : undefined}>
+      <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{label}</dt>
+      <dd className="mt-1 whitespace-pre-line break-words text-ink">{children}</dd>
+    </div>
+  )
+}
