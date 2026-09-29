@@ -717,6 +717,12 @@ grant execute on function public.submit_rsvp(uuid, text, boolean, text, text, te
 grant execute on function public.is_admin() to authenticated;
 grant execute on function public.normalize_name(text) to anon, authenticated;
 
+-- Supabase also grants EXECUTE to anon/authenticated by default, so revoke
+-- explicitly on functions that must not be callable through the API.
+revoke execute on function public.is_admin() from anon;
+revoke execute on function public.log_admin_activity() from anon, authenticated;
+revoke execute on function public.set_updated_at() from public, anon, authenticated;
+
 
 -- -----------------------------------------------------------------------------
 -- 10. DEFAULT WEDDING SETTINGS
