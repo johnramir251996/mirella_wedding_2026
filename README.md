@@ -62,6 +62,20 @@ If you include a name the invitee had already requested, that request becomes an
 
 *Admin → Outfit Gallery* manages the "Attire Inspiration" carousel shown under the wedding details (For Him / For Her). Upload photos (stored in the `wedding-assets` bucket under `outfits/`) or paste image links, add captions, reorder, hide/show or remove them, and edit the section title/description or hide the whole section. The six illustrations that ship with the site (`public/samples/outfits/`) are placeholders — hide or remove them once you've added real photos.
 
+### More admin pages
+
+| Page | What it does |
+|---|---|
+| **RSVP Questions** | Switch the standard questions on/off or reword them (*Where are you coming from?* can also be made optional). Add up to 30 of your own: single choice, multiple choice (with a limit), Yes/No, short or long answer, number (with min/max). Each can be required, asked of attending guests / guests who can't attend / everyone, and shown **only if** an earlier question was answered a certain way. Answers appear in the response details, the CSV export (one column per question) and as dashboard charts. The database checks every rule again, so the form can't be bypassed. |
+| **Photos & Video** | Couple gallery (grid or carousel, up to 30 photos, auto-resized) and prenup video (YouTube/Vimeo link, or an MP4/WebM upload up to 30 MB). |
+| **Entourage** | Principal sponsors, bridesmaids, etc., in pairs or lists, with presets. |
+| **Outfit Gallery** | Also holds the motif colour swatches. |
+| **Share & QR** | Website link, share buttons, QR code (PNG/SVG) and a printable QR card. Link previews (Facebook/Messenger/Viber) use the couple names, date and hero photo; the site rebuilds daily to refresh them. |
+| **Look & Feel** | 10 templates, heading/body fonts, colours (with a readability check), hero layout, live phone/desktop preview. |
+| **Website Settings** | Also: RSVP deadline (closed automatically; reopen for 7/14 days), and the gift QR (upload, show/hide, invited-guests-only or everyone). |
+
+The RSVP form asks every guest for a Philippine mobile number (stored as `+639…`).
+
 ---
 
 ## 2. Installation
@@ -107,7 +121,7 @@ cp .env.example .env.local
    - the default `wedding_settings` row (names, date, church, reception, map links, the 5 default sections)
 
    The script is safe to run again on the same project.
-   **Then run every file in `supabase/migrations/` in order**: `002_outfits_messages_included_guests.sql` (outfit gallery, message to the couple, admin-included guests) `003_deadline_mobile_entourage_motif_gift.sql` (RSVP deadline, required mobile number, entourage, motif colours, private gift QR) `004_gallery_video.sql` (couple photo gallery, prenup video) and `005_theme.sql` (Look & Feel templates).
+   **Then run every file in `supabase/migrations/` in order**: `002_outfits_messages_included_guests.sql` (outfit gallery, message to the couple, admin-included guests) `003_deadline_mobile_entourage_motif_gift.sql` (RSVP deadline, required mobile number, entourage, motif colours, private gift QR) `004_gallery_video.sql` (couple photo gallery, prenup video), `005_theme.sql` (Look & Feel templates) and `006_rsvp_question_builder.sql` (custom RSVP questions).
 4. **Run `supabase/seed.sql` if testing** — adds sample invitations: *Juan Dela Cruz* (Table 5, 1 guest), *Maria Santos* (VIP, 2 guests), *Pedro Reyes* (Family Table, 0 guests), *Ana Villanueva* (A1, 3 guests) and an **inactive** *Carlos Mendoza* (must not be found by search).
 5. **Create the admin user** — see [section 5](#5-admin-account).
 6. **Configure Storage (hero image uploads)** — already done by `schema.sql` (bucket `wedding-assets`, public read, admin-only upload). Check it exists under **Storage**. If your project didn't allow the SQL to create the bucket, create it manually: *Storage → New bucket → name `wedding-assets` → Public bucket ON*, then run `schema.sql` again so the policies are added.
