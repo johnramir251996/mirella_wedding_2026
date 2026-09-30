@@ -112,8 +112,9 @@ export function FloorPlan({
           <circle cx="17" cy="16" r="1.2" className="fill-sage/25" />
         </pattern>
         <pattern id="fp-floor" width="30" height="30" patternUnits="userSpaceOnUse">
-          <rect width="15" height="15" className="fill-champagne-light/60" />
-          <rect x="15" y="15" width="15" height="15" className="fill-champagne-light/60" />
+          <rect width="30" height="30" className="fill-paper" />
+          <rect width="15" height="15" className="fill-champagne-light" />
+          <rect x="15" y="15" width="15" height="15" className="fill-champagne-light" />
         </pattern>
       </defs>
 
@@ -182,7 +183,13 @@ export function FloorPlan({
               height={it.height}
               rx={it.kind === 'cake' ? it.width / 2 : 10}
               className={cn(
-                it.kind === 'stage' ? 'fill-champagne-light stroke-gold' : it.kind === 'entrance' ? 'fill-paper stroke-ink-soft' : 'fill-paper stroke-champagne',
+                it.kind === 'stage'
+                  ? 'fill-champagne-light stroke-gold'
+                  : it.kind === 'entrance'
+                    ? 'fill-paper stroke-ink-soft'
+                    : it.kind === 'dance_floor'
+                      ? 'stroke-champagne'
+                      : 'fill-paper stroke-champagne',
                 editable && 'cursor-move',
               )}
               fill={it.kind === 'dance_floor' ? 'url(#fp-floor)' : undefined}
