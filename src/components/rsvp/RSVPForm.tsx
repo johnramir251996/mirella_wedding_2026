@@ -9,7 +9,7 @@ import type {
   VehicleType,
   YesNo,
 } from '../../types/rsvp'
-import { FOOD_OPTIONS, NEEDS_TRANSPORT_OPTIONS, VEHICLE_OPTIONS, formatTable } from '../../utils/formatting'
+import { FOOD_OPTIONS, NEEDS_TRANSPORT_OPTIONS, VEHICLE_OPTIONS } from '../../utils/formatting'
 import { LIMITS, hasErrors, validateRSVP, type RSVPErrors } from '../../utils/validation'
 import { Button } from '../ui/Button'
 import { ChoiceCard, OptionGroup } from '../ui/Choice'
@@ -123,7 +123,6 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
       <div className="text-center">
         <p className="eyebrow">Répondez s’il vous plaît</p>
         <h1 className="mt-4 text-[2.6rem] leading-tight text-ink sm:text-5xl">{invitation.inviteeName}</h1>
-        <p className="mt-2 text-sm uppercase tracking-[0.3em] text-gold">{formatTable(invitation.tableNumber)}</p>
         {invitation.includedGuests.length > 0 && (
           <div className="mx-auto mt-7 max-w-md rounded-xl border border-champagne/40 bg-paper px-5 py-5 shadow-soft">
             <p className="text-[0.7rem] font-medium uppercase tracking-[0.3em] text-gold">Your invitation also includes</p>

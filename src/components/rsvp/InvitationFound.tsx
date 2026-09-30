@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { MailOpen } from 'lucide-react'
 import type { InvitationLookup } from '../../types/rsvp'
-import { formatTable } from '../../utils/formatting'
 import { Button } from '../ui/Button'
 import { Ornament } from '../ui/Ornament'
 
@@ -23,10 +22,6 @@ export function InvitationFound({ invitation, onOpen }: Props) {
       <p className="eyebrow">Your Invitation Has Arrived</p>
       <Ornament className="mt-6" />
       <h2 className="mt-7 text-[2.4rem] leading-tight text-ink">{invitation.inviteeName}</h2>
-      <div className="mx-auto mt-5 inline-flex flex-col items-center rounded-lg border border-champagne/60 bg-champagne-light/35 px-6 py-3">
-        <span className="text-[0.62rem] font-medium uppercase tracking-[0.3em] text-gold">Your table</span>
-        <span className="mt-0.5 font-serif text-[1.7rem] leading-tight text-ink">{formatTable(invitation.tableNumber)}</span>
-      </div>
       <div className="relative z-10 mt-10 flex flex-col items-center gap-3">
         <Button size="lg" onClick={onOpen} icon={<MailOpen aria-hidden="true" className="size-5" strokeWidth={1.5} />} fullWidth autoFocus>
           Open Invitation

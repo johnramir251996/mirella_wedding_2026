@@ -162,7 +162,6 @@ export default function RSVP() {
             <motion.section key="opening" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
               <EnvelopeAnimation
                 guestName={invitation.inviteeName}
-                tableNumber={invitation.tableNumber}
                 includedGuests={invitation.includedGuests}
                 coupleNames={coupleNames}
                 weddingDate={weddingDate}

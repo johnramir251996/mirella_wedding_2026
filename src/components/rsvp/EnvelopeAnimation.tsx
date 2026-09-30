@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { formatTable, formatWeddingDate, monogram } from '../../utils/formatting'
+import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from '../wedding/CoupleNames'
 
 interface Props {
   guestName: string
-  tableNumber: string | null
   includedGuests?: string[]
   coupleNames: string
   weddingDate: string
@@ -23,7 +22,7 @@ const TIMELINE = [0, 650, 1400, 2250, 2850, 3450, 9500]
 const DONE_AT = 10000
 const EASE = [0.22, 1, 0.36, 1] as const
 
-export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [], coupleNames, weddingDate, onComplete }: Props) {
+export function EnvelopeAnimation({ guestName, includedGuests = [], coupleNames, weddingDate, onComplete }: Props) {
   const reduce = useReducedMotion()
   const [stage, setStage] = useState(0)
   const doneRef = useRef(onComplete)
@@ -53,7 +52,7 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
   return (
     <div className="relative flex min-h-[78svh] flex-col items-center justify-center overflow-hidden px-4 py-10" aria-live="polite">
       <p className="sr-only">
-        Opening your invitation. {guestName}, {formatTable(tableNumber)}.
+        Opening your invitation, {guestName}.
         {includedGuests.length > 0 ? ` Together with ${joinNames(includedGuests)}.` : ''}
       </p>
 
@@ -142,15 +141,6 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
             >
               {guestName}
             </motion.p>
-            <motion.div
-              className="mx-auto mt-4 inline-flex flex-col items-center rounded-lg border border-champagne/60 bg-champagne-light/35 px-5 py-2.5"
-              initial={{ opacity: 0, scale: reduce ? 1 : 0.92 }}
-              animate={{ opacity: stage >= 4 ? 1 : 0, scale: stage >= 4 ? 1 : reduce ? 1 : 0.92 }}
-              transition={{ duration: 0.5, ease: EASE }}
-            >
-              <span className="text-[0.62rem] font-medium uppercase tracking-[0.3em] text-gold">Your table</span>
-              <span className="mt-0.5 font-serif text-2xl leading-tight text-ink">{formatTable(tableNumber)}</span>
-            </motion.div>
             {includedGuests.length > 0 && (
               <motion.p
                 className="mt-3 font-serif text-lg italic leading-snug text-ink-soft"
