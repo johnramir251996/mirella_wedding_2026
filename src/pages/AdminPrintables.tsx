@@ -163,7 +163,7 @@ function InvitationsTab({ paper }: { paper: Paper }) {
     [data, showAll],
   )
   const chosen = list.filter((i) => selected.has(i.id))
-  const linkFor = (i: InvitationWithRSVP) => `${links.rsvp}?code=${encodeURIComponent(i.invitationCode)}`
+  const linkFor = (i: InvitationWithRSVP) => `${links.rsvp}?invite=${encodeURIComponent(i.invitationCode)}`
 
   useEffect(() => {
     let active = true
