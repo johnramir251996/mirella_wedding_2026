@@ -293,13 +293,34 @@ export function calibrationHtml(theme: PrintTheme): string {
   </div>`
 }
 
-/** Plain back of an invitation card (for the 3D preview). */
+/**
+ * Back of an invitation card. Deliberately frameless and centred, so a
+ * millimetre or two of printer drift when printing the reverse doesn't show.
+ */
 export function invitationBackHtml(o: { coupleNames: string; dateText: string; monogram: string; theme: PrintTheme; size: CardSize }): string {
   const t = safe(o.theme)
   const s = CARD_SIZES[o.size]
-  return `<div style="box-sizing:border-box;width:${s.w}mm;height:${s.h}mm;background:${t.paper};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4mm;font-family:${t.sans};position:relative">
-    <div style="position:absolute;inset:4.5mm;border:0.4mm solid ${t.accent}"></div>
-    <div style="width:22mm;height:22mm;border-radius:50%;border:0.4mm solid ${t.accent};display:flex;align-items:center;justify-content:center;font-family:${t.serif};font-style:italic;font-size:8mm;color:${t.ink}">${esc(o.monogram)}</div>
-    <div style="font-size:2.8mm;letter-spacing:0.9mm;color:${t.accent}">${esc(o.dateText.toUpperCase())}</div>
+  const k = s.w / CARD_SIZES['5x7'].w
+  return `<div style="box-sizing:border-box;width:${s.w}mm;height:${s.h}mm;background:${t.paper};display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:${t.sans}">
+    <div style="width:${24 * k}mm;height:${24 * k}mm;border-radius:50%;border:0.4mm solid ${t.accent};display:flex;align-items:center;justify-content:center;font-family:${t.serif};font-style:italic;font-size:${8.5 * k}mm;color:${t.ink}">${esc(o.monogram)}</div>
+    <div style="margin-top:${5 * k}mm;font-family:${t.serif};font-size:${5 * k}mm;color:${t.ink}">${coupleHtml(o.coupleNames, t)}</div>
+    <div style="margin-top:${2 * k}mm;font-size:${2.6 * k}mm;letter-spacing:0.8mm;color:${t.accent}">${esc(o.dateText.toUpperCase())}</div>
   </div>`
+}
+
+/**
+ * Orientation label printed in the sheet margin on both sides, so the
+ * reverse is fed the right way round ("▲ TOP" edges must match).
+ */
+export function orientationMarkHtml(side: 'front' | 'back', sheetNo: number, total: number, theme: PrintTheme): string {
+  const t = safe(theme)
+  const label = side === 'front' ? 'FRONT' : 'BACK'
+  return `<div style="position:absolute;left:0;right:0;top:3.5mm;display:flex;justify-content:center;font-family:${t.sans};font-size:2.6mm;letter-spacing:0.5mm;color:${t.muted}">
+      <span style="border:0.25mm solid ${t.muted};border-radius:1mm;padding:0.6mm 2mm">▲ TOP EDGE &nbsp;·&nbsp; ${label} &nbsp;·&nbsp; SHEET ${sheetNo} OF ${total}</span>
+    </div>
+    ${
+      side === 'back'
+        ? `<div style="position:absolute;left:0;right:0;bottom:3.5mm;text-align:center;font-family:${t.sans};font-size:2.3mm;color:${t.muted}">Print on the reverse of FRONT sheet ${sheetNo}. Both “▲ TOP EDGE” labels should be on the same edge of the paper.</div>`
+        : ''
+    }`
 }

@@ -20,6 +20,7 @@ import {
   invitationBackHtml,
   invitationCardHtml,
   layoutRow,
+  orientationMarkHtml,
   noteCardHtml,
   type CardSize,
   type Paper,
@@ -189,6 +190,9 @@ function InvitationsTab({ paper }: { paper: Paper }) {
   const [qr, setQr] = useState<Record<string, string>>({})
   const [askMark, setAskMark] = useState(false)
   const [view, setView] = useState<View>('sheets')
+  const [printSide, setPrintSide] = useState<'front' | 'back' | 'both'>('front')
+  const [sheetNo, setSheetNo] = useState(0) // 0 = all sheets
+  const [rotateBacks, setRotateBacks] = useState(false)
   const box = useWidth()
   const [marking, setMarking] = useState(false)
   const theme = useMemo(readTheme, [settings?.theme])
@@ -228,8 +232,17 @@ function InvitationsTab({ paper }: { paper: Paper }) {
   const s = SHEETS[paper]
   const respondBy = settings && settings.rsvpShowDeadline && settings.rsvpDeadline && isRsvpOpen(settings) ? formatDeadlineDate(settings.rsvpDeadline) : null
   const shortLink = links.home.replace(/^https?:\/\//, '').replace(/\/$/, '')
-  const sheets = chunk(chosen, perSheet).map((group) => {
-    const pos = layoutRow(s.w, s.h, group.length === perSheet ? perSheet : group.length, card.w, card.h)
+  const groups = chunk(chosen, perSheet)
+  const backCard = invitationBackHtml({
+    coupleNames: settings?.coupleNames ?? '',
+    dateText: settings ? formatWeddingDate(settings.weddingDate) : '',
+    monogram: settings ? monogram(settings.coupleNames, '&') : '',
+    theme,
+    size,
+  })
+  const layouts = groups.map((group) => layoutRow(s.w, s.h, group.length === perSheet ? perSheet : group.length, card.w, card.h))
+  const fronts = groups.map((group, gi) => {
+    const pos = layouts[gi]
     const cards = group
       .map((inv, k) => {
         const html = invitationCardHtml({
@@ -248,8 +261,21 @@ function InvitationsTab({ paper }: { paper: Paper }) {
         return `<div style="position:absolute;left:${pos[k].x}mm;top:${pos[k].y}mm">${html}</div>`
       })
       .join('')
-    return cards + cropMarksSvg(s.w, s.h, pos, theme.muted) + calibrationHtml(theme)
+    return cards + cropMarksSvg(s.w, s.h, pos, theme.muted) + orientationMarkHtml('front', gi + 1, groups.length, theme) + calibrationHtml(theme)
   })
+  // Every card back is identical and the row is centred, so each back lands
+  // exactly behind a front whichever way the sheet is turned over.
+  const backs = groups.map((_, gi) => {
+    const pos = layouts[gi]
+    const inner =
+      pos.map((p) => `<div style="position:absolute;left:${p.x}mm;top:${p.y}mm">${backCard}</div>`).join('') +
+      cropMarksSvg(s.w, s.h, pos, theme.muted) +
+      orientationMarkHtml('back', gi + 1, groups.length, theme)
+    return rotateBacks ? `<div style="position:absolute;inset:0;transform:rotate(180deg)">${inner}</div>` : inner
+  })
+  const pick = <T,>(list: T[]) => (sheetNo > 0 ? list.slice(sheetNo - 1, sheetNo) : list)
+  const sheets =
+    printSide === 'front' ? pick(fronts) : printSide === 'back' ? pick(backs) : pick(fronts.map((f, i) => [f, backs[i]])).flat()
 
   const toggle = (id: string) =>
     setSelected((cur) => {
@@ -327,8 +353,57 @@ function InvitationsTab({ paper }: { paper: Paper }) {
               ))}
             </select>
           </label>
+          <div>
+            <p className="mb-1.5 text-sm text-ink-soft">What to print</p>
+            <div role="radiogroup" aria-label="What to print" className="grid grid-cols-3 gap-1 rounded-lg bg-cream p-1">
+              {(
+                [
+                  { v: 'front', l: 'Fronts' },
+                  { v: 'back', l: 'Backs' },
+                  { v: 'both', l: 'Both sides' },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.v}
+                  type="button"
+                  role="radio"
+                  aria-checked={printSide === o.v}
+                  onClick={() => setPrintSide(o.v)}
+                  className={cn('rounded-md px-2 py-1.5 text-sm transition', printSide === o.v ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              {printSide === 'both' ? 'For printers that print both sides automatically (duplex).' : 'Print the fronts, put the pages back in the printer, then print the backs.'}
+            </p>
+          </div>
+          {groups.length > 1 && (
+            <label className="flex items-center justify-between gap-2 text-sm text-ink-soft">
+              Sheets
+              <select className="input-base min-h-10 w-auto max-w-[60%] py-1.5" value={sheetNo} onChange={(e) => setSheetNo(Number(e.target.value))}>
+                <option value={0}>All {groups.length} sheets</option>
+                {groups.map((g, i) => (
+                  <option key={i} value={i + 1}>
+                    Sheet {i + 1}: {g.map((x) => x.inviteeName.split(' ')[0]).join(', ')}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {printSide !== 'front' && (
+            <label className="flex items-start justify-between gap-3 text-sm text-ink-soft">
+              <span>
+                Turn the backs upside-down
+                <span className="block text-xs text-muted">Tick this if your test print came out with the “▲ TOP EDGE” labels on opposite edges.</span>
+              </span>
+              <input type="checkbox" checked={rotateBacks} onChange={(e) => setRotateBacks(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-ink" />
+            </label>
+          )}
           <Button fullWidth disabled={!chosen.length} onClick={() => window.print()} icon={<Printer aria-hidden="true" className="size-4" />}>
-            Print {chosen.length || ''} {chosen.length === 1 ? 'invitation' : 'invitations'}
+            {printSide === 'front' ? 'Print fronts' : printSide === 'back' ? 'Print backs' : 'Print both sides'}
+            {sheetNo > 0 ? ` (sheet ${sheetNo})` : groups.length > 1 ? ` (${groups.length} sheets)` : ''}
           </Button>
           {askMark && chosen.length > 0 && (
             <div className="rounded-lg border border-gold/40 bg-champagne-light/30 p-3 text-sm">
@@ -344,6 +419,21 @@ function InvitationsTab({ paper }: { paper: Paper }) {
             </div>
           )}
         </section>
+        <Tips>
+          <p className="font-medium text-ink">Printing both sides by hand</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5">
+            <li>Try one sheet on plain paper first.</li>
+            <li>
+              Choose <strong>Fronts</strong> and print.
+            </li>
+            <li>Put the printed page back into the tray so the blank side will be printed (check your printer’s paper icon), keeping the “▲ TOP EDGE” in mind.</li>
+            <li>
+              Choose <strong>Backs</strong> and print.
+            </li>
+            <li>Hold it up to a light: both “▲ TOP EDGE” labels should be on the same edge and the corner marks should line up. If the back is upside-down, tick “Turn the backs upside-down”.</li>
+          </ol>
+          <p className="mt-2 text-xs text-muted">One sheet at a time? Pick it under “Sheets”. The back has no border, so a millimetre of printer drift won’t show.</p>
+        </Tips>
         <Tips>
           <p>
             Each card has the guest’s name, their included guests, your date and venues, and a <strong>personal QR code</strong> that opens their own
