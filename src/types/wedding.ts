@@ -49,7 +49,39 @@ export interface WeddingSettings {
   entourageSubtitle: string
   motifTitle: string
   motifColors: MotifColor[]
+  galleryVisible: boolean
+  galleryTitle: string
+  gallerySubtitle: string
+  galleryLayout: 'grid' | 'carousel'
+  videoVisible: boolean
+  videoTitle: string
+  videoCaption: string
+  videoUrl: string
+  videoPosterUrl: string
   updatedAt: string
+}
+
+export interface GalleryImage {
+  id: string
+  imageUrl: string
+  caption: string
+  sortOrder: number
+  isVisible: boolean
+}
+
+export interface GallerySettings {
+  galleryVisible: boolean
+  galleryTitle: string
+  gallerySubtitle: string
+  galleryLayout: 'grid' | 'carousel'
+}
+
+export interface VideoSettings {
+  videoVisible: boolean
+  videoTitle: string
+  videoCaption: string
+  videoUrl: string
+  videoPosterUrl: string
 }
 
 export interface EntourageMember {
@@ -126,6 +158,8 @@ export type WeddingSettingsInput = Omit<
   | keyof RsvpSettings
   | keyof EntourageSettings
   | keyof MotifSettings
+  | keyof GallerySettings
+  | keyof VideoSettings
 >
 
 export interface OutfitSectionSettings {

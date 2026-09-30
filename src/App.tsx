@@ -21,6 +21,7 @@ const AdminGuests = lazy(() => import('./pages/AdminGuests'))
 const AdminSettings = lazy(() => import('./pages/AdminSettings'))
 const AdminOutfits = lazy(() => import('./pages/AdminOutfits'))
 const AdminEntourage = lazy(() => import('./pages/AdminEntourage'))
+const AdminMedia = lazy(() => import('./pages/AdminMedia'))
 const AdminShare = lazy(() => import('./pages/AdminShare'))
 
 /*
@@ -55,6 +56,7 @@ export default function App() {
                 <Route path="guests" element={<AdminGuests />} />
                 <Route path="outfits" element={<AdminOutfits />} />
                 <Route path="entourage" element={<AdminEntourage />} />
+                <Route path="media" element={<AdminMedia />} />
                 <Route path="share" element={<AdminShare />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -3,12 +3,14 @@ import type { Json, Tables } from '../types/database'
 import type {
   EntourageGroup,
   EntourageSettings,
+  GallerySettings,
   InfoSection,
   MotifColor,
   MotifSettings,
   OutfitSectionSettings,
   RsvpSettings,
   SectionIconName,
+  VideoSettings,
   WeddingSettings,
   WeddingSettingsInput,
 } from '../types/wedding'
@@ -124,6 +126,15 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     entourageSubtitle: row.entourage_subtitle ?? '',
     motifTitle: row.motif_title ?? 'Our Motif',
     motifColors: parseMotif(row.motif_colors),
+    galleryVisible: row.gallery_visible !== false,
+    galleryTitle: row.gallery_title ?? 'Our Story in Frames',
+    gallerySubtitle: row.gallery_subtitle ?? '',
+    galleryLayout: row.gallery_layout === 'carousel' ? 'carousel' : 'grid',
+    videoVisible: row.video_visible !== false,
+    videoTitle: row.video_title ?? 'Our Prenup Film',
+    videoCaption: row.video_caption ?? '',
+    videoUrl: row.video_url ?? '',
+    videoPosterUrl: row.video_poster_url ?? '',
     updatedAt: row.updated_at,
   }
 }
@@ -216,6 +227,37 @@ export function updateEntourage(id: string, input: EntourageSettings): Promise<W
     },
     'updateEntourage',
     'We couldn’t save the entourage. Please try again.',
+  )
+}
+
+/** Admin: couple photo gallery section. */
+export function updateGallerySettings(id: string, input: GallerySettings): Promise<WeddingSettings> {
+  return updatePartial(
+    id,
+    {
+      gallery_visible: input.galleryVisible,
+      gallery_title: emptyToNull(input.galleryTitle),
+      gallery_subtitle: emptyToNull(input.gallerySubtitle),
+      gallery_layout: input.galleryLayout,
+    },
+    'updateGallerySettings',
+    'We couldn’t save the gallery settings. Please try again.',
+  )
+}
+
+/** Admin: prenup video section. */
+export function updateVideoSettings(id: string, input: VideoSettings): Promise<WeddingSettings> {
+  return updatePartial(
+    id,
+    {
+      video_visible: input.videoVisible,
+      video_title: emptyToNull(input.videoTitle),
+      video_caption: emptyToNull(input.videoCaption),
+      video_url: emptyToNull(input.videoUrl),
+      video_poster_url: emptyToNull(input.videoPosterUrl),
+    },
+    'updateVideoSettings',
+    'We couldn’t save the video settings. Please check the link and try again.',
   )
 }
 

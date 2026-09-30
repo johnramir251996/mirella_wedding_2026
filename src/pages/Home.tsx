@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { useOutfits } from '../hooks/useOutfits'
+import { useGallery } from '../hooks/useGallery'
+import { CoupleGallery } from '../components/wedding/CoupleGallery'
+import { VideoHighlight } from '../components/wedding/VideoHighlight'
 import { Hero } from '../components/wedding/Hero'
 import { Introduction } from '../components/wedding/Introduction'
 import { Venues } from '../components/wedding/Venues'
@@ -22,6 +25,7 @@ import { formatWeddingDate } from '../utils/formatting'
 export default function Home() {
   const { settings, loading, error, refresh } = useWeddingSettings()
   const outfits = useOutfits()
+  const gallery = useGallery()
   const [gift, setGift] = useState<PublicGift | null>(null)
 
   useEffect(() => {
@@ -46,6 +50,12 @@ export default function Home() {
       <Hero settings={settings} />
       <main>
         <Introduction settings={settings} />
+        {settings.galleryVisible && (
+          <CoupleGallery title={settings.galleryTitle} subtitle={settings.gallerySubtitle} layout={settings.galleryLayout} images={gallery} />
+        )}
+        {settings.videoVisible && settings.videoUrl && (
+          <VideoHighlight title={settings.videoTitle} caption={settings.videoCaption} url={settings.videoUrl} posterUrl={settings.videoPosterUrl} />
+        )}
         <Venues settings={settings} />
         <InfoSections sections={settings.sections} />
         {showOutfits ? (

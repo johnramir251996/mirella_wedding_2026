@@ -34,6 +34,15 @@ export type Database = {
           entourage_subtitle: string | null
           motif_title: string | null
           motif_colors: Json
+          gallery_visible: boolean
+          gallery_title: string | null
+          gallery_subtitle: string | null
+          gallery_layout: string
+          video_visible: boolean
+          video_title: string | null
+          video_caption: string | null
+          video_url: string | null
+          video_poster_url: string | null
           additional_info: Json
           updated_at: string
         }
@@ -63,6 +72,15 @@ export type Database = {
           entourage_subtitle?: string | null
           motif_title?: string | null
           motif_colors?: Json
+          gallery_visible?: boolean
+          gallery_title?: string | null
+          gallery_subtitle?: string | null
+          gallery_layout?: string
+          video_visible?: boolean
+          video_title?: string | null
+          video_caption?: string | null
+          video_url?: string | null
+          video_poster_url?: string | null
           additional_info?: Json
           updated_at?: string
         }
@@ -92,6 +110,15 @@ export type Database = {
           entourage_subtitle?: string | null
           motif_title?: string | null
           motif_colors?: Json
+          gallery_visible?: boolean
+          gallery_title?: string | null
+          gallery_subtitle?: string | null
+          gallery_layout?: string
+          video_visible?: boolean
+          video_title?: string | null
+          video_caption?: string | null
+          video_url?: string | null
+          video_poster_url?: string | null
           additional_info?: Json
           updated_at?: string
         }
@@ -243,6 +270,36 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      gallery_images: {
+        Row: {
+          id: string
+          image_url: string
+          caption: string | null
+          sort_order: number
+          is_visible: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          image_url: string
+          caption?: string | null
+          sort_order?: number
+          is_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          image_url?: string
+          caption?: string | null
+          sort_order?: number
+          is_visible?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       gift_settings: {
         Row: {

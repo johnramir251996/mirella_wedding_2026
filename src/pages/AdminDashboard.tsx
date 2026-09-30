@@ -25,6 +25,8 @@ const ACTION_LABEL: Record<string, string> = {
   guest_status_changed: 'Guest status changed',
   settings_updated: 'Website settings changed',
   gift_settings_updated: 'Gift settings changed',
+  gallery_photo_added: 'Gallery photo added',
+  gallery_photo_removed: 'Gallery photo removed',
   included_guests_updated: 'Included guests updated',
   outfit_image_added: 'Outfit image added',
   outfit_image_removed: 'Outfit image removed',
