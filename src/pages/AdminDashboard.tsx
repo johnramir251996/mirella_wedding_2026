@@ -10,6 +10,7 @@ import { formatDateTime, formatDeadlineDateTime } from '../utils/formatting'
 import { Link } from 'react-router-dom'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { useAllQuestions } from '../hooks/useAllQuestions'
+import { attendingPeople } from '../utils/seatingPeople'
 import { isRsvpOpen } from '../services/settingsService'
 import { cn } from '../components/ui/cn'
 import { Button } from '../components/ui/Button'
@@ -108,6 +109,11 @@ export default function AdminDashboard() {
     [data],
   )
 
+  const unseatedCount = useMemo(() => {
+    if (!data || !data.tables.some((t) => t.placed)) return 0
+    return attendingPeople(data.invitations).filter((p) => !data.seatedKeys.has(`${p.invitationId}:${p.guestId ?? ''}`)).length
+  }, [data])
+
   const exportCsv = () => {
     if (!data) return
     const date = new Date().toISOString().slice(0, 10)
@@ -149,6 +155,18 @@ export default function AdminDashboard() {
               : 'RSVPs are closed. Guests can no longer respond.'}
           </span>
           <span className="shrink-0 text-xs font-medium uppercase tracking-[0.14em]">{rsvpOpen ? 'Set deadline' : 'Reopen'}</span>
+        </Link>
+      )}
+
+      {unseatedCount > 0 && (
+        <Link
+          to="/admin/seating"
+          className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-champagne-light/25 px-4 py-3 text-sm text-ink-soft transition hover:shadow-soft"
+        >
+          <span>
+            <strong className="font-medium text-ink">{unseatedCount}</strong> attending {unseatedCount === 1 ? 'guest is' : 'guests are'} not yet seated.
+          </span>
+          <span className="shrink-0 text-xs font-medium uppercase tracking-[0.14em]">Open seating</span>
         </Link>
       )}
 

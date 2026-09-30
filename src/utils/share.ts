@@ -5,7 +5,7 @@ export function siteBaseUrl(): string {
 
 export function siteLinks() {
   const base = siteBaseUrl()
-  return { home: base, rsvp: `${base}#/rsvp` }
+  return { home: base, rsvp: `${base}#/rsvp`, seat: `${base}#/seat` }
 }
 
 /** Opens the phone's share sheet when available, otherwise copies the link. Returns what happened. */

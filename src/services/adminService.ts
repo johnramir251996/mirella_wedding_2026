@@ -122,6 +122,8 @@ export interface AdminData {
   invitations: InvitationWithRSVP[]
   guests: GuestWithInvitation[]
   tables: SeatingTable[]
+  /** "invitationId:guestId" of everyone with a chair */
+  seatedKeys: Set<string>
 }
 
 /** Loads invitations, responses and additional guests (admin only — enforced by RLS). */
@@ -140,12 +142,13 @@ export async function loadAdminData(): Promise<AdminData> {
       supabase.from('seating_tables').select('*').order('sort_order').order('created_at').range(a, b),
     ),
     fetchAll<Tables<'seat_assignments'>>('seat_assignments', (a, b) =>
-      supabase.from('seat_assignments').select('table_id,invitation_id,guest_id').is('guest_id', null).range(a, b) as never,
+      supabase.from('seat_assignments').select('table_id,invitation_id,guest_id').range(a, b) as never,
     ),
   ])
   const tables = tableRows.map(mapTable)
   const tableName = new Map(tables.map((t) => [t.id, t.name]))
-  const inviteeSeatTable = new Map(seatRows.map((s) => [s.invitation_id, s.table_id]))
+  const inviteeSeatTable = new Map(seatRows.filter((s) => !s.guest_id).map((s) => [s.invitation_id, s.table_id]))
+  const seatedKeys = new Set(seatRows.map((s) => `${s.invitation_id}:${s.guest_id ?? ''}`))
 
   const responses = new Map(respRows.map((r) => [r.invitation_id, mapResponse(r)]))
   const guestsByInvitation = new Map<string, AdditionalGuest[]>()
@@ -182,7 +185,7 @@ export async function loadAdminData(): Promise<AdminData> {
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
-  return { invitations, guests, tables }
+  return { invitations, guests, tables, seatedKeys }
 }
 
 // ----- Invitations --------------------------------------------------------------

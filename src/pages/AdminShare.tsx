@@ -10,7 +10,13 @@ import { Spinner } from '../components/ui/Spinner'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
 
-type Target = 'home' | 'rsvp'
+type Target = 'home' | 'rsvp' | 'seat'
+const CARD_TITLE: Record<Target, string> = { rsvp: 'KINDLY RSVP', home: 'OUR WEDDING', seat: 'FIND YOUR SEAT' }
+const CARD_TEXT: Record<Target, string> = {
+  rsvp: 'Scan to open your invitation & RSVP',
+  home: 'Scan to visit our wedding website',
+  seat: 'Scan to find your table',
+}
 const INK = '#2B2A28'
 const IVORY = '#FAF7F2'
 const GOLD = '#B89B6A'
@@ -98,7 +104,7 @@ export default function AdminShare() {
         ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '0px'
       }
 
-      spaced(target === 'rsvp' ? 'KINDLY RSVP' : 'OUR WEDDING', 190, '500 30px "Jost", sans-serif', '#8A6E45', 10)
+      spaced(CARD_TITLE[target], 190, '500 30px "Jost", sans-serif', '#8A6E45', 10)
       ctx.font = 'italic 104px "Cormorant Garamond", Georgia, serif'
       ctx.fillStyle = INK
       ctx.fillText(couple, W / 2, 330, W - 160)
@@ -117,7 +123,7 @@ export default function AdminShare() {
 
       ctx.font = 'italic 44px "Cormorant Garamond", Georgia, serif'
       ctx.fillStyle = '#4A4640'
-      ctx.fillText(target === 'rsvp' ? 'Scan to open your invitation & RSVP' : 'Scan to visit our wedding website', W / 2, 1340)
+      ctx.fillText(CARD_TEXT[target], W / 2, 1340)
       ctx.font = '26px "Jost", sans-serif'
       ctx.fillStyle = '#6B655C'
       ctx.fillText(url.replace(/^https?:\/\//, ''), W / 2, 1420, W - 160)
@@ -146,6 +152,7 @@ export default function AdminShare() {
               [
                 { key: 'home', label: 'Wedding website', href: links.home },
                 { key: 'rsvp', label: 'RSVP page', href: links.rsvp },
+                { key: 'seat', label: 'Find My Seat (for the venue entrance)', href: links.seat },
               ] as const
             ).map((l) => (
               <div key={l.key}>
@@ -169,7 +176,7 @@ export default function AdminShare() {
             ))}
           </div>
 
-          <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.14em] text-muted">Share the {target === 'rsvp' ? 'RSVP' : 'website'} link</h3>
+          <h3 className="mt-8 text-sm font-semibold uppercase tracking-[0.14em] text-muted">Share the {target === 'rsvp' ? 'RSVP' : target === 'seat' ? 'Find My Seat' : 'website'} link</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               onClick={async () => {
@@ -209,7 +216,7 @@ export default function AdminShare() {
             QR code
           </h2>
           <div role="radiogroup" aria-label="QR code opens" className="mt-4 flex gap-1 rounded-lg bg-cream p-1">
-            {(['rsvp', 'home'] as const).map((t) => (
+            {(['rsvp', 'home', 'seat'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -218,7 +225,7 @@ export default function AdminShare() {
                 onClick={() => setTarget(t)}
                 className={cn('flex-1 rounded-md px-3 py-2 text-sm transition', target === t ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
               >
-                {t === 'rsvp' ? 'Opens RSVP page' : 'Opens website'}
+                {t === 'rsvp' ? 'Opens RSVP page' : t === 'seat' ? 'Opens Find My Seat' : 'Opens website'}
               </button>
             ))}
           </div>

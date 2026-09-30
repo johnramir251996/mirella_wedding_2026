@@ -231,3 +231,73 @@ export async function getInvitationTable(invitationId: string): Promise<string |
   }
   return typeof data === 'string' && data ? data : null
 }
+
+// ------------------------------------------------------------------ Find My Seat (public)
+
+export type SeatSearchStatus = 'hidden' | 'not_found' | 'pending' | 'declined' | 'unseated' | 'seated'
+
+export interface SeatSearchResult {
+  status: SeatSearchStatus
+  name?: string
+  tableId?: string
+  tableName?: string | null
+  seat?: number | null
+  party?: { seat: number; name: string }[]
+  layout?: { config: SeatingConfig; tables: SeatingTable[]; items: SeatingItem[] }
+}
+
+export async function findMySeat(name: string): Promise<SeatSearchResult> {
+  const { data, error } = await supabase.rpc('find_my_seat', { search_name: name })
+  if (error) fail('findMySeat', error, 'We couldn’t look up your seat right now. Please try again.')
+  const o = (data ?? {}) as Record<string, unknown>
+  const status = (o.status as SeatSearchStatus) ?? 'not_found'
+  const res: SeatSearchResult = {
+    status,
+    name: typeof o.name === 'string' ? o.name : undefined,
+    tableId: typeof o.tableId === 'string' ? o.tableId : undefined,
+    tableName: typeof o.tableName === 'string' ? o.tableName : null,
+    seat: typeof o.seat === 'number' ? o.seat : null,
+    party: Array.isArray(o.party) ? (o.party as { seat: number; name: string }[]) : [],
+  }
+  const l = o.layout as Record<string, unknown> | undefined
+  if (l) {
+    const cfg = parseSeatingConfig({ room: l.room, canvas: l.canvas } as Json)
+    res.layout = {
+      config: cfg,
+      tables: ((l.tables as Record<string, unknown>[]) ?? []).map((t) =>
+        mapTable({
+          id: String(t.id),
+          name: String(t.name),
+          shape: String(t.shape),
+          capacity: Number(t.capacity),
+          seat_sides: String(t.seatSides),
+          x: Number(t.x),
+          y: Number(t.y),
+          width: Number(t.width),
+          height: Number(t.height),
+          rotation: Number(t.rotation),
+          placed: true,
+          sort_order: 0,
+          created_at: '',
+          updated_at: '',
+        }),
+      ),
+      items: ((l.items as Record<string, unknown>[]) ?? []).map((i) =>
+        mapItem({
+          id: String(i.id),
+          kind: String(i.kind),
+          label: String(i.label ?? ''),
+          x: Number(i.x),
+          y: Number(i.y),
+          width: Number(i.width),
+          height: Number(i.height),
+          rotation: Number(i.rotation),
+          location: String(i.location),
+          created_at: '',
+          updated_at: '',
+        }),
+      ),
+    }
+  }
+  return res
+}

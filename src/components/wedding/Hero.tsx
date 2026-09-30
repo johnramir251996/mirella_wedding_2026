@@ -7,7 +7,7 @@ import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { cn } from '../ui/cn'
 import { CoupleNames } from './CoupleNames'
-import { isRsvpOpen } from '../../services/settingsService'
+import { isFinderOpen, isRsvpOpen } from '../../services/settingsService'
 import { useResolvedTheme } from '../../theme/themeContext'
 
 type Tone = 'onPhoto' | 'onPaper'
@@ -171,11 +171,20 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
           >
             Details
           </button>
+          {isFinderOpen(settings.seatingConfig) && (
+            <Link
+              to="/seat"
+              className={cn('rounded px-2 py-2 uppercase tracking-[0.28em] transition', onPhoto ? 'text-white/85 hover:text-white' : 'text-ink-soft hover:text-ink')}
+            >
+              <span className="sm:hidden">My Seat</span>
+              <span className="hidden sm:inline">Find My Seat</span>
+            </Link>
+          )}
           {isRsvpOpen(settings) && (
             <Link
               to="/rsvp"
               className={cn(
-                'max-w-[62vw] rounded-full border px-5 py-2.5 text-center leading-tight transition sm:max-w-none',
+                'max-w-[48vw] rounded-full border px-5 py-2.5 text-center leading-tight transition sm:max-w-none',
                 settings.rsvpButtonLabel.length > 8 && 'tracking-[0.16em]',
                 onPhoto ? 'border-white/50 text-white hover:border-white hover:bg-white/10' : 'border-ink/40 text-ink hover:border-ink hover:bg-ink/5',
               )}
