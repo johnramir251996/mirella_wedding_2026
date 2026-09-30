@@ -17,6 +17,7 @@ import {
   calibrationHtml,
   cropMarksSvg,
   envelopeSvg,
+  invitationBackHtml,
   invitationCardHtml,
   layoutRow,
   noteCardHtml,
@@ -29,6 +30,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
+import { Card3D, Envelope3D } from '../components/printables/Preview3D'
 
 type Tab = 'invitations' | 'envelope'
 const PX_PER_MM = 96 / 25.4
@@ -123,17 +125,52 @@ function Sheets({ paper, sheets }: { paper: Paper; sheets: string[] }) {
         <div
           key={i}
           style={{ height: s.h * PX_PER_MM * scale, '--pv': scale } as CSSProperties}
-          className="overflow-hidden rounded-md shadow-card print:!h-auto print:overflow-visible print:rounded-none print:shadow-none"
+          className="print-page overflow-hidden rounded-md shadow-card print:!h-auto print:overflow-hidden print:rounded-none print:shadow-none"
         >
           <div
             className="print-sheet origin-top-left [transform:scale(var(--pv))] print:[transform:none]"
-            style={{ width: `${s.w}mm`, height: `${s.h}mm` }}
+            style={{ width: `${s.w}mm`, height: `${s.h - 1}mm` }}
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
       ))}
     </div>
   )
+}
+
+type View = 'sheets' | '3d'
+
+function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Preview" className="mb-3 inline-flex gap-1 rounded-lg bg-cream p-1 print:hidden">
+      {(
+        [
+          { v: 'sheets', l: 'Print sheets' },
+          { v: '3d', l: '3D preview' },
+        ] as const
+      ).map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          role="radio"
+          aria-checked={view === o.v}
+          onClick={() => onChange(o.v)}
+          className={cn('rounded-md px-3 py-1.5 text-sm transition', view === o.v ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
+        >
+          {o.l}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Measures the available width (for sizing the 3D preview). */
+function useWidth() {
+  const [width, setWidth] = useState(640)
+  const ref = (el: HTMLElement | null) => {
+    if (el && Math.abs(el.clientWidth - width) > 4) setWidth(el.clientWidth)
+  }
+  return { width, ref }
 }
 
 function Tips({ children }: { children: ReactNode }) {
@@ -151,6 +188,8 @@ function InvitationsTab({ paper }: { paper: Paper }) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [qr, setQr] = useState<Record<string, string>>({})
   const [askMark, setAskMark] = useState(false)
+  const [view, setView] = useState<View>('sheets')
+  const box = useWidth()
   const [marking, setMarking] = useState(false)
   const theme = useMemo(readTheme, [settings?.theme])
   const links = useMemo(() => siteLinks(), [])
@@ -198,8 +237,8 @@ function InvitationsTab({ paper }: { paper: Paper }) {
           withNames: inv.guests.filter((g) => g.addedBy === 'admin').map((g) => g.guestName),
           coupleNames: settings?.coupleNames ?? '',
           dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
-          ceremony: settings?.churchName ?? '',
-          reception: settings?.receptionName ?? '',
+          ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
+          reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
           respondBy,
           qrSvg: qr[inv.id] ?? '',
           shortLink,
@@ -313,8 +352,35 @@ function InvitationsTab({ paper }: { paper: Paper }) {
           <p className="mt-2">In the print dialog choose <strong>Actual size / 100%</strong>, turn off headers & footers, and use thick paper (200 gsm or more). Cut along the corner marks.</p>
         </Tips>
       </aside>
-      <section aria-label="Print preview" className="min-w-0">
-        {chosen.length === 0 ? (
+      <section aria-label="Print preview" className="min-w-0" ref={box.ref}>
+        <ViewToggle view={view} onChange={setView} />
+        {view === '3d' ? (
+          <Card3D
+            width={box.width}
+            widthMm={CARD_SIZES[size].w}
+            heightMm={CARD_SIZES[size].h}
+            frontHtml={invitationCardHtml({
+              guestName: chosen[0]?.inviteeName ?? 'Your Guest’s Name',
+              withNames: chosen[0] ? chosen[0].guests.filter((g) => g.addedBy === 'admin').map((g) => g.guestName) : [],
+              coupleNames: settings?.coupleNames ?? '',
+              dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
+              ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
+              reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
+              respondBy,
+              qrSvg: (chosen[0] && qr[chosen[0].id]) || '',
+              shortLink,
+              theme,
+              size,
+            })}
+            backHtml={invitationBackHtml({
+              coupleNames: settings?.coupleNames ?? '',
+              dateText: settings ? formatWeddingDate(settings.weddingDate) : '',
+              monogram: settings ? monogram(settings.coupleNames, '&') : '',
+              theme,
+              size,
+            })}
+          />
+        ) : chosen.length === 0 ? (
           <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-line text-sm text-muted print:hidden">
             Tick guests on the left to preview their invitations.
           </div>
@@ -335,6 +401,8 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
   const [withQr, setWithQr] = useState(true)
   const [giftQr, setGiftQr] = useState<string | null>(null)
   const theme = useMemo(readTheme, [settings?.theme])
+  const [view, setView] = useState<View>('sheets')
+  const box = useWidth()
 
   useEffect(() => {
     getGiftSettings()
@@ -347,13 +415,16 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
   const gap = 8
   const total = ENV_FLAT.w + (withCard ? gap + card.w : 0)
   const x = (s.w - total) / 2
+  const envSvg = envelopeSvg({
+    coupleNames: settings?.coupleNames ?? '',
+    dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
+    monogram: settings ? monogram(settings.coupleNames, '&') : '',
+    theme,
+    ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
+    reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
+  })
   const sheetHtml =
-    `<div style="position:absolute;left:${x}mm;top:${(s.h - ENV_FLAT.h) / 2}mm">${envelopeSvg({
-      coupleNames: settings?.coupleNames ?? '',
-      dateText: settings ? formatWeddingDate(settings.weddingDate) : '',
-      monogram: settings ? monogram(settings.coupleNames, '&') : '',
-      theme,
-    })}</div>` +
+    `<div style="position:absolute;left:${x}mm;top:${(s.h - ENV_FLAT.h) / 2}mm">${envSvg}</div>` +
     (withCard
       ? `<div style="position:absolute;left:${x + ENV_FLAT.w + gap}mm;top:${(s.h - card.h) / 2}mm">${noteCardHtml({
           coupleNames: settings?.coupleNames ?? '',
@@ -408,8 +479,13 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
           <p className="mt-2 text-xs text-muted">Finished size about 17.5 × 9 cm. Guests write their name and a message on the back.</p>
         </Tips>
       </aside>
-      <section aria-label="Print preview" className="min-w-0">
-        <Sheets paper={paper} sheets={Array.from({ length: copies }, () => sheetHtml)} />
+      <section aria-label="Print preview" className="min-w-0" ref={box.ref}>
+        <ViewToggle view={view} onChange={setView} />
+        {view === '3d' ? (
+          <Envelope3D svg={envSvg} paper={theme.paper} width={box.width} />
+        ) : (
+          <Sheets paper={paper} sheets={Array.from({ length: copies }, () => sheetHtml)} />
+        )}
       </section>
     </div>
   )

@@ -5,14 +5,15 @@ import { Reveal } from './Reveal'
 interface Venue {
   label: string
   name: string
+  time: string
   mapUrl: string
   icon: LucideIcon
 }
 
 export function Venues({ settings }: { settings: WeddingSettings }) {
   const venues: Venue[] = [
-    { label: 'Ceremony', name: settings.churchName, mapUrl: settings.churchMapUrl, icon: Church },
-    { label: 'Reception', name: settings.receptionName, mapUrl: settings.receptionMapUrl, icon: Wine },
+    { label: 'Ceremony', name: settings.churchName, time: settings.ceremonyTime, mapUrl: settings.churchMapUrl, icon: Church },
+    { label: 'Reception', name: settings.receptionName, time: settings.receptionTime, mapUrl: settings.receptionMapUrl, icon: Wine },
   ].filter((v) => v.name)
 
   if (!venues.length) return null
@@ -33,6 +34,7 @@ export function Venues({ settings }: { settings: WeddingSettings }) {
                 <v.icon aria-hidden="true" className="size-8 text-champagne" strokeWidth={1.1} />
                 <h3 className="mt-5 text-[0.75rem] font-sans font-medium uppercase tracking-[0.34em] text-gold">{v.label}</h3>
                 <p className="mt-4 max-w-xs font-serif text-[1.85rem] leading-tight text-ink">{v.name}</p>
+                {v.time.trim() && <p className="mt-3 text-sm font-medium uppercase tracking-[0.26em] text-ink-soft">{v.time}</p>}
                 {v.mapUrl && (
                   <a
                     href={v.mapUrl}

@@ -35,6 +35,9 @@ export interface WeddingSettings {
   heroSubtitle: string
   heroImageUrl: string
   churchName: string
+  /** Optional, e.g. "3:00 PM" */
+  ceremonyTime: string
+  receptionTime: string
   churchMapUrl: string
   receptionName: string
   receptionMapUrl: string

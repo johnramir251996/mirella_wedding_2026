@@ -52,9 +52,12 @@ export interface EnvelopeOptions {
   dateText: string
   monogram: string
   theme: PrintTheme
+  /** e.g. "Our Lady of the Pillar Parish · 2:00 PM" */
+  ceremony?: string
+  reception?: string
 }
 
-export function envelopeSvg({ coupleNames, dateText, monogram, theme }: EnvelopeOptions): string {
+export function envelopeSvg({ coupleNames, dateText, monogram, theme, ceremony = '', reception = '' }: EnvelopeOptions): string {
   const t = safe(theme)
   const { W, H, side: s, top: tf, bottom: bf } = ENV
   const x0 = s
@@ -122,13 +125,25 @@ export function envelopeSvg({ coupleNames, dateText, monogram, theme }: Envelope
       <text x="${cx}" y="${tcy + 1.6}" text-anchor="middle" font-family="${t.serif}" font-style="italic" font-size="5.2" fill="${t.ink}">${esc(monogram)}</text>
     </g>`
 
+  const details = [
+    ['CEREMONY', ceremony],
+    ['RECEPTION', reception],
+  ].filter(([, v]) => v.trim())
+  const hasDetails = details.length > 0
+  const detailSize = (v: string) => Math.min(2.8, 150 / Math.max(40, v.length + 12) * 1.9)
   const front = `
     <rect x="${x0 + 5}" y="${y0 + 5}" width="${W - 10}" height="${H - 10}" fill="none" stroke="${t.accent}" stroke-width="0.35"/>
     <rect x="${x0 + 6.6}" y="${y0 + 6.6}" width="${W - 13.2}" height="${H - 13.2}" fill="none" stroke="${t.accent}" stroke-width="0.15"/>
-    <text x="${cx}" y="${y0 + 27}" text-anchor="middle" font-family="${t.sans}" font-size="2.8" letter-spacing="1.2" fill="${t.accent}">WITH LOVE &amp; BEST WISHES FOR</text>
-    <text x="${cx}" y="${y0 + 51}" text-anchor="middle" font-family="${t.serif}" font-size="${nameSize}" fill="${t.ink}">${coupleSvg}</text>
-    <line x1="${cx - 12}" x2="${cx + 12}" y1="${y0 + 62}" y2="${y0 + 62}" stroke="${t.accent}" stroke-width="0.3"/>
-    <text x="${cx}" y="${y0 + 70}" text-anchor="middle" font-family="${t.sans}" font-size="2.9" letter-spacing="1.4" fill="${t.soft}">${esc(dateText.toUpperCase())}</text>`
+    <text x="${cx}" y="${y0 + (hasDetails ? 18 : 27)}" text-anchor="middle" font-family="${t.sans}" font-size="2.8" letter-spacing="1.2" fill="${t.accent}">WITH LOVE &amp; BEST WISHES FOR</text>
+    <text x="${cx}" y="${y0 + (hasDetails ? 36 : 51)}" text-anchor="middle" font-family="${t.serif}" font-size="${hasDetails ? Math.min(nameSize, 11) : nameSize}" fill="${t.ink}">${coupleSvg}</text>
+    <line x1="${cx - 12}" x2="${cx + 12}" y1="${y0 + (hasDetails ? 43.5 : 62)}" y2="${y0 + (hasDetails ? 43.5 : 62)}" stroke="${t.accent}" stroke-width="0.3"/>
+    <text x="${cx}" y="${y0 + (hasDetails ? 51 : 70)}" text-anchor="middle" font-family="${t.sans}" font-size="2.9" letter-spacing="1.4" fill="${t.ink}">${esc(dateText.toUpperCase())}</text>
+    ${details
+      .map(
+        ([label, value], i) =>
+          `<text x="${cx}" y="${y0 + 60 + i * 8}" text-anchor="middle" font-family="${t.sans}" font-size="${detailSize(value)}" fill="${t.soft}"><tspan fill="${t.accent}" letter-spacing="0.5">${label}</tspan>  ·  ${esc(value)}</text>`,
+      )
+      .join('')}`
 
   const glue = (x: number) => `
     <text x="${x}" y="${y0 + H / 2}" text-anchor="middle" font-family="${t.sans}" font-size="2.3" letter-spacing="0.6" fill="${t.muted}" transform="rotate(-90 ${x} ${y0 + H / 2})">GLUE</text>`
@@ -275,5 +290,16 @@ export function calibrationHtml(theme: PrintTheme): string {
   return `<div style="position:absolute;left:8mm;bottom:5mm;display:flex;align-items:center;gap:2mm;font-family:${t.sans};font-size:2.2mm;color:${t.muted}">
     <div style="width:50mm;height:1.6mm;border:0.2mm solid ${t.muted};border-top:none"></div>
     <span>Print at 100% (Actual size) — this bar should measure 5 cm</span>
+  </div>`
+}
+
+/** Plain back of an invitation card (for the 3D preview). */
+export function invitationBackHtml(o: { coupleNames: string; dateText: string; monogram: string; theme: PrintTheme; size: CardSize }): string {
+  const t = safe(o.theme)
+  const s = CARD_SIZES[o.size]
+  return `<div style="box-sizing:border-box;width:${s.w}mm;height:${s.h}mm;background:${t.paper};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4mm;font-family:${t.sans};position:relative">
+    <div style="position:absolute;inset:4.5mm;border:0.4mm solid ${t.accent}"></div>
+    <div style="width:22mm;height:22mm;border-radius:50%;border:0.4mm solid ${t.accent};display:flex;align-items:center;justify-content:center;font-family:${t.serif};font-style:italic;font-size:8mm;color:${t.ink}">${esc(o.monogram)}</div>
+    <div style="font-size:2.8mm;letter-spacing:0.9mm;color:${t.accent}">${esc(o.dateText.toUpperCase())}</div>
   </div>`
 }

@@ -26,6 +26,8 @@ function toInput(s: WeddingSettings): WeddingSettingsInput {
     heroSubtitle: s.heroSubtitle,
     heroImageUrl: s.heroImageUrl,
     churchName: s.churchName,
+    ceremonyTime: s.ceremonyTime,
+    receptionTime: s.receptionTime,
     churchMapUrl: s.churchMapUrl,
     receptionName: s.receptionName,
     receptionMapUrl: s.receptionMapUrl,
@@ -252,12 +254,14 @@ export default function AdminSettings() {
           <Card title="Ceremony">
             <div className="space-y-5">
               <TextField label="Church name" value={values.churchName} onChange={(v) => set('churchName', v)} maxLength={150} />
+              <TextField label="Time (optional)" value={values.ceremonyTime} onChange={(v) => set('ceremonyTime', v)} maxLength={40} placeholder="e.g. 2:00 PM" hint="Shown on the website, printed invitations and envelopes." />
               <TextField label="Google Maps URL" type="url" value={values.churchMapUrl} onChange={(v) => set('churchMapUrl', v)} error={errors.churchMapUrl} />
             </div>
           </Card>
           <Card title="Reception">
             <div className="space-y-5">
               <TextField label="Reception name" value={values.receptionName} onChange={(v) => set('receptionName', v)} maxLength={150} />
+              <TextField label="Time (optional)" value={values.receptionTime} onChange={(v) => set('receptionTime', v)} maxLength={40} placeholder="e.g. 5:30 PM" />
               <TextField label="Google Maps URL" type="url" value={values.receptionMapUrl} onChange={(v) => set('receptionMapUrl', v)} error={errors.receptionMapUrl} />
             </div>
           </Card>

@@ -161,6 +161,8 @@ export type Database = {
           hero_subtitle: string | null
           hero_image_url: string | null
           church_name: string | null
+          ceremony_time: string | null
+          reception_time: string | null
           church_map_url: string | null
           reception_name: string | null
           reception_map_url: string | null
@@ -204,6 +206,8 @@ export type Database = {
           hero_subtitle?: string | null
           hero_image_url?: string | null
           church_name?: string | null
+          ceremony_time?: string | null
+          reception_time?: string | null
           church_map_url?: string | null
           reception_name?: string | null
           reception_map_url?: string | null
@@ -247,6 +251,8 @@ export type Database = {
           hero_subtitle?: string | null
           hero_image_url?: string | null
           church_name?: string | null
+          ceremony_time?: string | null
+          reception_time?: string | null
           church_map_url?: string | null
           reception_name?: string | null
           reception_map_url?: string | null

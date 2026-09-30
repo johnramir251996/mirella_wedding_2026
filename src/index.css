@@ -154,10 +154,15 @@
   html,
   body {
     background: #fff !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
   .print-sheet {
-    break-after: page;
     box-shadow: none !important;
     margin: 0 !important;
+  }
+  /* New page only BETWEEN sheets — never a blank page after the last one. */
+  .print-page + .print-page {
+    break-before: page;
   }
 }
