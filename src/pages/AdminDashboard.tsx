@@ -9,6 +9,7 @@ import { buildRSVPCsv, downloadCsv } from '../utils/csvExport'
 import { formatDateTime, formatDeadlineDateTime } from '../utils/formatting'
 import { Link } from 'react-router-dom'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
+import { useAllQuestions } from '../hooks/useAllQuestions'
 import { isRsvpOpen } from '../services/settingsService'
 import { cn } from '../components/ui/cn'
 import { Button } from '../components/ui/Button'
@@ -31,6 +32,9 @@ const ACTION_LABEL: Record<string, string> = {
   outfit_image_added: 'Outfit image added',
   outfit_image_removed: 'Outfit image removed',
   rsvp_exported: 'RSVP data exported',
+  question_added: 'RSVP question added',
+  question_updated: 'RSVP question changed',
+  question_deleted: 'RSVP question deleted',
 }
 
 export default function AdminDashboard() {
@@ -52,6 +56,29 @@ export default function AdminDashboard() {
   }, [data])
 
   const { settings } = useWeddingSettings()
+  const questions = useAllQuestions()
+  const questionCharts = useMemo(() => {
+    const responses = (data?.invitations ?? []).map((i) => i.response).filter((r) => r !== null)
+    return questions
+      .filter((q) => q.type === 'single' || q.type === 'multiple' || q.type === 'yes_no')
+      .map((q) => {
+        const labels = q.type === 'yes_no' ? ['yes', 'no'] : q.options
+        const counts = new Map(labels.map((l) => [l, 0]))
+        let answered = 0
+        for (const r of responses) {
+          const a = r.customAnswers[q.id]
+          const list = Array.isArray(a) ? a : typeof a === 'string' ? [a] : []
+          if (list.length) answered++
+          for (const v of list) if (typeof v === 'string' && counts.has(v)) counts.set(v, (counts.get(v) ?? 0) + 1)
+        }
+        return {
+          id: q.id,
+          title: q.question,
+          description: `${answered} ${answered === 1 ? 'answer' : 'answers'}${q.isActive ? '' : ' · question hidden'}`,
+          data: labels.map((l) => ({ label: q.type === 'yes_no' ? (l === 'yes' ? 'Yes' : 'No') : l, value: counts.get(l) ?? 0 })),
+        }
+      })
+  }, [data, questions])
   const rsvpOpen = settings ? isRsvpOpen(settings) : true
   const stats = useMemo(() => (data ? computeAnalytics(data.invitations, data.guests) : null), [data])
   const messages = useMemo(
@@ -66,7 +93,7 @@ export default function AdminDashboard() {
   const exportCsv = () => {
     if (!data) return
     const date = new Date().toISOString().slice(0, 10)
-    downloadCsv(`mir-ella-rsvp-${date}.csv`, buildRSVPCsv(data.invitations))
+    downloadCsv(`mir-ella-rsvp-${date}.csv`, buildRSVPCsv(data.invitations, questions))
     toast.success('RSVP data exported.')
   }
 
@@ -198,6 +225,19 @@ export default function AdminDashboard() {
               />
             </div>
           </section>
+
+          {questionCharts.length > 0 && (
+            <section aria-labelledby="custom-q-heading">
+              <h2 id="custom-q-heading" className="mb-3 font-sans text-sm font-semibold uppercase tracking-[0.14em] text-muted">
+                Your RSVP questions
+              </h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                {questionCharts.map((c) => (
+                  <BarChartCard key={c.id} title={c.title} description={c.description} data={c.data} />
+                ))}
+              </div>
+            </section>
+          )}
 
           <section aria-labelledby="messages-heading">
             <h2 id="messages-heading" className="mb-3 font-sans text-sm font-semibold uppercase tracking-[0.14em] text-muted">

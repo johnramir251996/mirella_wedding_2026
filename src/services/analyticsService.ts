@@ -58,7 +58,7 @@ export function computeAnalytics(invitations: InvitationWithRSVP[], guests: Gues
     for (const f of r.foodPreferences) foodCounts.set(f, (foodCounts.get(f) ?? 0) + 1)
 
     if (r.hasFoodRestrictions) dietary.has++
-    else dietary.none++
+    else if (r.hasFoodRestrictions === false) dietary.none++
 
     if (r.accessibilityNeeds && r.accessibilityNeeds.trim()) accessibilityRequests++
   }

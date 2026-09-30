@@ -16,6 +16,7 @@ import type {
 } from '../types/wedding'
 import { FriendlyError, logError } from '../utils/errors'
 import { parseThemeSettings, type ThemeSettings } from '../theme/themes'
+import type { BuiltinKey, RsvpConfig } from '../types/questions'
 
 export const SECTION_ICONS: { value: SectionIconName; label: string }[] = [
   { value: 'shirt', label: 'Attire' },
@@ -93,6 +94,24 @@ function parseMotif(value: Json): MotifColor[] {
   })
 }
 
+const BUILTIN_KEYS: BuiltinKey[] = ['transportation', 'comingFrom', 'food', 'dietary', 'accessibility', 'message']
+
+function parseRsvpConfig(value: Json): RsvpConfig {
+  const o = obj(value)
+  const b = o ? obj((o.builtins ?? null) as Json) : null
+  const builtins: RsvpConfig['builtins'] = {}
+  for (const k of BUILTIN_KEYS) {
+    const c = b ? obj((b[k] ?? null) as Json) : null
+    if (!c) continue
+    builtins[k] = {
+      enabled: c.enabled !== false,
+      label: typeof c.label === 'string' ? c.label : undefined,
+      required: typeof c.required === 'boolean' ? c.required : undefined,
+    }
+  }
+  return { builtins }
+}
+
 /** True while guests may still RSVP (switch on and deadline not passed). */
 export function isRsvpOpen(s: Pick<WeddingSettings, 'rsvpOpen' | 'rsvpDeadline'>, now = Date.now()): boolean {
   if (!s.rsvpOpen) return false
@@ -137,6 +156,7 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     videoUrl: row.video_url ?? '',
     videoPosterUrl: row.video_poster_url ?? '',
     theme: parseThemeSettings(row.theme),
+    rsvpConfig: parseRsvpConfig(row.rsvp_config),
     updatedAt: row.updated_at,
   }
 }
@@ -271,6 +291,11 @@ export function updateTheme(id: string, theme: ThemeSettings): Promise<WeddingSe
     if (v) clean[k] = v
   }
   return updatePartial(id, { theme: clean }, 'updateTheme', 'We couldn’t save the new look. Please try again.')
+}
+
+/** Admin: built-in RSVP questions (on/off, labels, required). */
+export function updateRsvpConfig(id: string, config: RsvpConfig): Promise<WeddingSettings> {
+  return updatePartial(id, { rsvp_config: config }, 'updateRsvpConfig', 'We couldn’t save the question settings. Please try again.')
 }
 
 /** Admin: dress-code motif colours. */

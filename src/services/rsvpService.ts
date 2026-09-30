@@ -22,6 +22,7 @@ export async function submitRSVP(payload: RSVPSubmission): Promise<{ rsvpId: str
     p_additional_guests: payload.additionalGuests,
     p_message_to_couple: payload.messageToCouple,
     p_mobile_number: payload.mobileNumber,
+    p_custom_answers: payload.customAnswers,
   })
 
   if (error) {
@@ -29,6 +30,9 @@ export async function submitRSVP(payload: RSVPSubmission): Promise<{ rsvpId: str
     const msg = error.message ?? ''
     if (msg.includes('RSVP_CLOSED')) throw new RsvpClosedError()
     if (msg.includes('RSVP_INVITATION_NOT_FOUND')) throw new FriendlyError(FRIENDLY_ERRORS.unavailable)
+    if (msg.includes('RSVP_INVALID') && msg.includes('question')) {
+      throw new FriendlyError('The RSVP questions were just updated. Please refresh the page, check your answers and try again.')
+    }
     if (msg.includes('RSVP_INVALID')) throw new FriendlyError(FRIENDLY_ERRORS.invalid)
     throw new FriendlyError(FRIENDLY_ERRORS.generic)
   }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useInvitation } from '../hooks/useInvitation'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
+import { useRsvpQuestions } from '../hooks/useRsvpQuestions'
 import { submitRSVP } from '../services/rsvpService'
 import type { AttendanceStatus, RSVPFormState } from '../types/rsvp'
 import type { PublicGift } from '../types/wedding'
@@ -32,6 +33,7 @@ const FALLBACK = { coupleNames: 'Mir & Ella', weddingDate: '2026-12-19' }
 
 export default function RSVP() {
   const { settings, loading: settingsLoading } = useWeddingSettings()
+  const { questions } = useRsvpQuestions()
   const { status, invitation, error, searchByName, searchByCode, reset } = useInvitation()
   const [params] = useSearchParams()
   const reduce = useReducedMotion()
@@ -87,7 +89,7 @@ export default function RSVP() {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      const payload = toSubmission(invitation.invitationId, form, invitation.maxAdditionalGuests)
+      const payload = toSubmission(invitation.invitationId, form, invitation.maxAdditionalGuests, settings?.rsvpConfig, questions)
       const saved = await submitRSVP(payload)
       setConfirmOpen(false)
       setResult({ status: saved.attendanceStatus, guests: payload.additionalGuests.length })
@@ -189,6 +191,8 @@ export default function RSVP() {
                 }}
                 submitting={submitting}
                 submitError={submitError}
+                config={settings?.rsvpConfig}
+                questions={questions}
               />
               <p className="mt-8 text-center">
                 <button type="button" onClick={startOver} className="rounded px-3 py-2 text-sm text-muted underline-offset-4 hover:text-ink hover:underline">

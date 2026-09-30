@@ -8,6 +8,8 @@ import {
 } from './formatting'
 import { includedGuests, requestedGuests } from './guests'
 import { formatPhMobile } from './validation'
+import type { RsvpQuestion } from '../types/questions'
+import { formatCustomAnswer } from './questions'
 
 const HEADERS = [
   'Invitee Name',
@@ -46,8 +48,8 @@ function iso(value: string | null | undefined): string {
 }
 
 /** Builds the RSVP CSV from admin data that was loaded under RLS. */
-export function buildRSVPCsv(invitations: InvitationWithRSVP[]): string {
-  const lines = [HEADERS.map(cell).join(',')]
+export function buildRSVPCsv(invitations: InvitationWithRSVP[], questions: RsvpQuestion[] = []): string {
+  const lines = [[...HEADERS, ...questions.map((q) => q.question)].map(cell).join(',')]
   for (const inv of invitations) {
     const r = inv.response
     const attending = r?.attendanceStatus === 'attending'
@@ -59,12 +61,12 @@ export function buildRSVPCsv(invitations: InvitationWithRSVP[]): string {
         inv.tableNumber ?? '',
         attendanceLabel(inv.status),
         r?.mobileNumber ? formatPhMobile(r.mobileNumber) : '',
-        attending ? (r?.hasTransportation ? 'Own vehicle' : 'No own vehicle') : '',
+        attending && r?.hasTransportation !== null ? (r?.hasTransportation ? 'Own vehicle' : 'No own vehicle') : '',
         attending && r?.hasTransportation === false ? needsTransportLabel(r.needsTransportation) : '',
         attending && r?.hasTransportation ? vehicleLabel(r.vehicleType) : '',
         attending ? (r?.comingFrom ?? '') : '',
         attending ? (r?.foodPreferences ?? []).map(foodLabel).join('; ') : '',
-        attending ? (r?.hasFoodRestrictions ? (r.foodRestrictions ?? 'Yes') : 'None') : '',
+        attending && r?.hasFoodRestrictions !== null ? (r?.hasFoodRestrictions ? (r.foodRestrictions ?? 'Yes') : 'None') : '',
         attending ? (r?.accessibilityNeeds ?? '') : '',
         included.map((g) => g.guestName).join('; '),
         r ? (guests.length > 0 ? 'Yes' : 'No') : '',
@@ -73,6 +75,7 @@ export function buildRSVPCsv(invitations: InvitationWithRSVP[]): string {
         attending ? (r?.messageToCouple ?? '') : '',
         iso(r?.submittedAt),
         iso(r?.updatedAt),
+        ...questions.map((q) => formatCustomAnswer(q, r?.customAnswers[q.id])),
       ]
         .map(cell)
         .join(','),

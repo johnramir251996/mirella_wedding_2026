@@ -13,9 +13,20 @@ import { Modal } from '../ui/Modal'
 import { AttendanceBadge, GuestStatusBadge } from './StatusBadges'
 import { includedGuests, requestedGuests } from '../../utils/guests'
 import { formatPhMobile } from '../../utils/validation'
+import { useAllQuestions } from '../../hooks/useAllQuestions'
+import { formatCustomAnswer } from '../../utils/questions'
 
 export function ResponseDetailModal({ invitation, onClose }: { invitation: InvitationWithRSVP | null; onClose: () => void }) {
   const r = invitation?.response ?? null
+  const questions = useAllQuestions()
+  const answered = r
+    ? [
+        ...questions.filter((q) => r.customAnswers[q.id] !== undefined).map((q) => ({ id: q.id, label: q.question, value: formatCustomAnswer(q, r.customAnswers[q.id]) })),
+        ...Object.keys(r.customAnswers)
+          .filter((id) => !questions.some((q) => q.id === id))
+          .map((id) => ({ id, label: 'Deleted question', value: formatCustomAnswer(undefined, r.customAnswers[id]) })),
+      ]
+    : []
   return (
     <Modal
       open={Boolean(invitation)}
@@ -48,13 +59,15 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
           )}
           {r && r.attendanceStatus === 'attending' && (
             <>
-              <Item label="Transportation">{transportationSummary(r.hasTransportation, r.needsTransportation, r.vehicleType)}</Item>
+              <Item label="Transportation">
+                {r.hasTransportation === null ? 'Not asked' : transportationSummary(r.hasTransportation, r.needsTransportation, r.vehicleType)}
+              </Item>
               <Item label="Coming from">{r.comingFrom || '—'}</Item>
               <Item label="Food preferences" wide>
                 {r.foodPreferences.length ? r.foodPreferences.map(foodLabel).join(', ') : 'No preference'}
               </Item>
               <Item label="Dietary restrictions" wide>
-                {r.hasFoodRestrictions ? r.foodRestrictions : 'None'}
+                {r.hasFoodRestrictions === null ? 'Not asked' : r.hasFoodRestrictions ? r.foodRestrictions : 'None'}
               </Item>
               <Item label="Accessibility needs" wide>
                 {r.accessibilityNeeds || 'None'}
@@ -79,6 +92,11 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
               </Item>
             </>
           )}
+          {answered.map((a) => (
+            <Item key={a.id} label={a.label} wide>
+              {a.value}
+            </Item>
+          ))}
           {r && (
             <>
               <Item label="Submitted">{formatDateTime(r.submittedAt)}</Item>

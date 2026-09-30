@@ -1,4 +1,5 @@
 import type { ThemeSettings } from '../theme/themes'
+import type { RsvpConfig } from './questions'
 
 export type SectionIconName =
   | 'shirt'
@@ -61,6 +62,7 @@ export interface WeddingSettings {
   videoUrl: string
   videoPosterUrl: string
   theme: ThemeSettings
+  rsvpConfig: RsvpConfig
   updatedAt: string
 }
 
@@ -164,6 +166,7 @@ export type WeddingSettingsInput = Omit<
   | keyof GallerySettings
   | keyof VideoSettings
   | 'theme'
+  | 'rsvpConfig'
 >
 
 export interface OutfitSectionSettings {

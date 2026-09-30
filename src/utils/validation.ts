@@ -1,4 +1,6 @@
 import type { InvitationInput, RSVPFormState, RSVPSubmission } from '../types/rsvp'
+import type { RsvpConfig, RsvpQuestion } from '../types/questions'
+import { builtinEnabled, cleanCustomAnswers, comingFromRequired, validateCustomAnswers, visibleQuestions } from './questions'
 
 /** Limits shared with the database constraints in supabase/schema.sql. */
 export const LIMITS = {
@@ -61,10 +63,16 @@ export type RSVPErrors = Partial<
     | 'mobileNumber',
     string
   >
-> & { guestNameAt?: Record<number, string> }
+> & { guestNameAt?: Record<number, string>; custom?: Record<string, string> }
 
-export function validateRSVP(form: RSVPFormState, maxAdditionalGuests: number): RSVPErrors {
+export function validateRSVP(
+  form: RSVPFormState,
+  maxAdditionalGuests: number,
+  config?: RsvpConfig,
+  questions: RsvpQuestion[] = [],
+): RSVPErrors {
   const errors: RSVPErrors = {}
+  const on = (k: Parameters<typeof builtinEnabled>[1]) => builtinEnabled(config, k)
 
   if (!form.attendance) {
     errors.attendance = 'Please let us know if you can join us.'
@@ -72,9 +80,13 @@ export function validateRSVP(form: RSVPFormState, maxAdditionalGuests: number): 
   }
   if (!form.mobileNumber.trim()) errors.mobileNumber = 'Please enter your mobile number.'
   else if (!normalizePhMobile(form.mobileNumber)) errors.mobileNumber = 'Please enter a valid Philippine mobile number, e.g. 0917 123 4567.'
+  const custom = validateCustomAnswers(visibleQuestions(questions, form.attendance, form.customAnswers), form.customAnswers)
+  if (Object.keys(custom).length) errors.custom = custom
   if (form.attendance === 'declining') return errors
 
-  if (!form.hasTransportation) {
+  if (!on('transportation')) {
+    // skipped
+  } else if (!form.hasTransportation) {
     errors.hasTransportation = 'Please choose an option.'
   } else if (form.hasTransportation === 'yes' && !form.vehicleType) {
     errors.vehicleType = 'Please choose your vehicle type.'
@@ -83,14 +95,19 @@ export function validateRSVP(form: RSVPFormState, maxAdditionalGuests: number): 
   }
 
   const comingFrom = normalizeSpaces(form.comingFrom)
-  if (!comingFrom) errors.comingFrom = 'Please tell us where you will be coming from.'
-  else if (comingFrom.length > LIMITS.comingFrom) errors.comingFrom = `Please keep this under ${LIMITS.comingFrom} characters.`
+  if (!on('comingFrom')) {
+    // skipped
+  } else if (!comingFrom) {
+    if (comingFromRequired(config)) errors.comingFrom = 'Please tell us where you will be coming from.'
+  } else if (comingFrom.length > LIMITS.comingFrom) errors.comingFrom = `Please keep this under ${LIMITS.comingFrom} characters.`
 
-  if (form.foodPreferences.length > LIMITS.maxFoodSelections) {
+  if (on('food') && form.foodPreferences.length > LIMITS.maxFoodSelections) {
     errors.foodPreferences = `You can select up to ${LIMITS.maxFoodSelections} dishes.`
   }
 
-  if (!form.hasFoodRestrictions) {
+  if (!on('dietary')) {
+    // skipped
+  } else if (!form.hasFoodRestrictions) {
     errors.hasFoodRestrictions = 'Please choose an option.'
   } else if (form.hasFoodRestrictions === 'yes') {
     const r = form.foodRestrictions.trim()
@@ -98,11 +115,11 @@ export function validateRSVP(form: RSVPFormState, maxAdditionalGuests: number): 
     else if (r.length > LIMITS.foodRestrictions) errors.foodRestrictions = `Please keep this under ${LIMITS.foodRestrictions} characters.`
   }
 
-  if (form.accessibilityNeeds.trim().length > LIMITS.accessibility) {
+  if (on('accessibility') && form.accessibilityNeeds.trim().length > LIMITS.accessibility) {
     errors.accessibilityNeeds = `Please keep this under ${LIMITS.accessibility} characters.`
   }
 
-  if (form.messageToCouple.trim().length > LIMITS.messageToCouple) {
+  if (on('message') && form.messageToCouple.trim().length > LIMITS.messageToCouple) {
     errors.messageToCouple = `Please keep your message under ${LIMITS.messageToCouple} characters.`
   }
 
@@ -138,7 +155,15 @@ export function hasErrors(errors: RSVPErrors): boolean {
 }
 
 /** Converts form state into the exact payload stored in the database. */
-export function toSubmission(invitationId: string, form: RSVPFormState, maxAdditionalGuests: number): RSVPSubmission {
+export function toSubmission(
+  invitationId: string,
+  form: RSVPFormState,
+  maxAdditionalGuests: number,
+  config?: RsvpConfig,
+  questions: RsvpQuestion[] = [],
+): RSVPSubmission {
+  const customAnswers = cleanCustomAnswers(visibleQuestions(questions, form.attendance, form.customAnswers), form.customAnswers)
+  const on = (k: Parameters<typeof builtinEnabled>[1]) => builtinEnabled(config, k)
   if (form.attendance !== 'attending') {
     return {
       invitationId,
@@ -154,28 +179,34 @@ export function toSubmission(invitationId: string, form: RSVPFormState, maxAddit
       additionalGuests: [],
       messageToCouple: null,
       mobileNumber: normalizePhMobile(form.mobileNumber) ?? '',
+      customAnswers,
     }
   }
+  const transportOn = on('transportation')
   const ownVehicle = form.hasTransportation === 'yes'
+  const dietaryOn = on('dietary')
   const hasRestrictions = form.hasFoodRestrictions === 'yes'
-  const access = form.accessibilityNeeds.trim()
+  const access = on('accessibility') ? form.accessibilityNeeds.trim() : ''
+  const comingFrom = on('comingFrom') ? normalizeSpaces(form.comingFrom) : ''
+  const message = on('message') ? form.messageToCouple.trim() : ''
   return {
     invitationId,
     attendanceStatus: 'attending',
-    hasTransportation: ownVehicle,
-    needsTransportation: ownVehicle ? null : form.needsTransportation,
-    vehicleType: ownVehicle ? form.vehicleType : null,
-    comingFrom: normalizeSpaces(form.comingFrom),
-    foodPreferences: [...new Set(form.foodPreferences)].slice(0, LIMITS.maxFoodSelections),
-    hasFoodRestrictions: hasRestrictions,
-    foodRestrictions: hasRestrictions ? form.foodRestrictions.trim() : null,
+    hasTransportation: transportOn ? ownVehicle : null,
+    needsTransportation: transportOn && !ownVehicle ? form.needsTransportation : null,
+    vehicleType: transportOn && ownVehicle ? form.vehicleType : null,
+    comingFrom: comingFrom || null,
+    foodPreferences: on('food') ? [...new Set(form.foodPreferences)].slice(0, LIMITS.maxFoodSelections) : [],
+    hasFoodRestrictions: dietaryOn ? hasRestrictions : null,
+    foodRestrictions: dietaryOn && hasRestrictions ? form.foodRestrictions.trim() : null,
     accessibilityNeeds: access ? access : null,
     additionalGuests:
       maxAdditionalGuests > 0 && form.bringingGuest === 'yes'
         ? form.guestNames.map(normalizeSpaces).filter(Boolean).slice(0, maxAdditionalGuests)
         : [],
-    messageToCouple: form.messageToCouple.trim() ? form.messageToCouple.trim() : null,
+    messageToCouple: message ? message : null,
     mobileNumber: normalizePhMobile(form.mobileNumber) ?? '',
+    customAnswers,
   }
 }
 

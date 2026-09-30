@@ -25,6 +25,7 @@ const AdminEntourage = lazy(() => import('./pages/AdminEntourage'))
 const AdminMedia = lazy(() => import('./pages/AdminMedia'))
 const AdminLookFeel = lazy(() => import('./pages/AdminLookFeel'))
 const AdminShare = lazy(() => import('./pages/AdminShare'))
+const AdminQuestions = lazy(() => import('./pages/AdminQuestions'))
 
 /*
  * HashRouter is used on purpose: GitHub Pages is static hosting with no
@@ -62,6 +63,7 @@ export default function App() {
                 <Route path="media" element={<AdminMedia />} />
                 <Route path="look" element={<AdminLookFeel />} />
                 <Route path="share" element={<AdminShare />} />
+                <Route path="questions" element={<AdminQuestions />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>

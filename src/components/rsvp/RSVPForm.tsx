@@ -17,6 +17,9 @@ import { CharCounter, FieldError, TextAreaField, TextField } from '../ui/FormFie
 import { Ornament } from '../ui/Ornament'
 import { cn } from '../ui/cn'
 import { Collapse } from './Collapse'
+import { CustomQuestionField } from './CustomQuestionField'
+import type { BuiltinKey, CustomAnswer, RsvpConfig, RsvpQuestion } from '../../types/questions'
+import { builtinEnabled, builtinLabel, comingFromRequired, visibleQuestions } from '../../utils/questions'
 
 const YES_NO: { value: YesNo; label: string }[] = [
   { value: 'yes', label: 'Yes' },
@@ -32,9 +35,11 @@ interface RSVPFormProps {
   onRequestConfirm: () => void
   submitting: boolean
   submitError: string | null
+  config?: RsvpConfig
+  questions?: RsvpQuestion[]
 }
 
-export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitting, submitError }: RSVPFormProps) {
+export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitting, submitError, config, questions = [] }: RSVPFormProps) {
   const [errors, setErrors] = useState<RSVPErrors>({})
   const [foodLimitHit, setFoodLimitHit] = useState(false)
   const [attempted, setAttempted] = useState(false)
@@ -44,7 +49,7 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
   const update = (patch: Partial<RSVPFormState>) => {
     const next = { ...form, ...patch }
     onChange(next)
-    if (attempted) setErrors(validateRSVP(next, maxGuests))
+    if (attempted) setErrors(validateRSVP(next, maxGuests, config, questions))
   }
 
   const toggleFood = (value: FoodOption) => {
@@ -85,7 +90,7 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     setAttempted(true)
-    const found = validateRSVP(form, maxGuests)
+    const found = validateRSVP(form, maxGuests, config, questions)
     setErrors(found)
     if (hasErrors(found)) {
       window.setTimeout(() => {
@@ -100,6 +105,16 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
   }
 
   const attending = form.attendance === 'attending'
+  const on = (k: BuiltinKey) => builtinEnabled(config, k)
+  const label = (k: BuiltinKey) => builtinLabel(config, k)
+  const shown = visibleQuestions(questions, form.attendance, form.customAnswers)
+  const setAnswer = (id: string, v: CustomAnswer) => update({ customAnswers: { ...form.customAnswers, [id]: v } })
+  const customFields = shown.map((q) => (
+    <Question key={q.id}>
+      <CustomQuestionField question={q} value={form.customAnswers[q.id]} onChange={(v) => setAnswer(q.id, v)} error={errors.custom?.[q.id]} />
+    </Question>
+  ))
+  const questionList = 'space-y-10 [&>*:last-child]:border-b-0 [&>*:last-child]:pb-0'
   const guestLabel = maxGuests === 1 ? 'guest' : 'guests'
 
   return (
@@ -169,12 +184,20 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
         </div>
       </Collapse>
 
+      {/* Questions for guests who can't attend (admin-defined) */}
+      <Collapse open={form.attendance === 'declining' && shown.length > 0}>
+        <div className={cn('mt-8 rounded-2xl border border-line bg-paper px-5 py-8 shadow-soft sm:px-9', questionList)}>
+          {form.attendance === 'declining' && customFields}
+        </div>
+      </Collapse>
+
       {/* Attending-only questions */}
       <Collapse open={attending}>
-        <div className="mt-12 space-y-10 rounded-2xl border border-line bg-paper px-5 py-8 shadow-soft sm:px-9 sm:py-10">
+        <div className="mt-12 [&>*:last-child]:border-b-0 [&>*:last-child]:pb-0 space-y-10 rounded-2xl border border-line bg-paper px-5 py-8 shadow-soft sm:px-9 sm:py-10">
+          {on('transportation') && (
           <Question>
             <OptionGroup
-              legend="Do you have your own transportation vehicle?"
+              legend={label('transportation')}
               name="has-transportation"
               options={YES_NO}
               value={form.hasTransportation}
@@ -214,11 +237,17 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               </div>
             </Collapse>
           </Question>
+          )}
 
+          {on('comingFrom') && (
           <Question>
             <TextField
               id="coming-from"
-              label={<span className="text-[1.05rem] text-ink">Where will you be coming from?</span>}
+              label={
+                <span className="text-[1.05rem] text-ink">
+                  {label('comingFrom')} {!comingFromRequired(config) && <span className="text-sm font-normal text-muted">(optional)</span>}
+                </span>
+              }
               value={form.comingFrom}
               onChange={(v) => update({ comingFrom: v })}
               maxLength={LIMITS.comingFrom}
@@ -228,12 +257,12 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               error={errors.comingFrom}
             />
           </Question>
+          )}
 
+          {on('food') && (
           <Question>
             <fieldset aria-invalid={errors.foodPreferences ? true : undefined} aria-describedby="food-help">
-              <legend className="mb-1 text-[1.05rem] font-medium text-ink">
-                Which dishes would you like to see at our wedding? <span aria-hidden="true">🍽️</span>
-              </legend>
+              <legend className="mb-1 text-[1.05rem] font-medium text-ink">{label('food')}</legend>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <p id="food-help" className="text-sm text-muted">
                   Choose up to {LIMITS.maxFoodSelections}.
@@ -277,10 +306,12 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               </div>
             </fieldset>
           </Question>
+          )}
 
+          {on('dietary') && (
           <Question>
             <OptionGroup
-              legend="Do you have any food allergies or dietary restrictions?"
+              legend={label('dietary')}
               name="food-restrictions"
               options={YES_NO}
               value={form.hasFoodRestrictions}
@@ -302,13 +333,15 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               </div>
             </Collapse>
           </Question>
+          )}
 
+          {on('accessibility') && (
           <Question>
             <TextAreaField
               id="accessibility"
               label={
                 <span className="text-[1.05rem] text-ink">
-                  Do you have any special accessibility or mobility needs we should be aware of?{' '}
+                  {label('accessibility')}{' '}
                   <span className="text-sm font-normal text-muted">(optional)</span>
                 </span>
               }
@@ -321,6 +354,7 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               error={errors.accessibilityNeeds}
             />
           </Question>
+          )}
 
           {maxGuests > 0 && (
             <Question>
@@ -401,12 +435,15 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
             </Question>
           )}
 
-          <Question last>
+          {attending && customFields}
+
+          {on('message') && (
+          <Question>
             <TextAreaField
               id="message-to-couple"
               label={
                 <span className="text-[1.05rem] text-ink">
-                  Leave a message for the couple <span aria-hidden="true">💌</span>{' '}
+                  {label('message')}{' '}
                   <span className="text-sm font-normal text-muted">(optional)</span>
                 </span>
               }
@@ -419,6 +456,7 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
               error={errors.messageToCouple}
             />
           </Question>
+          )}
         </div>
       </Collapse>
 
@@ -437,6 +475,6 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
   )
 }
 
-function Question({ children, last }: { children: ReactNode; last?: boolean }) {
-  return <div className={cn(!last && 'border-b border-line/70 pb-10')}>{children}</div>
+function Question({ children }: { children: ReactNode }) {
+  return <div className="border-b border-line/70 pb-10">{children}</div>
 }

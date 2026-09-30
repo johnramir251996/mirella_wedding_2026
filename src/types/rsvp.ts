@@ -1,3 +1,5 @@
+import type { CustomAnswers } from './questions'
+
 export type AttendanceStatus = 'attending' | 'declining'
 export type RSVPStatus = AttendanceStatus | 'pending'
 export type NeedsTransportation = 'yes' | 'no' | 'not_sure'
@@ -34,6 +36,7 @@ export interface RSVPFormState {
   guestNames: string[]
   messageToCouple: string
   mobileNumber: string
+  customAnswers: CustomAnswers
 }
 
 /** Clean payload that is sent to the submit_rsvp RPC. */
@@ -52,6 +55,7 @@ export interface RSVPSubmission {
   messageToCouple: string | null
   /** Normalised +639XXXXXXXXX. */
   mobileNumber: string
+  customAnswers: Record<string, string | string[] | number>
 }
 
 // ----- Admin-side shapes ------------------------------------------------------
@@ -89,6 +93,7 @@ export interface RSVPResponse {
   bringingAdditionalGuest: boolean
   messageToCouple: string | null
   mobileNumber: string | null
+  customAnswers: Record<string, unknown>
   submittedAt: string
   updatedAt: string
 }

@@ -44,6 +44,7 @@ export type Database = {
           video_url: string | null
           video_poster_url: string | null
           theme: Json
+          rsvp_config: Json
           additional_info: Json
           updated_at: string
         }
@@ -83,6 +84,7 @@ export type Database = {
           video_url?: string | null
           video_poster_url?: string | null
           theme?: Json
+          rsvp_config?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -122,6 +124,7 @@ export type Database = {
           video_url?: string | null
           video_poster_url?: string | null
           theme?: Json
+          rsvp_config?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -177,6 +180,7 @@ export type Database = {
           bringing_additional_guest: boolean
           message_to_couple: string | null
           mobile_number: string | null
+          custom_answers: Json
           submitted_at: string
           updated_at: string
         }
@@ -195,6 +199,7 @@ export type Database = {
           bringing_additional_guest?: boolean
           message_to_couple?: string | null
           mobile_number?: string | null
+          custom_answers?: Json
           submitted_at?: string
           updated_at?: string
         }
@@ -213,6 +218,7 @@ export type Database = {
           bringing_additional_guest?: boolean
           message_to_couple?: string | null
           mobile_number?: string | null
+          custom_answers?: Json
           submitted_at?: string
           updated_at?: string
         }
@@ -273,6 +279,63 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      rsvp_questions: {
+        Row: {
+          id: string
+          question: string
+          help_text: string | null
+          type: string
+          options: Json
+          max_selections: number | null
+          min_value: number | null
+          max_value: number | null
+          max_length: number | null
+          required: boolean
+          audience: string
+          show_if: Json | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          question: string
+          help_text?: string | null
+          type: string
+          options?: Json
+          max_selections?: number | null
+          min_value?: number | null
+          max_value?: number | null
+          max_length?: number | null
+          required?: boolean
+          audience?: string
+          show_if?: Json | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          question?: string
+          help_text?: string | null
+          type?: string
+          options?: Json
+          max_selections?: number | null
+          min_value?: number | null
+          max_value?: number | null
+          max_length?: number | null
+          required?: boolean
+          audience?: string
+          show_if?: Json | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       gallery_images: {
         Row: {
@@ -457,6 +520,7 @@ export type Database = {
           p_additional_guests?: string[]
           p_message_to_couple?: string | null
           p_mobile_number?: string | null
+          p_custom_answers?: Json
         }
         Returns: {
           rsvp_id: string
