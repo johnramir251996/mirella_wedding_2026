@@ -18,9 +18,9 @@ interface Props {
  * 0 closed envelope · 1 flap opens · 2 paper emerges · 3 guest name
  * 4 table number · 5 invitation content · 6 fade away → onComplete
  */
-// Total length ≈ 5 seconds.
-const TIMELINE = [0, 650, 1400, 2250, 2850, 3450, 4500]
-const DONE_AT = 5000
+// Total length ≈ 10 seconds: the finished card stays up about 5 s so guests can read it (Skip / Continue any time).
+const TIMELINE = [0, 650, 1400, 2250, 2850, 3450, 9500]
+const DONE_AT = 10000
 const EASE = [0.22, 1, 0.36, 1] as const
 
 export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [], coupleNames, weddingDate, onComplete }: Props) {
@@ -36,8 +36,8 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
     const timers: number[] = []
     if (reduce) {
       setStage(5)
-      timers.push(window.setTimeout(() => setStage(6), 2200))
-      timers.push(window.setTimeout(() => doneRef.current(), 2600))
+      timers.push(window.setTimeout(() => setStage(6), 7200))
+      timers.push(window.setTimeout(() => doneRef.current(), 7600))
     } else {
       TIMELINE.forEach((t, i) => timers.push(window.setTimeout(() => setStage(i), t)))
       timers.push(window.setTimeout(() => doneRef.current(), DONE_AT))
@@ -142,14 +142,15 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
             >
               {guestName}
             </motion.p>
-            <motion.p
-              className="mt-2 text-sm uppercase tracking-[0.3em] text-gold"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: stage >= 4 ? 1 : 0 }}
-              transition={{ duration: 0.5 }}
+            <motion.div
+              className="mx-auto mt-4 inline-flex flex-col items-center rounded-lg border border-champagne/60 bg-champagne-light/35 px-5 py-2.5"
+              initial={{ opacity: 0, scale: reduce ? 1 : 0.92 }}
+              animate={{ opacity: stage >= 4 ? 1 : 0, scale: stage >= 4 ? 1 : reduce ? 1 : 0.92 }}
+              transition={{ duration: 0.5, ease: EASE }}
             >
-              {formatTable(tableNumber)}
-            </motion.p>
+              <span className="text-[0.62rem] font-medium uppercase tracking-[0.3em] text-gold">Your table</span>
+              <span className="mt-0.5 font-serif text-2xl leading-tight text-ink">{formatTable(tableNumber)}</span>
+            </motion.div>
             {includedGuests.length > 0 && (
               <motion.p
                 className="mt-3 font-serif text-lg italic leading-snug text-ink-soft"
@@ -166,7 +167,7 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
               <p className="mt-1 font-serif text-3xl text-ink">
                 <CoupleNames names={coupleNames} />
               </p>
-              <p className="mt-3 text-xs uppercase tracking-[0.3em] text-muted">{formatWeddingDate(weddingDate)}</p>
+              <p className="mt-3 text-sm font-medium uppercase tracking-[0.3em] text-ink-soft">{formatWeddingDate(weddingDate)}</p>
             </motion.div>
           </motion.div>
         )}
@@ -175,9 +176,13 @@ export function EnvelopeAnimation({ guestName, tableNumber, includedGuests = [],
       <button
         type="button"
         onClick={skip}
-        className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 rounded-full px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted transition hover:bg-cream hover:text-ink"
+        className={
+          stage >= 5 && !faded
+            ? 'absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 rounded-full border border-ink/30 bg-paper/80 px-6 py-2.5 text-xs font-medium uppercase tracking-[0.24em] text-ink shadow-soft backdrop-blur transition hover:border-ink hover:bg-paper'
+            : 'absolute bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 rounded-full px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted transition hover:bg-cream hover:text-ink'
+        }
       >
-        Skip
+        {stage >= 5 ? 'Continue to RSVP →' : 'Skip'}
       </button>
     </div>
   )

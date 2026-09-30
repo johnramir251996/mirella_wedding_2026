@@ -1,19 +1,20 @@
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { AttendanceStatus } from '../../types/rsvp'
-import { formatWeddingDate } from '../../utils/formatting'
+import { formatTable, formatWeddingDate } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from '../wedding/CoupleNames'
 
 interface Props {
   status: AttendanceStatus
   guestName: string
+  tableNumber: string | null
   coupleNames: string
   weddingDate: string
   requestedGuests: number
 }
 
-export function SuccessState({ status, guestName, coupleNames, weddingDate, requestedGuests }: Props) {
+export function SuccessState({ status, guestName, tableNumber, coupleNames, weddingDate, requestedGuests }: Props) {
   const reduce = useReducedMotion()
   const attending = status === 'attending'
 
@@ -64,6 +65,17 @@ export function SuccessState({ status, guestName, coupleNames, weddingDate, requ
             <p className="mt-4 font-serif text-xl italic text-ink-soft">
               Your warm wishes mean so much to us. <span aria-hidden="true">❤️</span>
             </p>
+          </motion.div>
+        )}
+
+        {attending && (
+          <motion.div
+            {...item(0.65)}
+            className="mx-auto mt-8 max-w-xs rounded-xl border border-champagne/60 bg-champagne-light/30 px-6 py-5 shadow-soft"
+          >
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.32em] text-gold">Your seat</p>
+            <p className="mt-2 font-serif text-[2.4rem] leading-none text-ink">{formatTable(tableNumber)}</p>
+            <p className="mt-2 text-xs text-muted">Please take note of this for the reception.</p>
           </motion.div>
         )}
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { formatDeadlineDateTime, formatWeddingDate } from '../../utils/formatting'
+import { CalendarClock } from 'lucide-react'
+import { formatDeadlineDate, formatDeadlineTime, formatWeddingDate } from '../../utils/formatting'
 import { Reveal } from './Reveal'
 import { cn } from '../ui/cn'
 
@@ -25,15 +26,19 @@ export function RSVPCallout({ weddingDate, open, deadline, closedMessage, showDe
           {open ? (
             <>
               <p className="mx-auto mt-5 max-w-md text-ink-soft">
-                Please let us know if you can join us on <span className="whitespace-nowrap">{formatWeddingDate(weddingDate)}</span>
-                {deadline && showDeadline ? (
-                  <>
-                    {' '}
-                    until <strong className="font-medium text-ink">{formatDeadlineDateTime(deadline)}</strong>
-                  </>
-                ) : null}
-                . It only takes a minute.
+                Please let us know if you can join us on <span className="whitespace-nowrap">{formatWeddingDate(weddingDate)}</span>. It only
+                takes a minute.
               </p>
+              {deadline && showDeadline && (
+                <div className="mx-auto mt-7 max-w-xs rounded-xl border border-champagne/60 bg-paper/80 px-6 py-4 shadow-soft">
+                  <p className="flex items-center justify-center gap-2 text-[0.7rem] font-medium uppercase tracking-[0.3em] text-gold">
+                    <CalendarClock aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                    Expiration of the invitation
+                  </p>
+                  <p className="mt-2 font-serif text-2xl leading-snug text-ink">{formatDeadlineDate(deadline)}</p>
+                  <p className="text-sm text-ink-soft">{formatDeadlineTime(deadline)} (Philippine time)</p>
+                </div>
+              )}
               <div>
                 <Link
                   to="/rsvp"

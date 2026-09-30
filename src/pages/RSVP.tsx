@@ -152,7 +152,7 @@ export default function RSVP() {
                 {deadline && (
                   <p className="mx-auto mt-5 inline-flex items-center gap-2 text-sm text-ink-soft">
                     <CalendarClock aria-hidden="true" className="size-4 text-gold" strokeWidth={1.5} />
-                    Kindly respond by {formatDeadlineDate(deadline)}
+                    Please respond on or before <strong className="font-medium text-ink">{formatDeadlineDate(deadline)}</strong>
                   </p>
                 )}
               </div>
@@ -207,6 +207,7 @@ export default function RSVP() {
               <SuccessState
                 status={result.status}
                 guestName={invitation.inviteeName}
+                tableNumber={invitation.tableNumber}
                 coupleNames={coupleNames}
                 weddingDate={weddingDate}
                 requestedGuests={result.guests}

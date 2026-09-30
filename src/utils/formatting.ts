@@ -130,6 +130,11 @@ export function formatDeadlineDate(iso: string): string {
 }
 
 /** "November 15, 2026, 11:59 PM" in Philippine time. */
+/** "11:59 PM" in Manila time. */
+export function formatDeadlineTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', { timeZone: MANILA, hour: 'numeric', minute: '2-digit' })
+}
+
 export function formatDeadlineDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { timeZone: MANILA, month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
 }

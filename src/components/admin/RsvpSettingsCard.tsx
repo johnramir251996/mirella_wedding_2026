@@ -153,9 +153,9 @@ export function RsvpSettingsCard() {
               <span>
                 <span className="block font-medium">Show the deadline to guests</span>
                 <span className="mt-0.5 block text-muted">
-                  “Please let us know if you can join us on … until{' '}
-                  {date ? formatDeadlineDateTime(fromManilaParts(date, time)) : '[date and time]'}. It only takes a minute.” Turn off to keep the
-                  deadline private — RSVPs still close on time.
+                  Shows “Expiration of the invitation:{' '}
+                  {date ? formatDeadlineDateTime(fromManilaParts(date, time)) : '[date and time]'}” on the home page and “Please respond on or before …” on the
+                  RSVP page. Turn off to keep the deadline private — RSVPs still close on time.
                 </span>
               </span>
             </label>
