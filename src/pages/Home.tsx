@@ -84,6 +84,8 @@ export default function Home() {
           open={isRsvpOpen(settings)}
           deadline={settings.rsvpDeadline}
           closedMessage={settings.rsvpClosedMessage}
+          showDeadline={settings.rsvpShowDeadline}
+          buttonLabel={settings.rsvpButtonLabel}
         />
       </main>
       <Footer coupleNames={settings.coupleNames} weddingDate={settings.weddingDate} closingMessage={settings.closingMessage} />

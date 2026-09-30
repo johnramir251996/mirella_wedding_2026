@@ -72,9 +72,9 @@ If you include a name the invitee had already requested, that request becomes an
 | **Outfit Gallery** | Also holds the motif colour swatches. |
 | **Share & QR** | Website link, share buttons, QR code (PNG/SVG) and a printable QR card. Link previews (Facebook/Messenger/Viber) use the couple names, date and hero photo; the site rebuilds daily to refresh them. |
 | **Look & Feel** | 10 templates, heading/body fonts, colours (with a readability check), hero layout, live phone/desktop preview. |
-| **Website Settings** | Also: RSVP deadline (closed automatically; reopen for 7/14 days), and the gift QR (upload, show/hide, invited-guests-only or everyone). |
+| **Website Settings** | Also: RSVP deadline (closed automatically; reopen for 7/14 days; show or hide it to guests), RSVP button text, and the gift QR (upload, show/hide, invited-guests-only or everyone). |
 
-The RSVP form asks every guest for a Philippine mobile number (stored as `+639…`).
+The RSVP form asks for a Philippine mobile number (stored as `+639…`) — required for guests who attend, optional for guests who decline.
 
 ---
 
@@ -121,7 +121,7 @@ cp .env.example .env.local
    - the default `wedding_settings` row (names, date, church, reception, map links, the 5 default sections)
 
    The script is safe to run again on the same project.
-   **Then run every file in `supabase/migrations/` in order**: `002_outfits_messages_included_guests.sql` (outfit gallery, message to the couple, admin-included guests) `003_deadline_mobile_entourage_motif_gift.sql` (RSVP deadline, required mobile number, entourage, motif colours, private gift QR) `004_gallery_video.sql` (couple photo gallery, prenup video), `005_theme.sql` (Look & Feel templates) and `006_rsvp_question_builder.sql` (custom RSVP questions).
+   **Then run every file in `supabase/migrations/` in order**: `002_outfits_messages_included_guests.sql` (outfit gallery, message to the couple, admin-included guests) `003_deadline_mobile_entourage_motif_gift.sql` (RSVP deadline, required mobile number, entourage, motif colours, private gift QR) `004_gallery_video.sql` (couple photo gallery, prenup video), `005_theme.sql` (Look & Feel templates), `006_rsvp_question_builder.sql` (custom RSVP questions) and `007_rsvp_wording.sql` (RSVP button text, show/hide deadline, mobile optional for declines).
 4. **Run `supabase/seed.sql` if testing** — adds sample invitations: *Juan Dela Cruz* (Table 5, 1 guest), *Maria Santos* (VIP, 2 guests), *Pedro Reyes* (Family Table, 0 guests), *Ana Villanueva* (A1, 3 guests) and an **inactive** *Carlos Mendoza* (must not be found by search).
 5. **Create the admin user** — see [section 5](#5-admin-account).
 6. **Configure Storage (hero image uploads)** — already done by `schema.sql` (bucket `wedding-assets`, public read, admin-only upload). Check it exists under **Storage**. If your project didn't allow the SQL to create the bucket, create it manually: *Storage → New bucket → name `wedding-assets` → Public bucket ON*, then run `schema.sql` again so the policies are added.

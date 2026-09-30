@@ -28,6 +28,8 @@ export type Database = {
           rsvp_deadline: string | null
           rsvp_open: boolean
           rsvp_closed_message: string | null
+          rsvp_button_label: string
+          rsvp_show_deadline: boolean
           entourage: Json
           entourage_visible: boolean
           entourage_title: string | null
@@ -68,6 +70,8 @@ export type Database = {
           rsvp_deadline?: string | null
           rsvp_open?: boolean
           rsvp_closed_message?: string | null
+          rsvp_button_label?: string
+          rsvp_show_deadline?: boolean
           entourage?: Json
           entourage_visible?: boolean
           entourage_title?: string | null
@@ -108,6 +112,8 @@ export type Database = {
           rsvp_deadline?: string | null
           rsvp_open?: boolean
           rsvp_closed_message?: string | null
+          rsvp_button_label?: string
+          rsvp_show_deadline?: boolean
           entourage?: Json
           entourage_visible?: boolean
           entourage_title?: string | null

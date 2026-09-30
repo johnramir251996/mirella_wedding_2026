@@ -53,7 +53,7 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
                   {formatPhMobile(r.mobileNumber)}
                 </a>
               ) : (
-                'Not provided (responded before this was required)'
+                'Not provided'
               )}
             </Item>
           )}

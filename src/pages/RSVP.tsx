@@ -106,7 +106,7 @@ export default function RSVP() {
   }
 
   const rsvpClosed = closedByServer || (settings ? !isRsvpOpen(settings) : false)
-  const deadline = settings?.rsvpOpen ? settings.rsvpDeadline : null
+  const deadline = settings?.rsvpOpen && settings.rsvpShowDeadline ? settings.rsvpDeadline : null
 
   const pageMotion = {
     initial: reduce ? { opacity: 0 } : { opacity: 0, y: 12 },

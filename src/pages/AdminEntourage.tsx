@@ -193,19 +193,39 @@ export default function AdminEntourage() {
               </div>
             </div>
 
-            <ul className="mt-4 space-y-2">
+            <p className="mt-4 text-xs text-muted">
+              {g.layout === 'pairs'
+                ? 'Two columns: names fill left → right, like the website (e.g. groom’s side on the left, bride’s side on the right).'
+                : 'One column: names are listed one under another.'}
+            </p>
+            <ul className={cn('mt-2 grid gap-3', g.layout === 'pairs' ? 'sm:grid-cols-2' : 'grid-cols-1')}>
               {g.members.map((m, mi) => (
-                <li key={m.id} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                <li key={m.id} className="min-w-0 rounded-lg border border-line bg-ivory/50 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
+                      {g.layout === 'pairs' ? `${mi % 2 === 0 ? 'Left' : 'Right'} · ` : ''}#{mi + 1}
+                    </span>
+                    <div className="flex">
+                      <IconButton label="Move up" onClick={() => updateGroup(g.id, { members: move(g.members, mi, -1) })} disabled={mi === 0}>
+                        <ArrowUp className="size-4" />
+                      </IconButton>
+                      <IconButton label="Move down" onClick={() => updateGroup(g.id, { members: move(g.members, mi, 1) })} disabled={mi === g.members.length - 1}>
+                        <ArrowDown className="size-4" />
+                      </IconButton>
+                      <IconButton label={`Remove ${m.name || 'name'}`} onClick={() => updateGroup(g.id, { members: g.members.filter((x) => x.id !== m.id) })} danger>
+                        <X className="size-4" />
+                      </IconButton>
+                    </div>
+                  </div>
                   <label className="sr-only" htmlFor={`member-${m.id}`}>
                     Name {mi + 1} in {g.title}
                   </label>
-                  <input
+                  <AutoGrowText
                     id={`member-${m.id}`}
                     value={m.name}
                     maxLength={150}
                     placeholder="Full name, e.g. Mr. & Mrs. Antonio Reyes"
-                    onChange={(e) => updateGroup(g.id, { members: g.members.map((x) => (x.id === m.id ? { ...x, name: e.target.value } : x)) })}
-                    className="input-base min-h-11 flex-1 basis-full py-2.5 sm:basis-auto"
+                    onChange={(v) => updateGroup(g.id, { members: g.members.map((x) => (x.id === m.id ? { ...x, name: v } : x)) })}
                   />
                   <label className="sr-only" htmlFor={`role-${m.id}`}>
                     Role for {m.name || `name ${mi + 1}`} (optional)
@@ -214,21 +234,10 @@ export default function AdminEntourage() {
                     id={`role-${m.id}`}
                     value={m.role}
                     maxLength={40}
-                    placeholder="Role (optional)"
+                    placeholder="Role (optional), e.g. Candle"
                     onChange={(e) => updateGroup(g.id, { members: g.members.map((x) => (x.id === m.id ? { ...x, role: e.target.value } : x)) })}
-                    className="input-base min-h-11 flex-1 py-2.5 sm:max-w-44"
+                    className="input-base mt-2 min-h-10 w-full py-2 text-sm"
                   />
-                  <div className="flex">
-                    <IconButton label="Move up" onClick={() => updateGroup(g.id, { members: move(g.members, mi, -1) })} disabled={mi === 0}>
-                      <ArrowUp className="size-4" />
-                    </IconButton>
-                    <IconButton label="Move down" onClick={() => updateGroup(g.id, { members: move(g.members, mi, 1) })} disabled={mi === g.members.length - 1}>
-                      <ArrowDown className="size-4" />
-                    </IconButton>
-                    <IconButton label={`Remove ${m.name || 'name'}`} onClick={() => updateGroup(g.id, { members: g.members.filter((x) => x.id !== m.id) })} danger>
-                      <X className="size-4" />
-                    </IconButton>
-                  </div>
                 </li>
               ))}
             </ul>
@@ -320,5 +329,32 @@ function IconButton({ label, onClick, disabled, danger, children }: { label: str
     >
       {children}
     </button>
+  )
+}
+
+/** Single-line-looking text box that grows so long names stay fully visible. */
+function AutoGrowText({ id, value, onChange, maxLength, placeholder }: { id: string; value: string; onChange: (v: string) => void; maxLength: number; placeholder: string }) {
+  const resize = (el: HTMLTextAreaElement | null) => {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight + 2}px`
+  }
+  return (
+    <textarea
+      id={id}
+      ref={resize}
+      rows={1}
+      value={value}
+      maxLength={maxLength}
+      placeholder={placeholder}
+      onChange={(e) => {
+        onChange(e.target.value.replace(/\n/g, ' '))
+        resize(e.target)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.preventDefault()
+      }}
+      className="input-base block min-h-11 w-full resize-none overflow-hidden py-2.5 leading-snug"
+    />
   )
 }

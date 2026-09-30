@@ -57,27 +57,45 @@ export default function AdminDashboard() {
 
   const { settings } = useWeddingSettings()
   const questions = useAllQuestions()
-  const questionCharts = useMemo(() => {
-    const responses = (data?.invitations ?? []).map((i) => i.response).filter((r) => r !== null)
-    return questions
-      .filter((q) => q.type === 'single' || q.type === 'multiple' || q.type === 'yes_no')
-      .map((q) => {
+  const questionStats = useMemo(() => {
+    const rows = (data?.invitations ?? []).filter((i) => i.response).map((i) => ({ name: i.inviteeName, r: i.response! }))
+    return questions.map((q): QuestionStat => {
+      const answers = rows.map(({ name, r }) => ({ name, at: r.updatedAt, a: r.customAnswers[q.id] })).filter((x) => x.a !== undefined && x.a !== null && x.a !== '')
+      const note = `${answers.length} ${answers.length === 1 ? 'answer' : 'answers'}${q.isActive ? '' : ' · question hidden'}`
+      if (q.type === 'single' || q.type === 'multiple' || q.type === 'yes_no') {
         const labels = q.type === 'yes_no' ? ['yes', 'no'] : q.options
         const counts = new Map(labels.map((l) => [l, 0]))
-        let answered = 0
-        for (const r of responses) {
-          const a = r.customAnswers[q.id]
-          const list = Array.isArray(a) ? a : typeof a === 'string' ? [a] : []
-          if (list.length) answered++
-          for (const v of list) if (typeof v === 'string' && counts.has(v)) counts.set(v, (counts.get(v) ?? 0) + 1)
-        }
+        for (const { a } of answers) for (const v of Array.isArray(a) ? a : [a]) if (typeof v === 'string' && counts.has(v)) counts.set(v, (counts.get(v) ?? 0) + 1)
         return {
+          kind: 'chart',
           id: q.id,
           title: q.question,
-          description: `${answered} ${answered === 1 ? 'answer' : 'answers'}${q.isActive ? '' : ' · question hidden'}`,
+          note: q.type === 'multiple' ? `${note} · guests could pick more than one` : note,
           data: labels.map((l) => ({ label: q.type === 'yes_no' ? (l === 'yes' ? 'Yes' : 'No') : l, value: counts.get(l) ?? 0 })),
         }
-      })
+      }
+      if (q.type === 'number') {
+        const nums = answers.map((x) => Number(x.a)).filter((n) => Number.isFinite(n))
+        const total = nums.reduce((t, n) => t + n, 0)
+        return {
+          kind: 'number',
+          id: q.id,
+          title: q.question,
+          note,
+          total,
+          average: nums.length ? total / nums.length : 0,
+          min: nums.length ? Math.min(...nums) : 0,
+          max: nums.length ? Math.max(...nums) : 0,
+        }
+      }
+      return {
+        kind: 'text',
+        id: q.id,
+        title: q.question,
+        note,
+        answers: answers.map((x) => ({ name: x.name, text: String(x.a), at: x.at })).sort((a, b) => b.at.localeCompare(a.at)),
+      }
+    })
   }, [data, questions])
   const rsvpOpen = settings ? isRsvpOpen(settings) : true
   const stats = useMemo(() => (data ? computeAnalytics(data.invitations, data.guests) : null), [data])
@@ -226,15 +244,26 @@ export default function AdminDashboard() {
             </div>
           </section>
 
-          {questionCharts.length > 0 && (
+          {questionStats.length > 0 && (
             <section aria-labelledby="custom-q-heading">
-              <h2 id="custom-q-heading" className="mb-3 font-sans text-sm font-semibold uppercase tracking-[0.14em] text-muted">
-                Your RSVP questions
-              </h2>
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="custom-q-heading" className="font-sans text-sm font-semibold uppercase tracking-[0.14em] text-muted">
+                  Your RSVP questions
+                </h2>
+                <Link to="/admin/questions" className="text-xs font-medium text-ink-soft underline-offset-4 hover:underline">
+                  Manage questions
+                </Link>
+              </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                {questionCharts.map((c) => (
-                  <BarChartCard key={c.id} title={c.title} description={c.description} data={c.data} />
-                ))}
+                {questionStats.map((q) =>
+                  q.kind === 'chart' ? (
+                    <BarChartCard key={q.id} title={q.title} description={q.note} data={q.data} />
+                  ) : q.kind === 'number' ? (
+                    <NumberStatCard key={q.id} stat={q} />
+                  ) : (
+                    <TextAnswersCard key={q.id} stat={q} />
+                  ),
+                )}
               </div>
             </section>
           )}
@@ -304,4 +333,66 @@ function describe(a: ActivityLog): string {
   if (after && typeof after.invitee_name === 'string') return after.invitee_name
   if (Array.isArray(d.changed_fields)) return (d.changed_fields as string[]).join(', ').replace(/_/g, ' ')
   return ''
+}
+
+type QuestionStat =
+  | { kind: 'chart'; id: string; title: string; note: string; data: { label: string; value: number }[] }
+  | { kind: 'number'; id: string; title: string; note: string; total: number; average: number; min: number; max: number }
+  | { kind: 'text'; id: string; title: string; note: string; answers: { name: string; text: string; at: string }[] }
+
+const fmtNum = (n: number) => n.toLocaleString('en-PH', { maximumFractionDigits: 1 })
+
+function NumberStatCard({ stat }: { stat: Extract<QuestionStat, { kind: 'number' }> }) {
+  const items = [
+    { label: 'Total', value: stat.total },
+    { label: 'Average', value: stat.average },
+    { label: 'Lowest', value: stat.min },
+    { label: 'Highest', value: stat.max },
+  ]
+  return (
+    <figure className="rounded-xl border border-line bg-paper p-5 shadow-soft">
+      <figcaption>
+        <h3 className="font-sans text-sm font-semibold text-ink">{stat.title}</h3>
+        <p className="mt-0.5 text-xs text-muted">{stat.note}</p>
+      </figcaption>
+      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {items.map((i) => (
+          <div key={i.label} className="rounded-lg bg-ivory/70 px-3 py-3">
+            <dt className="text-xs text-muted">{i.label}</dt>
+            <dd className="mt-1 font-serif text-2xl text-ink tabular-nums">{fmtNum(i.value)}</dd>
+          </div>
+        ))}
+      </dl>
+    </figure>
+  )
+}
+
+function TextAnswersCard({ stat }: { stat: Extract<QuestionStat, { kind: 'text' }> }) {
+  const [all, setAll] = useState(false)
+  const shown = all ? stat.answers : stat.answers.slice(0, 5)
+  return (
+    <figure className="rounded-xl border border-line bg-paper p-5 shadow-soft">
+      <figcaption>
+        <h3 className="font-sans text-sm font-semibold text-ink">{stat.title}</h3>
+        <p className="mt-0.5 text-xs text-muted">{stat.note}</p>
+      </figcaption>
+      {stat.answers.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">No answers yet.</p>
+      ) : (
+        <ul className="mt-4 max-h-80 space-y-2.5 overflow-y-auto">
+          {shown.map((a, i) => (
+            <li key={i} className="rounded-lg bg-ivory/70 px-3 py-2.5 text-sm">
+              <p className="whitespace-pre-line break-words text-ink">{a.text}</p>
+              <p className="mt-1 text-xs text-muted">{a.name}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {stat.answers.length > 5 && (
+        <button type="button" onClick={() => setAll(!all)} className="mt-3 text-xs font-medium text-ink-soft underline-offset-4 hover:underline">
+          {all ? 'Show fewer' : `Show all ${stat.answers.length}`}
+        </button>
+      )}
+    </figure>
+  )
 }

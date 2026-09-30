@@ -7,7 +7,8 @@ import type { RsvpSettings } from '../../types/wedding'
 import { toFriendlyMessage } from '../../utils/errors'
 import { formatDeadlineDateTime, fromManilaParts, toManilaParts } from '../../utils/formatting'
 import { Button } from '../ui/Button'
-import { TextAreaField } from '../ui/FormField'
+import { TextAreaField, TextField } from '../ui/FormField'
+import { cn } from '../ui/cn'
 import { Skeleton } from '../ui/Skeleton'
 import { Badge } from '../ui/Badge'
 
@@ -21,6 +22,8 @@ export function RsvpSettingsCard() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('23:59')
   const [message, setMessage] = useState('')
+  const [showDeadline, setShowDeadline] = useState(true)
+  const [buttonLabel, setButtonLabel] = useState('RSVP')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,6 +35,8 @@ export function RsvpSettingsCard() {
     setDate(parts?.date ?? '')
     setTime(parts?.time ?? '23:59')
     setMessage(s.rsvpClosedMessage)
+    setShowDeadline(s.rsvpShowDeadline)
+    setButtonLabel(s.rsvpButtonLabel)
   }
 
   useEffect(() => {
@@ -59,12 +64,16 @@ export function RsvpSettingsCard() {
   }
 
   const save = () => {
+    if (!buttonLabel.trim()) {
+      toast.error('Please enter the RSVP button text.')
+      return
+    }
     if (hasDeadline && !date) {
       toast.error('Please choose the deadline date, or turn the deadline off.')
       return
     }
     void persist(
-      { rsvpOpen: open, rsvpDeadline: hasDeadline ? fromManilaParts(date, time) : null, rsvpClosedMessage: message },
+      { rsvpOpen: open, rsvpDeadline: hasDeadline ? fromManilaParts(date, time) : null, rsvpClosedMessage: message, rsvpShowDeadline: showDeadline, rsvpButtonLabel: buttonLabel },
       'RSVP settings saved.',
     )
   }
@@ -73,7 +82,7 @@ export function RsvpSettingsCard() {
     const d = new Date(Date.now() + days * 86_400_000)
     const parts = toManilaParts(d.toISOString())
     void persist(
-      { rsvpOpen: true, rsvpDeadline: fromManilaParts(parts.date, '23:59'), rsvpClosedMessage: message },
+      { rsvpOpen: true, rsvpDeadline: fromManilaParts(parts.date, '23:59'), rsvpClosedMessage: message, rsvpShowDeadline: showDeadline, rsvpButtonLabel: buttonLabel },
       `RSVP reopened until ${formatDeadlineDateTime(fromManilaParts(parts.date, '23:59'))}.`,
     )
   }
@@ -91,6 +100,8 @@ export function RsvpSettingsCard() {
   const dirty =
     open !== saved.rsvpOpen ||
     message !== saved.rsvpClosedMessage ||
+    showDeadline !== saved.rsvpShowDeadline ||
+    buttonLabel !== saved.rsvpButtonLabel ||
     (hasDeadline ? fromManilaParts(date || '2000-01-01', time) : null) !== (saved.rsvpDeadline ? new Date(saved.rsvpDeadline).toISOString() : null)
 
   return (
@@ -98,7 +109,7 @@ export function RsvpSettingsCard() {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="rsvp-settings-heading" className="text-2xl text-ink">
-            RSVP Deadline
+            RSVP Settings
           </h2>
           <p className="mt-1 text-sm text-muted">After the deadline the RSVP buttons disappear and new responses are refused.</p>
         </div>
@@ -122,6 +133,7 @@ export function RsvpSettingsCard() {
             Close RSVPs automatically on a date
           </label>
           {hasDeadline && (
+            <>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="rsvp-deadline-date" className="mb-2 block text-sm font-medium text-ink-soft">
@@ -136,7 +148,44 @@ export function RsvpSettingsCard() {
                 <input id="rsvp-deadline-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="input-base" />
               </div>
             </div>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-ink-soft">
+              <input type="checkbox" checked={showDeadline} onChange={(e) => setShowDeadline(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-ink" />
+              <span>
+                <span className="block font-medium">Show the deadline to guests</span>
+                <span className="mt-0.5 block text-muted">
+                  “Please let us know if you can join us on … until{' '}
+                  {date ? formatDeadlineDateTime(fromManilaParts(date, time)) : '[date and time]'}. It only takes a minute.” Turn off to keep the
+                  deadline private — RSVPs still close on time.
+                </span>
+              </span>
+            </label>
+            </>
           )}
+        </div>
+
+        <div>
+          <TextField
+            label="RSVP button text"
+            value={buttonLabel}
+            onChange={setButtonLabel}
+            maxLength={30}
+            hint="Shown on the RSVP buttons on the home page. Not everyone knows what “RSVP” means."
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {['RSVP', 'Confirm Attendance', 'Reply to Invitation', 'Will You Attend?', 'RSVP / Confirm Attendance'].map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setButtonLabel(l)}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs transition',
+                  buttonLabel === l ? 'border-ink bg-ink text-ivory' : 'border-line text-ink-soft hover:border-champagne',
+                )}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
         </div>
 
         <TextAreaField
@@ -158,7 +207,7 @@ export function RsvpSettingsCard() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => void persist({ rsvpOpen: true, rsvpDeadline: null, rsvpClosedMessage: message }, 'Deadline removed. RSVPs are open.')}
+              onClick={() => void persist({ rsvpOpen: true, rsvpDeadline: null, rsvpClosedMessage: message, rsvpShowDeadline: showDeadline, rsvpButtonLabel: buttonLabel }, 'Deadline removed. RSVPs are open.')}
               disabled={saving}
               icon={<XCircle aria-hidden="true" className="size-4" />}
             >

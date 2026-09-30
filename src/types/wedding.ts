@@ -46,6 +46,8 @@ export interface WeddingSettings {
   rsvpDeadline: string | null
   rsvpOpen: boolean
   rsvpClosedMessage: string
+  rsvpShowDeadline: boolean
+  rsvpButtonLabel: string
   entourage: EntourageGroup[]
   entourageVisible: boolean
   entourageTitle: string
@@ -114,6 +116,10 @@ export interface RsvpSettings {
   rsvpDeadline: string | null
   rsvpOpen: boolean
   rsvpClosedMessage: string
+  /** Show the "respond by <date, time>" line to guests. */
+  rsvpShowDeadline: boolean
+  /** Text on the RSVP buttons, e.g. "Confirm Attendance". */
+  rsvpButtonLabel: string
 }
 
 export interface EntourageSettings {

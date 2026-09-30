@@ -172,14 +172,18 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
             type="tel"
             inputMode="tel"
             autoComplete="tel-national"
-            label={<span className="text-[1.05rem] text-ink">Your mobile number</span>}
+            label={
+              <span className="text-[1.05rem] text-ink">
+                Your mobile number {!attending && <span className="text-sm font-normal text-muted">(optional)</span>}
+              </span>
+            }
             value={form.mobileNumber}
             onChange={(v) => update({ mobileNumber: v })}
             maxLength={20}
             placeholder="0917 123 4567"
             hint="Used only for wedding updates. Never shared."
             error={errors.mobileNumber}
-            required
+            required={attending}
           />
         </div>
       </Collapse>

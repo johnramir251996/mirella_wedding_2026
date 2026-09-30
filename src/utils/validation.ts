@@ -78,8 +78,9 @@ export function validateRSVP(
     errors.attendance = 'Please let us know if you can join us.'
     return errors
   }
-  if (!form.mobileNumber.trim()) errors.mobileNumber = 'Please enter your mobile number.'
-  else if (!normalizePhMobile(form.mobileNumber)) errors.mobileNumber = 'Please enter a valid Philippine mobile number, e.g. 0917 123 4567.'
+  if (!form.mobileNumber.trim()) {
+    if (form.attendance === 'attending') errors.mobileNumber = 'Please enter your mobile number.'
+  } else if (!normalizePhMobile(form.mobileNumber)) errors.mobileNumber = 'Please enter a valid Philippine mobile number, e.g. 0917 123 4567.'
   const custom = validateCustomAnswers(visibleQuestions(questions, form.attendance, form.customAnswers), form.customAnswers)
   if (Object.keys(custom).length) errors.custom = custom
   if (form.attendance === 'declining') return errors

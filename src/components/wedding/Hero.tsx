@@ -175,11 +175,12 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
             <Link
               to="/rsvp"
               className={cn(
-                'rounded-full border px-5 py-2.5 transition',
+                'max-w-[62vw] rounded-full border px-5 py-2.5 text-center leading-tight transition sm:max-w-none',
+                settings.rsvpButtonLabel.length > 8 && 'tracking-[0.16em]',
                 onPhoto ? 'border-white/50 text-white hover:border-white hover:bg-white/10' : 'border-ink/40 text-ink hover:border-ink hover:bg-ink/5',
               )}
             >
-              RSVP
+              {settings.rsvpButtonLabel}
             </Link>
           )}
         </div>
