@@ -21,8 +21,12 @@ function load(force = false): Promise<WeddingSettings> {
   return inflight
 }
 
+const listeners = new Set<(s: WeddingSettings) => void>()
+
+/** Updates the shared cache and every mounted component using it (e.g. after an admin save). */
 export function setCachedWeddingSettings(s: WeddingSettings) {
   cache = s
+  listeners.forEach((l) => l(s))
 }
 
 export function useWeddingSettings() {
@@ -39,6 +43,13 @@ export function useWeddingSettings() {
       setError(toFriendlyMessage(e))
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    listeners.add(setSettings)
+    return () => {
+      listeners.delete(setSettings)
     }
   }, [])
 

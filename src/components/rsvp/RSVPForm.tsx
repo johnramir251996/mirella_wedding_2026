@@ -261,7 +261,7 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
                         checked={checked}
                         onChange={() => toggleFood(o.value)}
                         aria-disabled={atLimit || undefined}
-                        className="size-5 shrink-0 cursor-pointer rounded accent-[#2b2a28]"
+                        className="size-5 shrink-0 cursor-pointer rounded accent-ink"
                       />
                       {o.label}
                     </label>

@@ -7,6 +7,7 @@ import { ToastProvider } from './components/ui/ToastProvider'
 import { PageLoader } from './components/ui/Spinner'
 import { SetupNotice } from './components/ui/SetupNotice'
 import { ScrollToTop } from './components/ui/ScrollToTop'
+import { ThemeProvider } from './theme/ThemeProvider'
 import Home from './pages/Home'
 import RSVP from './pages/RSVP'
 import NotFound from './pages/NotFound'
@@ -22,6 +23,7 @@ const AdminSettings = lazy(() => import('./pages/AdminSettings'))
 const AdminOutfits = lazy(() => import('./pages/AdminOutfits'))
 const AdminEntourage = lazy(() => import('./pages/AdminEntourage'))
 const AdminMedia = lazy(() => import('./pages/AdminMedia'))
+const AdminLookFeel = lazy(() => import('./pages/AdminLookFeel'))
 const AdminShare = lazy(() => import('./pages/AdminShare'))
 
 /*
@@ -36,6 +38,7 @@ export default function App() {
     <HashRouter>
       <ScrollToTop />
       <ToastProvider>
+        <ThemeProvider>
         <AuthProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -57,6 +60,7 @@ export default function App() {
                 <Route path="outfits" element={<AdminOutfits />} />
                 <Route path="entourage" element={<AdminEntourage />} />
                 <Route path="media" element={<AdminMedia />} />
+                <Route path="look" element={<AdminLookFeel />} />
                 <Route path="share" element={<AdminShare />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -65,6 +69,7 @@ export default function App() {
             </Routes>
           </Suspense>
         </AuthProvider>
+        </ThemeProvider>
       </ToastProvider>
     </HashRouter>
   )

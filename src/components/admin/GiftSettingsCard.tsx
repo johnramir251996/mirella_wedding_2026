@@ -90,7 +90,7 @@ export function GiftSettingsCard() {
               <span className="block text-[0.95rem] font-medium text-ink-soft">Show on the website</span>
               <span className="block text-sm text-muted">Hide it any time — nothing is deleted.</span>
             </span>
-            <input type="checkbox" checked={values.isVisible} onChange={(e) => set('isVisible', e.target.checked)} className="size-5 shrink-0 accent-[#2b2a28]" />
+            <input type="checkbox" checked={values.isVisible} onChange={(e) => set('isVisible', e.target.checked)} className="size-5 shrink-0 accent-ink" />
           </label>
 
           <fieldset>

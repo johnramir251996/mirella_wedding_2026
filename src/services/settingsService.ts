@@ -15,6 +15,7 @@ import type {
   WeddingSettingsInput,
 } from '../types/wedding'
 import { FriendlyError, logError } from '../utils/errors'
+import { parseThemeSettings, type ThemeSettings } from '../theme/themes'
 
 export const SECTION_ICONS: { value: SectionIconName; label: string }[] = [
   { value: 'shirt', label: 'Attire' },
@@ -135,6 +136,7 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     videoCaption: row.video_caption ?? '',
     videoUrl: row.video_url ?? '',
     videoPosterUrl: row.video_poster_url ?? '',
+    theme: parseThemeSettings(row.theme),
     updatedAt: row.updated_at,
   }
 }
@@ -259,6 +261,16 @@ export function updateVideoSettings(id: string, input: VideoSettings): Promise<W
     'updateVideoSettings',
     'We couldn’t save the video settings. Please check the link and try again.',
   )
+}
+
+/** Admin: Look & Feel (template, fonts, colours, hero layout). */
+export function updateTheme(id: string, theme: ThemeSettings): Promise<WeddingSettings> {
+  const clean: Record<string, string> = { template: theme.template }
+  for (const k of ['headingFont', 'bodyFont', 'background', 'text', 'accent', 'heroLayout'] as const) {
+    const v = theme[k]
+    if (v) clean[k] = v
+  }
+  return updatePartial(id, { theme: clean }, 'updateTheme', 'We couldn’t save the new look. Please try again.')
 }
 
 /** Admin: dress-code motif colours. */

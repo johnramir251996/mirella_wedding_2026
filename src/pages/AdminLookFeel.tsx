@@ -1,0 +1,446 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, CheckCircle2, ExternalLink, Monitor, RotateCcw, Save, Smartphone, TriangleAlert } from 'lucide-react'
+import { useToast } from '../hooks/useToast'
+import { setCachedWeddingSettings, useWeddingSettings } from '../hooks/useWeddingSettings'
+import { updateTheme } from '../services/settingsService'
+import { writePreviewTheme } from '../theme/applyTheme'
+import {
+  BODY_FONTS,
+  contrast,
+  contrastReport,
+  findTemplate,
+  googleFontsHref,
+  HEADING_FONTS,
+  HERO_LAYOUTS,
+  isHex,
+  resolveTheme,
+  TEMPLATES,
+  type HeroLayout,
+  type Template,
+  type ThemeSettings,
+} from '../theme/themes'
+import { toFriendlyMessage } from '../utils/errors'
+import { siteLinks } from '../utils/share'
+import { Button } from '../components/ui/Button'
+import { Skeleton } from '../components/ui/Skeleton'
+import { cn } from '../components/ui/cn'
+import { PageHeader } from '../components/admin/PageHeader'
+
+const DEVICES = {
+  desktop: { w: 1280, h: 820, label: 'Desktop', icon: Monitor },
+  phone: { w: 390, h: 780, label: 'Phone', icon: Smartphone },
+} as const
+
+/** Light backgrounds only — photo overlays and the invitation design assume a light page. */
+const isLightEnough = (hex: string) => contrast(hex, '#000000') >= 12
+
+export default function AdminLookFeel() {
+  const toast = useToast()
+  const { settings } = useWeddingSettings()
+  const [values, setValues] = useState<ThemeSettings | null>(null)
+  const [savedJson, setSavedJson] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [device, setDevice] = useState<keyof typeof DEVICES>('desktop')
+  const previewBox = useRef<HTMLDivElement>(null)
+  const [boxWidth, setBoxWidth] = useState(600)
+
+  useEffect(() => {
+    document.title = 'Look & Feel · Wedding admin'
+  }, [])
+
+  // Load every template's fonts once so the gallery cards show real type.
+  useEffect(() => {
+    const id = 'lookfeel-all-fonts'
+    if (document.getElementById(id)) return
+    const link = document.createElement('link')
+    link.id = id
+    link.rel = 'stylesheet'
+    link.href = googleFontsHref([...HEADING_FONTS, ...BODY_FONTS.slice(0, 5)])
+    document.head.appendChild(link)
+    const link2 = document.createElement('link')
+    link2.id = `${id}-2`
+    link2.rel = 'stylesheet'
+    link2.href = googleFontsHref(BODY_FONTS.slice(5))
+    document.head.appendChild(link2)
+  }, [])
+
+  useEffect(() => {
+    if (settings && values === null) {
+      setValues(settings.theme)
+      setSavedJson(JSON.stringify(settings.theme))
+    }
+  }, [settings, values])
+
+  // Push the unsaved choices to the preview frame (it listens for storage events).
+  useEffect(() => {
+    if (!values) return
+    const t = window.setTimeout(() => writePreviewTheme(values), 120)
+    return () => window.clearTimeout(t)
+  }, [values])
+
+  useEffect(() => {
+    const el = previewBox.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => setBoxWidth(e.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [values === null])
+
+  const resolved = useMemo(() => resolveTheme(values), [values])
+  const report = useMemo(() => contrastReport(resolved.palette), [resolved])
+
+  if (!values || !settings) {
+    return (
+      <>
+        <PageHeader title="Look & Feel" />
+        <Skeleton className="h-[600px]" />
+      </>
+    )
+  }
+
+  const template = findTemplate(values.template)
+  const dirty = JSON.stringify(values) !== savedJson
+  const bg = values.background ?? template.background
+  const bgTooDark = !isLightEnough(bg)
+
+  const pickTemplate = (t: Template) => setValues({ template: t.id })
+  const set = <K extends keyof ThemeSettings>(k: K, v: ThemeSettings[K]) => setValues({ ...values, [k]: v })
+  const clear = (k: keyof ThemeSettings) => {
+    const next = { ...values }
+    delete next[k]
+    setValues(next)
+  }
+
+  const save = async () => {
+    if (bgTooDark) {
+      toast.error('Please choose a lighter background colour.')
+      return
+    }
+    setSaving(true)
+    try {
+      const s = await updateTheme(settings.id, values)
+      setCachedWeddingSettings(s)
+      setSavedJson(JSON.stringify(s.theme))
+      setValues(s.theme)
+      toast.success('New look saved and live on your website.')
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const d = DEVICES[device]
+  const scale = Math.min(1, boxWidth / d.w)
+  const previewUrl = `${siteLinks().home}#/?themePreview=1`
+
+  return (
+    <>
+      <PageHeader
+        title="Look & Feel"
+        description="Choose a template, then fine-tune fonts, colours and the hero layout. The preview updates as you go."
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setValues(JSON.parse(savedJson) as ThemeSettings)} disabled={!dirty || saving} icon={<RotateCcw aria-hidden="true" className="size-4" />}>
+              Undo changes
+            </Button>
+            <Button onClick={() => void save()} loading={saving} loadingText="Saving…" disabled={!dirty || bgTooDark} icon={<Save aria-hidden="true" className="size-4" />}>
+              Save & publish
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div className="space-y-6">
+          {/* Templates */}
+          <section aria-labelledby="templates-heading" className="rounded-xl border border-line bg-paper p-5 shadow-soft sm:p-6">
+            <h2 id="templates-heading" className="text-2xl text-ink">
+              Templates
+            </h2>
+            <p className="mt-1 text-sm text-muted">Picking a template resets fonts, colours and layout to that template’s design.</p>
+            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+              {TEMPLATES.map((t) => {
+                const selected = t.id === values.template
+                const r = resolveTheme({ template: t.id })
+                return (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => pickTemplate(t)}
+                      aria-pressed={selected}
+                      className={cn(
+                        'group relative block w-full overflow-hidden rounded-lg border text-left transition',
+                        selected ? 'border-ink ring-2 ring-ink/15' : 'border-line hover:border-champagne hover:shadow-soft',
+                      )}
+                    >
+                      <div className="flex h-28 flex-col items-center justify-center px-3 text-center" style={{ background: r.palette.ivory, color: r.palette.ink }}>
+                        <span className="text-[0.55rem] uppercase tracking-[0.3em]" style={{ color: r.palette.gold, fontFamily: `"${r.body.family}"` }}>
+                          Together with their families
+                        </span>
+                        <span className="mt-1 text-[1.7rem] leading-none" style={{ fontFamily: `"${r.heading.family}", serif` }}>
+                          Mir <em style={{ color: r.palette.champagne }}>&amp;</em> Ella
+                        </span>
+                        <span className="mt-2 flex items-center gap-1.5" aria-hidden="true">
+                          <span className="h-px w-6" style={{ background: r.palette.champagne }} />
+                          <span className="size-1 rotate-45 border" style={{ borderColor: r.palette.champagne }} />
+                          <span className="h-px w-6" style={{ background: r.palette.champagne }} />
+                        </span>
+                      </div>
+                      <div className="flex items-start justify-between gap-2 border-t border-line bg-paper px-3 py-2.5">
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-ink">{t.name}</span>
+                          <span className="block truncate text-xs text-muted">{t.description}</span>
+                        </span>
+                        <span className="flex shrink-0 gap-1 pt-0.5" aria-hidden="true">
+                          {[t.background, t.text, t.accent].map((c) => (
+                            <span key={c} className="size-3.5 rounded-full ring-1 ring-black/10" style={{ background: c }} />
+                          ))}
+                        </span>
+                      </div>
+                      {selected && (
+                        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-ink text-ivory">
+                          <Check className="size-3.5" strokeWidth={3} />
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+
+          {/* Fine-tune */}
+          <section aria-labelledby="finetune-heading" className="rounded-xl border border-line bg-paper p-5 shadow-soft sm:p-6">
+            <h2 id="finetune-heading" className="text-2xl text-ink">
+              Fine-tune
+            </h2>
+
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              <FontSelect
+                label="Heading font"
+                value={values.headingFont ?? template.headingFont}
+                options={HEADING_FONTS}
+                onChange={(v) => (v === template.headingFont ? clear('headingFont') : set('headingFont', v))}
+                sample="Mir & Ella"
+                sampleClass="text-3xl"
+              />
+              <FontSelect
+                label="Body font"
+                value={values.bodyFont ?? template.bodyFont}
+                options={BODY_FONTS}
+                onChange={(v) => (v === template.bodyFont ? clear('bodyFont') : set('bodyFont', v))}
+                sample="Will you be joining us?"
+                sampleClass="text-base"
+              />
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <ColorField label="Background" value={values.background ?? template.background} changed={Boolean(values.background)} onChange={(v) => set('background', v)} onReset={() => clear('background')} />
+              <ColorField label="Text" value={values.text ?? template.text} changed={Boolean(values.text)} onChange={(v) => set('text', v)} onReset={() => clear('text')} />
+              <ColorField label="Accent" value={values.accent ?? template.accent} changed={Boolean(values.accent)} onChange={(v) => set('accent', v)} onReset={() => clear('accent')} />
+            </div>
+            {bgTooDark && (
+              <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-rose/5 px-3 py-2 text-sm text-rose">
+                <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                This background is too dark for the invitation design. Please choose a lighter colour.
+              </p>
+            )}
+
+            <fieldset className="mt-6">
+              <legend className="mb-2 text-[0.95rem] font-medium text-ink-soft">Hero layout</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {HERO_LAYOUTS.map((h) => {
+                  const active = (values.heroLayout ?? template.heroLayout) === h.id
+                  return (
+                    <label
+                      key={h.id}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-sm transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
+                        active ? 'border-ink bg-ink/[0.03]' : 'border-line hover:border-champagne',
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="hero-layout"
+                        className="sr-only"
+                        checked={active}
+                        onChange={() => (h.id === template.heroLayout ? clear('heroLayout') : set('heroLayout', h.id as HeroLayout))}
+                      />
+                      <HeroThumb layout={h.id} />
+                      <span>
+                        <span className="block font-medium text-ink">{h.name}</span>
+                        <span className="block text-xs text-muted">{h.description}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </fieldset>
+
+            <div className="mt-6 rounded-lg border border-line bg-ivory/60 p-4">
+              <p className="text-sm font-medium text-ink-soft">Readability check</p>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {report.map((c) => (
+                  <li key={c.label} className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-ink-soft">
+                      {c.ok ? <CheckCircle2 aria-hidden="true" className="size-4 text-sage" /> : <TriangleAlert aria-hidden="true" className="size-4 text-rose" />}
+                      {c.label}
+                    </span>
+                    <span className={cn('tabular-nums', c.ok ? 'text-muted' : 'text-rose')}>
+                      {c.ratio.toFixed(1)} : 1 {c.ok ? '' : `(needs ${c.min})`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-muted">Shades are adjusted automatically so text always stays easy to read.</p>
+            </div>
+          </section>
+        </div>
+
+        {/* Live preview */}
+        <section aria-labelledby="preview-heading" className="xl:sticky xl:top-6 xl:self-start">
+          <div className="rounded-xl border border-line bg-paper p-4 shadow-soft">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 id="preview-heading" className="text-2xl text-ink">
+                Live preview
+              </h2>
+              <div className="flex items-center gap-1">
+                {(Object.keys(DEVICES) as (keyof typeof DEVICES)[]).map((k) => {
+                  const D = DEVICES[k]
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setDevice(k)}
+                      aria-pressed={device === k}
+                      className={cn('flex min-h-9 items-center gap-1.5 rounded-md px-3 text-sm transition', device === k ? 'bg-ink text-ivory' : 'text-muted hover:bg-cream hover:text-ink')}
+                    >
+                      <D.icon aria-hidden="true" className="size-4" />
+                      {D.label}
+                    </button>
+                  )
+                })}
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="ml-1 flex size-9 items-center justify-center rounded-md text-muted hover:bg-cream hover:text-ink" aria-label="Open preview in a new tab">
+                  <ExternalLink className="size-4" />
+                </a>
+              </div>
+            </div>
+            <div ref={previewBox} className="flex justify-center overflow-hidden rounded-lg bg-cream">
+              <div style={{ width: d.w * scale, height: d.h * scale }} className="relative">
+                <iframe
+                  key={device}
+                  title="Website preview"
+                  src={previewUrl}
+                  style={{ width: d.w, height: d.h, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+                  className="absolute left-0 top-0 border-0 bg-white"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted">{dirty ? 'Showing your unsaved changes. Guests still see the saved look until you publish.' : 'This is what guests see.'}</p>
+          </div>
+        </section>
+      </div>
+    </>
+  )
+}
+
+function FontSelect({
+  label,
+  value,
+  options,
+  onChange,
+  sample,
+  sampleClass,
+}: {
+  label: string
+  value: string
+  options: { id: string; family: string }[]
+  onChange: (id: string) => void
+  sample: string
+  sampleClass: string
+}) {
+  const family = options.find((o) => o.id === value)?.family ?? options[0].family
+  const id = `font-${label.replace(/\s+/g, '-').toLowerCase()}`
+  return (
+    <div>
+      <label htmlFor={id} className="mb-2 block text-[0.95rem] font-medium text-ink-soft">
+        {label}
+      </label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="input-base">
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.family}
+          </option>
+        ))}
+      </select>
+      <p className={cn('mt-2 truncate text-ink', sampleClass)} style={{ fontFamily: `"${family}"` }}>
+        {sample}
+      </p>
+    </div>
+  )
+}
+
+function ColorField({ label, value, changed, onChange, onReset }: { label: string; value: string; changed: boolean; onChange: (v: string) => void; onReset: () => void }) {
+  const [text, setText] = useState(value)
+  useEffect(() => setText(value), [value])
+  const id = `color-${label.toLowerCase()}`
+  return (
+    <div>
+      <label htmlFor={id} className="mb-2 block text-[0.95rem] font-medium text-ink-soft">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input id={id} type="color" value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} className="size-11 shrink-0 cursor-pointer rounded-md border border-line bg-transparent p-0.5" />
+        <input
+          aria-label={`${label} hex code`}
+          value={text}
+          maxLength={7}
+          onChange={(e) => {
+            setText(e.target.value)
+            const v = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
+            if (isHex(v)) onChange(v.toUpperCase())
+          }}
+          className="input-base min-h-11 w-full py-2 font-mono text-sm uppercase"
+        />
+      </div>
+      {changed && (
+        <button type="button" onClick={onReset} className="mt-1 text-xs text-gold underline-offset-4 hover:underline">
+          Use template colour
+        </button>
+      )}
+    </div>
+  )
+}
+
+function HeroThumb({ layout }: { layout: HeroLayout }) {
+  const photo = 'bg-[linear-gradient(135deg,#8d7a66,#3d342c)]'
+  return (
+    <span aria-hidden="true" className="mt-0.5 block h-10 w-14 shrink-0 overflow-hidden rounded border border-line bg-ivory">
+      {layout === 'center' && (
+        <span className={cn('flex size-full items-center justify-center', photo)}>
+          <span className="h-1 w-7 rounded bg-white/80" />
+        </span>
+      )}
+      {layout === 'left' && (
+        <span className={cn('flex size-full items-end p-1.5', photo)}>
+          <span className="h-1 w-6 rounded bg-white/80" />
+        </span>
+      )}
+      {layout === 'split' && (
+        <span className="grid size-full grid-cols-2">
+          <span className="flex items-center justify-center">
+            <span className="h-1 w-4 rounded bg-ink/60" />
+          </span>
+          <span className={photo} />
+        </span>
+      )}
+      {layout === 'framed' && (
+        <span className="flex size-full flex-col items-center justify-center gap-0.5">
+          <span className={cn('h-5 w-4 rounded-t-full', photo)} />
+          <span className="h-0.5 w-5 rounded bg-ink/60" />
+        </span>
+      )}
+    </span>
+  )
+}

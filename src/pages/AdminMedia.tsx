@@ -286,7 +286,7 @@ export default function AdminMedia() {
               </div>
             </fieldset>
             <label className="flex cursor-pointer items-center gap-3 text-sm text-ink-soft md:col-span-2">
-              <input type="checkbox" checked={gallery.galleryVisible} onChange={(e) => setGallery({ ...gallery, galleryVisible: e.target.checked })} className="size-5 accent-[#2b2a28]" />
+              <input type="checkbox" checked={gallery.galleryVisible} onChange={(e) => setGallery({ ...gallery, galleryVisible: e.target.checked })} className="size-5 accent-ink" />
               Show the photo gallery on the website
             </label>
           </div>
@@ -414,7 +414,7 @@ export default function AdminMedia() {
               <TextField label="Section title" value={video.videoTitle} onChange={(v) => setVideo({ ...video, videoTitle: v })} maxLength={80} />
               <TextAreaField label="Caption (optional)" value={video.videoCaption} onChange={(v) => setVideo({ ...video, videoCaption: v })} maxLength={240} rows={2} />
               <label className="flex cursor-pointer items-center gap-3 text-sm text-ink-soft">
-                <input type="checkbox" checked={video.videoVisible} onChange={(e) => setVideo({ ...video, videoVisible: e.target.checked })} className="size-5 accent-[#2b2a28]" />
+                <input type="checkbox" checked={video.videoVisible} onChange={(e) => setVideo({ ...video, videoVisible: e.target.checked })} className="size-5 accent-ink" />
                 Show the video on the website
               </label>
             </div>

@@ -113,12 +113,12 @@ export function RsvpSettingsCard() {
             <span className="block text-[0.95rem] font-medium text-ink-soft">Accept RSVPs</span>
             <span className="block text-sm text-muted">Turn off to close RSVPs immediately, whatever the deadline.</span>
           </span>
-          <input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} className="size-5 shrink-0 accent-[#2b2a28]" />
+          <input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} className="size-5 shrink-0 accent-ink" />
         </label>
 
         <div className="rounded-lg border border-line px-4 py-4">
           <label className="flex cursor-pointer items-center gap-3 text-[0.95rem] font-medium text-ink-soft">
-            <input type="checkbox" checked={hasDeadline} onChange={(e) => setHasDeadline(e.target.checked)} className="size-5 accent-[#2b2a28]" />
+            <input type="checkbox" checked={hasDeadline} onChange={(e) => setHasDeadline(e.target.checked)} className="size-5 accent-ink" />
             Close RSVPs automatically on a date
           </label>
           {hasDeadline && (

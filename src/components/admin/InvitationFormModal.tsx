@@ -174,7 +174,7 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
             type="checkbox"
             checked={values.isActive}
             onChange={(e) => setValues((s) => ({ ...s, isActive: e.target.checked }))}
-            className="size-5 shrink-0 accent-[#2b2a28]"
+            className="size-5 shrink-0 accent-ink"
           />
         </label>
         {invitation && onCopyLink && (

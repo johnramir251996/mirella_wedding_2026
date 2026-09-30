@@ -148,7 +148,7 @@ export default function AdminEntourage() {
             type="checkbox"
             checked={values.entourageVisible}
             onChange={(e) => setValues({ ...values, entourageVisible: e.target.checked })}
-            className="size-5 accent-[#2b2a28]"
+            className="size-5 accent-ink"
           />
           Show the entourage on the website
         </label>

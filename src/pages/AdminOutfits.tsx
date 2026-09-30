@@ -145,7 +145,7 @@ export default function AdminOutfits() {
                 type="checkbox"
                 checked={section.outfitSectionVisible}
                 onChange={(e) => setSection({ ...section, outfitSectionVisible: e.target.checked })}
-                className="size-5 accent-[#2b2a28]"
+                className="size-5 accent-ink"
               />
               Show this section on the website
             </label>

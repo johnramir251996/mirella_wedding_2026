@@ -1,3 +1,5 @@
+import type { ThemeSettings } from '../theme/themes'
+
 export type SectionIconName =
   | 'shirt'
   | 'church'
@@ -58,6 +60,7 @@ export interface WeddingSettings {
   videoCaption: string
   videoUrl: string
   videoPosterUrl: string
+  theme: ThemeSettings
   updatedAt: string
 }
 
@@ -160,6 +163,7 @@ export type WeddingSettingsInput = Omit<
   | keyof MotifSettings
   | keyof GallerySettings
   | keyof VideoSettings
+  | 'theme'
 >
 
 export interface OutfitSectionSettings {

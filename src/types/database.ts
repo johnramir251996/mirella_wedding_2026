@@ -43,6 +43,7 @@ export type Database = {
           video_caption: string | null
           video_url: string | null
           video_poster_url: string | null
+          theme: Json
           additional_info: Json
           updated_at: string
         }
@@ -81,6 +82,7 @@ export type Database = {
           video_caption?: string | null
           video_url?: string | null
           video_poster_url?: string | null
+          theme?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -119,6 +121,7 @@ export type Database = {
           video_caption?: string | null
           video_url?: string | null
           video_poster_url?: string | null
+          theme?: Json
           additional_info?: Json
           updated_at?: string
         }
