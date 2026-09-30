@@ -17,6 +17,8 @@ import type {
 } from '../types/rsvp'
 import { FRIENDLY_ERRORS, FriendlyError, logError } from '../utils/errors'
 import { normalizeSpaces } from '../utils/validation'
+import { mapTable } from './seatingService'
+import type { SeatingTable } from '../types/seating'
 
 // ----- Auth ---------------------------------------------------------------------
 
@@ -55,6 +57,7 @@ const mapInvitation = (r: Tables<'invitations'>): Invitation => ({
   inviteeName: r.invitee_name,
   invitationCode: r.invitation_code,
   tableNumber: r.table_number,
+  tableId: r.table_id ?? null,
   maxAdditionalGuests: r.max_additional_guests,
   isActive: r.is_active,
   createdAt: r.created_at,
@@ -118,11 +121,12 @@ async function fetchAll<R>(
 export interface AdminData {
   invitations: InvitationWithRSVP[]
   guests: GuestWithInvitation[]
+  tables: SeatingTable[]
 }
 
 /** Loads invitations, responses and additional guests (admin only — enforced by RLS). */
 export async function loadAdminData(): Promise<AdminData> {
-  const [invRows, respRows, guestRows] = await Promise.all([
+  const [invRows, respRows, guestRows, tableRows, seatRows] = await Promise.all([
     fetchAll<Tables<'invitations'>>('invitations', (a, b) =>
       supabase.from('invitations').select('*').order('created_at', { ascending: true }).range(a, b),
     ),
@@ -132,7 +136,16 @@ export async function loadAdminData(): Promise<AdminData> {
     fetchAll<Tables<'additional_guests'>>('additional_guests', (a, b) =>
       supabase.from('additional_guests').select('*').order('created_at', { ascending: true }).range(a, b),
     ),
+    fetchAll<Tables<'seating_tables'>>('seating_tables', (a, b) =>
+      supabase.from('seating_tables').select('*').order('sort_order').order('created_at').range(a, b),
+    ),
+    fetchAll<Tables<'seat_assignments'>>('seat_assignments', (a, b) =>
+      supabase.from('seat_assignments').select('table_id,invitation_id,guest_id').is('guest_id', null).range(a, b) as never,
+    ),
   ])
+  const tables = tableRows.map(mapTable)
+  const tableName = new Map(tables.map((t) => [t.id, t.name]))
+  const inviteeSeatTable = new Map(seatRows.map((s) => [s.invitation_id, s.table_id]))
 
   const responses = new Map(respRows.map((r) => [r.invitation_id, mapResponse(r)]))
   const guestsByInvitation = new Map<string, AdditionalGuest[]>()
@@ -146,8 +159,12 @@ export async function loadAdminData(): Promise<AdminData> {
     .map(mapInvitation)
     .map((inv): InvitationWithRSVP => {
       const response = responses.get(inv.id) ?? null
+      const tid = inviteeSeatTable.get(inv.id) ?? inv.tableId
+      const legacy = inv.tableNumber?.trim() ? (/^\d+$/.test(inv.tableNumber.trim()) ? `Table ${inv.tableNumber.trim()}` : inv.tableNumber.trim()) : null
       return {
         ...inv,
+        tableId: inv.tableId,
+        tableNumber: (tid && tableName.get(tid)) || legacy,
         response,
         guests: guestsByInvitation.get(inv.id) ?? [],
         status: response ? response.attendanceStatus : 'pending',
@@ -165,7 +182,7 @@ export async function loadAdminData(): Promise<AdminData> {
     }))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
-  return { invitations, guests }
+  return { invitations, guests, tables }
 }
 
 // ----- Invitations --------------------------------------------------------------
@@ -182,7 +199,7 @@ function invitationError(context: string, error: { code?: string } | null): neve
 function toInvitationRow(input: InvitationInput) {
   return {
     invitee_name: normalizeSpaces(input.inviteeName),
-    table_number: input.tableNumber.trim() ? input.tableNumber.trim() : null,
+    table_id: input.tableId,
     max_additional_guests: input.maxAdditionalGuests,
     is_active: input.isActive,
   }

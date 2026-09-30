@@ -64,7 +64,9 @@ export interface Invitation {
   id: string
   inviteeName: string
   invitationCode: string
+  /** Display name of the party's table (from the seating plan). */
   tableNumber: string | null
+  tableId: string | null
   maxAdditionalGuests: number
   isActive: boolean
   createdAt: string
@@ -73,7 +75,7 @@ export interface Invitation {
 
 export interface InvitationInput {
   inviteeName: string
-  tableNumber: string
+  tableId: string | null
   maxAdditionalGuests: number
   isActive: boolean
 }

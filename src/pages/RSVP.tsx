@@ -9,6 +9,7 @@ import type { AttendanceStatus, RSVPFormState } from '../types/rsvp'
 import type { PublicGift } from '../types/wedding'
 import { isRsvpOpen } from '../services/settingsService'
 import { getInvitationGift } from '../services/giftService'
+import { getInvitationTable } from '../services/seatingService'
 import { GiftCard } from '../components/wedding/GiftCard'
 import { PageLoader } from '../components/ui/Spinner'
 import { CalendarClock } from 'lucide-react'
@@ -46,6 +47,7 @@ export default function RSVP() {
   const [result, setResult] = useState<{ status: AttendanceStatus; guests: number } | null>(null)
   const [closedByServer, setClosedByServer] = useState(false)
   const [gift, setGift] = useState<PublicGift | null>(null)
+  const [tableName, setTableName] = useState<string | null>(null)
   const submittingRef = useRef(false)
 
   const coupleNames = settings?.coupleNames ?? FALLBACK.coupleNames
@@ -83,6 +85,7 @@ export default function RSVP() {
     try {
       const payload = toSubmission(invitation.invitationId, form, invitation.maxAdditionalGuests, settings?.rsvpConfig, questions)
       const saved = await submitRSVP(payload)
+      setTableName(saved.attendanceStatus === 'attending' ? await getInvitationTable(invitation.invitationId) : null)
       setConfirmOpen(false)
       setResult({ status: saved.attendanceStatus, guests: payload.additionalGuests.length })
       setStep('success')
@@ -193,7 +196,7 @@ export default function RSVP() {
               <SuccessState
                 status={result.status}
                 guestName={invitation.inviteeName}
-                tableNumber={invitation.tableNumber}
+                tableNumber={tableName}
                 coupleNames={coupleNames}
                 weddingDate={weddingDate}
                 requestedGuests={result.guests}

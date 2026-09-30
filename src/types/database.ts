@@ -7,6 +7,150 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      seating_tables: {
+        Row: {
+          id: string
+          name: string
+          shape: string
+          capacity: number
+          seat_sides: string
+          x: number
+          y: number
+          width: number
+          height: number
+          rotation: number
+          placed: boolean
+          sort_order: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          shape?: string
+          capacity?: number
+          seat_sides?: string
+          x?: number
+          y?: number
+          width?: number
+          height?: number
+          rotation?: number
+          placed?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          shape?: string
+          capacity?: number
+          seat_sides?: string
+          x?: number
+          y?: number
+          width?: number
+          height?: number
+          rotation?: number
+          placed?: boolean
+          sort_order?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      seating_items: {
+        Row: {
+          id: string
+          kind: string
+          label: string
+          x: number
+          y: number
+          width: number
+          height: number
+          rotation: number
+          location: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          kind: string
+          label?: string
+          x?: number
+          y?: number
+          width?: number
+          height?: number
+          rotation?: number
+          location?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          label?: string
+          x?: number
+          y?: number
+          width?: number
+          height?: number
+          rotation?: number
+          location?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      seat_assignments: {
+        Row: {
+          id: string
+          table_id: string
+          seat_index: number
+          invitation_id: string
+          guest_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          table_id: string
+          seat_index: number
+          invitation_id: string
+          guest_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          table_id?: string
+          seat_index?: number
+          invitation_id?: string
+          guest_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      seating_notices: {
+        Row: {
+          id: string
+          person_name: string
+          table_name: string
+          reason: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          person_name: string
+          table_name: string
+          reason: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          person_name?: string
+          table_name?: string
+          reason?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       wedding_settings: {
         Row: {
           id: string
@@ -47,6 +191,7 @@ export type Database = {
           video_poster_url: string | null
           theme: Json
           rsvp_config: Json
+          seating_config: Json
           additional_info: Json
           updated_at: string
         }
@@ -89,6 +234,7 @@ export type Database = {
           video_poster_url?: string | null
           theme?: Json
           rsvp_config?: Json
+          seating_config?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -131,6 +277,7 @@ export type Database = {
           video_poster_url?: string | null
           theme?: Json
           rsvp_config?: Json
+          seating_config?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -143,6 +290,7 @@ export type Database = {
           search_name: string
           invitation_code: string
           table_number: string | null
+          table_id: string | null
           max_additional_guests: number
           is_active: boolean
           created_at: string
@@ -153,6 +301,7 @@ export type Database = {
           invitee_name: string
           invitation_code?: string
           table_number?: string | null
+          table_id?: string | null
           max_additional_guests?: number
           is_active?: boolean
           created_at?: string
@@ -163,6 +312,7 @@ export type Database = {
           invitee_name?: string
           invitation_code?: string
           table_number?: string | null
+          table_id?: string | null
           max_additional_guests?: number
           is_active?: boolean
           created_at?: string
@@ -544,6 +694,14 @@ export type Database = {
       get_public_gift: {
         Args: Record<PropertyKey, never>
         Returns: { title: string | null; message: string | null; qr_image_url: string | null }[]
+      }
+      get_invitation_table: {
+        Args: { p_invitation_id: string }
+        Returns: string | null
+      }
+      find_my_seat: {
+        Args: { search_name: string }
+        Returns: Json
       }
       get_invitation_gift: {
         Args: { p_invitation_id: string }

@@ -5,6 +5,9 @@ import { LIMITS, normalizeName, normalizeSpaces, validateInvitation, type Invita
 import { Button } from '../ui/Button'
 import { TextField } from '../ui/FormField'
 import { Modal } from '../ui/Modal'
+import { TablePicker } from './TablePicker'
+import type { SeatingTable } from '../../types/seating'
+import { plannedPerTable } from '../../utils/seatingPeople'
 
 interface Props {
   open: boolean
@@ -14,11 +17,14 @@ interface Props {
   /** includedGuests = names the couple invites together with the invitee. */
   onSave: (input: InvitationInput, includedGuests: string[]) => void
   onCopyLink?: (code: string) => void
+  tables: SeatingTable[]
+  invitations: InvitationWithRSVP[]
+  onTableCreated: (table: SeatingTable) => void
 }
 
-const EMPTY: InvitationInput = { inviteeName: '', tableNumber: '', maxAdditionalGuests: 0, isActive: true }
+const EMPTY: InvitationInput = { inviteeName: '', tableId: null, maxAdditionalGuests: 0, isActive: true }
 
-export function InvitationFormModal({ open, invitation, saving, onClose, onSave, onCopyLink }: Props) {
+export function InvitationFormModal({ open, invitation, saving, onClose, onSave, onCopyLink, tables, invitations, onTableCreated }: Props) {
   const [values, setValues] = useState<InvitationInput>(EMPTY)
   const [errors, setErrors] = useState<InvitationErrors>({})
   const [included, setIncluded] = useState<string[]>([])
@@ -33,7 +39,7 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
       invitation
         ? {
             inviteeName: invitation.inviteeName,
-            tableNumber: invitation.tableNumber ?? '',
+            tableId: invitation.tableId,
             maxAdditionalGuests: invitation.maxAdditionalGuests,
             isActive: invitation.isActive,
           }
@@ -90,14 +96,13 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
           data-autofocus
           autoComplete="off"
         />
-        <TextField
-          label="Table Number"
-          value={values.tableNumber}
-          onChange={(v) => setValues((s) => ({ ...s, tableNumber: v }))}
-          maxLength={LIMITS.tableNumber}
-          hint="Any text: 5, VIP, A1, Family Table…"
-          error={errors.tableNumber}
-          autoComplete="off"
+        <TablePicker
+          tables={tables}
+          used={plannedPerTable(invitations, invitation?.id)}
+          partySize={1 + included.filter((n) => n.trim()).length}
+          value={values.tableId}
+          onChange={(tableId) => setValues((s) => ({ ...s, tableId }))}
+          onTableCreated={onTableCreated}
         />
         <TextField
           label="Maximum Additional Guests"

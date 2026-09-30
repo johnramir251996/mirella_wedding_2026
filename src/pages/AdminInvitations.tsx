@@ -13,6 +13,7 @@ import { Badge } from '../components/ui/Badge'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { ResponsiveTable, type Column } from '../components/ui/ResponsiveTable'
 import { TableSkeleton } from '../components/ui/Skeleton'
+import type { SeatingTable } from '../types/seating'
 import { InvitationFormModal } from '../components/admin/InvitationFormModal'
 import { ResponseDetailModal } from '../components/admin/ResponseDetailModal'
 import { AttendanceBadge } from '../components/admin/StatusBadges'
@@ -29,6 +30,11 @@ export default function AdminInvitations() {
   const [toDelete, setToDelete] = useState<InvitationWithRSVP | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [viewing, setViewing] = useState<InvitationWithRSVP | null>(null)
+  const [newTables, setNewTables] = useState<SeatingTable[]>([])
+  const tables = useMemo(() => {
+    const base = data?.tables ?? []
+    return [...base, ...newTables.filter((t) => !base.some((b) => b.id === t.id))]
+  }, [data, newTables])
 
   useEffect(() => {
     document.title = 'Invitations · Wedding admin'
@@ -179,6 +185,9 @@ export default function AdminInvitations() {
         onClose={() => !saving && setFormOpen(false)}
         onSave={save}
         onCopyLink={copyLink}
+        tables={tables}
+        invitations={data?.invitations ?? []}
+        onTableCreated={(t) => setNewTables((l) => [...l, t])}
       />
 
       <ConfirmDialog

@@ -218,7 +218,6 @@ export function validateInvitation(input: InvitationInput): InvitationErrors {
   const name = normalizeSpaces(input.inviteeName)
   if (!name) errors.inviteeName = 'Invitee name is required.'
   else if (name.length > LIMITS.inviteeName) errors.inviteeName = `Please keep the name under ${LIMITS.inviteeName} characters.`
-  if (input.tableNumber.trim().length > LIMITS.tableNumber) errors.tableNumber = `Please keep this under ${LIMITS.tableNumber} characters.`
   const max = input.maxAdditionalGuests
   if (!Number.isInteger(max) || max < 0 || max > LIMITS.maxAdditionalGuestsPerInvitation) {
     errors.maxAdditionalGuests = `Enter a whole number from 0 to ${LIMITS.maxAdditionalGuestsPerInvitation}.`
