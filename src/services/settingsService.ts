@@ -17,6 +17,14 @@ import type {
 import { FriendlyError, logError } from '../utils/errors'
 import { parseThemeSettings, type ThemeSettings } from '../theme/themes'
 import type { BuiltinKey, RsvpConfig } from '../types/questions'
+import { parseSeatingConfig } from './seatingService'
+import type { SeatingConfig } from '../types/seating'
+
+/** Is the guest seat finder switched on right now? */
+export function isFinderOpen(c: SeatingConfig): boolean {
+  if (c.finder.mode === 'visible') return true
+  return c.finder.mode === 'scheduled' && Boolean(c.finder.from) && Date.now() >= new Date(c.finder.from!).getTime()
+}
 
 export const SECTION_ICONS: { value: SectionIconName; label: string }[] = [
   { value: 'shirt', label: 'Attire' },
@@ -159,6 +167,7 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     videoPosterUrl: row.video_poster_url ?? '',
     theme: parseThemeSettings(row.theme),
     rsvpConfig: parseRsvpConfig(row.rsvp_config),
+    seatingConfig: parseSeatingConfig(row.seating_config),
     updatedAt: row.updated_at,
   }
 }

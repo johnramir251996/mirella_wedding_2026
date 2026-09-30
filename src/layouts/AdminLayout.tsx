@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ExternalLink, Heart, ListChecks, Images, LayoutDashboard, Palette, LogOut, Mail, Menu, MessageSquareHeart, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
+import { Armchair, ExternalLink, Heart, ListChecks, Images, LayoutDashboard, Palette, LogOut, Mail, Menu, MessageSquareHeart, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
@@ -18,6 +18,7 @@ const NAV = [
   { to: '/admin/guests', label: 'Additional Guests', icon: UserPlus },
   { to: '/admin/media', label: 'Photos & Video', icon: Images },
   { to: '/admin/outfits', label: 'Outfit Gallery', icon: Shirt },
+  { to: '/admin/seating', label: 'Seating', icon: Armchair },
   { to: '/admin/entourage', label: 'Entourage', icon: Users },
   { to: '/admin/share', label: 'Share & QR', icon: QrCode },
   { to: '/admin/look', label: 'Look & Feel', icon: Palette },
@@ -119,13 +120,13 @@ export default function AdminLayout() {
   return (
     <div className="min-h-[100svh] bg-ivory">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col gap-8 border-r border-line bg-paper px-4 py-6 lg:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 print:hidden flex-col gap-8 border-r border-line bg-paper px-4 py-6 lg:flex">
         <div className="px-2">{brand}</div>
         {nav}
       </aside>
 
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-paper/95 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-paper/95 print:hidden px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
         {brand}
         <button
           type="button"
@@ -172,7 +173,7 @@ export default function AdminLayout() {
         )}
       </AnimatePresence>
 
-      <main className="px-4 pb-16 pt-6 sm:px-6 lg:ml-64 lg:px-10 lg:pt-10">
+      <main className="px-4 pb-16 pt-6 sm:px-6 lg:ml-64 lg:px-10 lg:pt-10 print:m-0 print:p-0">
         <div className="mx-auto max-w-6xl">
           <Outlet context={context} />
         </div>
