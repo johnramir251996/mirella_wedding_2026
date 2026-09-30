@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useInvitation } from '../hooks/useInvitation'
@@ -34,7 +34,7 @@ const FALLBACK = { coupleNames: 'Mir & Ella', weddingDate: '2026-12-19' }
 export default function RSVP() {
   const { settings, loading: settingsLoading } = useWeddingSettings()
   const { questions } = useRsvpQuestions()
-  const { status, invitation, error, searchByName, searchByCode, reset } = useInvitation()
+  const { status, invitation, error, searchByName, searchByCode } = useInvitation()
   const [params] = useSearchParams()
   const reduce = useReducedMotion()
 
@@ -74,14 +74,6 @@ export default function RSVP() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
   }, [step, reduce])
-
-  const startOver = useCallback(() => {
-    reset()
-    setForm(EMPTY_RSVP)
-    setSubmitError(null)
-    setResult(null)
-    setStep('search')
-  }, [reset])
 
   const handleConfirm = async () => {
     if (!invitation || submittingRef.current) return
@@ -162,7 +154,7 @@ export default function RSVP() {
 
           {step === 'found' && invitation && (
             <motion.section key="found" {...pageMotion} className="flex flex-1 items-center justify-center">
-              <InvitationFound invitation={invitation} onOpen={() => setStep('opening')} onReset={startOver} />
+              <InvitationFound invitation={invitation} onOpen={() => setStep('opening')} />
             </motion.section>
           )}
 
@@ -194,11 +186,6 @@ export default function RSVP() {
                 config={settings?.rsvpConfig}
                 questions={questions}
               />
-              <p className="mt-8 text-center">
-                <button type="button" onClick={startOver} className="rounded px-3 py-2 text-sm text-muted underline-offset-4 hover:text-ink hover:underline">
-                  Not you? Search again
-                </button>
-              </p>
             </motion.section>
           )}
 
