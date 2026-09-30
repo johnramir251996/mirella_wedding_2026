@@ -67,6 +67,7 @@ export interface Invitation {
   /** Display name of the party's table (from the seating plan). */
   tableNumber: string | null
   tableId: string | null
+  printedAt: string | null
   maxAdditionalGuests: number
   isActive: boolean
   createdAt: string
@@ -95,6 +96,8 @@ export interface RSVPResponse {
   bringingAdditionalGuest: boolean
   messageToCouple: string | null
   mobileNumber: string | null
+  /** Recorded by the couple on the guest's behalf. */
+  recordedByAdmin: boolean
   customAnswers: Record<string, unknown>
   submittedAt: string
   updatedAt: string

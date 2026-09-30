@@ -27,6 +27,7 @@ const AdminLookFeel = lazy(() => import('./pages/AdminLookFeel'))
 const AdminShare = lazy(() => import('./pages/AdminShare'))
 const AdminQuestions = lazy(() => import('./pages/AdminQuestions'))
 const AdminSeating = lazy(() => import('./pages/AdminSeating'))
+const AdminPrintables = lazy(() => import('./pages/AdminPrintables'))
 const FindSeat = lazy(() => import('./pages/FindSeat'))
 
 /*
@@ -68,6 +69,7 @@ export default function App() {
                 <Route path="share" element={<AdminShare />} />
                 <Route path="questions" element={<AdminQuestions />} />
                 <Route path="seating" element={<AdminSeating />} />
+                <Route path="printables" element={<AdminPrintables />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>

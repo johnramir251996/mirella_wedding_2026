@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { ResponsiveTable, type Column } from '../components/ui/ResponsiveTable'
 import { TableSkeleton } from '../components/ui/Skeleton'
 import { ResponseDetailModal } from '../components/admin/ResponseDetailModal'
+import { Badge } from '../components/ui/Badge'
 import { AttendanceBadge } from '../components/admin/StatusBadges'
 import { PageHeader, Panel } from '../components/admin/PageHeader'
 import { FilterTabs, SearchInput } from '../components/admin/FilterTabs'
@@ -104,7 +105,16 @@ export default function AdminResponses() {
 
   const columns: Column<InvitationWithRSVP>[] = [
     { key: 'name', header: 'Invitee', cell: (r) => <span className="font-medium text-ink">{r.inviteeName}</span>, hideOnMobile: true },
-    { key: 'status', header: 'Attendance', cell: (r) => <AttendanceBadge status={r.status} /> },
+    {
+      key: 'status',
+      header: 'Attendance',
+      cell: (r) => (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <AttendanceBadge status={r.status} />
+          {r.response?.recordedByAdmin && <Badge tone="gold">Confirmed by couple</Badge>}
+        </span>
+      ),
+    },
     { key: 'table', header: 'Table', cell: (r) => r.tableNumber || '—' },
     {
       key: 'mobile',

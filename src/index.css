@@ -141,3 +141,23 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Printables: exact-size sheets, one per page. */
+.print-sheet {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  .print-sheet {
+    break-after: page;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}

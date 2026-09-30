@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Copy, Plus, X } from 'lucide-react'
 import type { InvitationInput, InvitationWithRSVP } from '../../types/rsvp'
-import { LIMITS, normalizeName, normalizeSpaces, validateInvitation, type InvitationErrors } from '../../utils/validation'
+import { LIMITS, normalizePhMobile, normalizeName, normalizeSpaces, validateInvitation, type InvitationErrors } from '../../utils/validation'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { cn } from '../ui/cn'
 import { Button } from '../ui/Button'
 import { TextField } from '../ui/FormField'
 import { Modal } from '../ui/Modal'
@@ -9,13 +11,18 @@ import { TablePicker } from './TablePicker'
 import type { SeatingTable } from '../../types/seating'
 import { plannedPerTable } from '../../utils/seatingPeople'
 
+export interface RecordChoice {
+  status: 'attending' | 'declining'
+  mobile: string
+}
+
 interface Props {
   open: boolean
   invitation: InvitationWithRSVP | null // null = create
   saving: boolean
   onClose: () => void
   /** includedGuests = names the couple invites together with the invitee. */
-  onSave: (input: InvitationInput, includedGuests: string[]) => void
+  onSave: (input: InvitationInput, includedGuests: string[], record: RecordChoice | null) => void
   onCopyLink?: (code: string) => void
   tables: SeatingTable[]
   invitations: InvitationWithRSVP[]
@@ -29,11 +36,19 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
   const [errors, setErrors] = useState<InvitationErrors>({})
   const [included, setIncluded] = useState<string[]>([])
   const [includedErrors, setIncludedErrors] = useState<Record<number, string>>({})
+  const [record, setRecord] = useState<'none' | 'attending' | 'declining'>('none')
+  const [contact, setContact] = useState('')
+  const [contactError, setContactError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setErrors({})
     setIncludedErrors({})
+    setRecord('none')
+    setContact('')
+    setContactError(null)
+    setConfirming(false)
     setIncluded(invitation ? invitation.guests.filter((g) => g.addedBy === 'admin').map((g) => g.guestName) : [])
     setValues(
       invitation
@@ -63,8 +78,14 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
     })
     setIncludedErrors(perRow)
 
-    if (Object.keys(found).length || Object.keys(perRow).length) return
-    onSave(values, included.map(normalizeSpaces).filter(Boolean))
+    const badContact = record !== 'none' && contact.trim() && !normalizePhMobile(contact) ? 'Use a PH mobile number like 0917 123 4567, or leave it blank.' : null
+    setContactError(badContact)
+    if (Object.keys(found).length || Object.keys(perRow).length || badContact) return
+    if (record !== 'none') {
+      setConfirming(true)
+      return
+    }
+    onSave(values, included.map(normalizeSpaces).filter(Boolean), null)
   }
 
   return (
@@ -170,6 +191,54 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
             </Button>
           )}
         </fieldset>
+        <fieldset className="rounded-lg border border-line px-4 pb-4 pt-3">
+          <legend className="px-1 text-[0.95rem] font-medium text-ink-soft">Record their response for them</legend>
+          <p className="mb-3 text-sm text-muted">
+            For guests who can’t RSVP online (e.g. elderly relatives). Leave on “No” and they can RSVP on the website as usual.
+            {invitation?.response && (
+              <>
+                {' '}
+                Current response: <strong className="font-medium text-ink">{invitation.response.attendanceStatus === 'attending' ? 'Attending' : 'Not attending'}</strong>
+                {invitation.response.recordedByAdmin ? ' (confirmed by you)' : ' (from their online RSVP)'}.
+              </>
+            )}
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {(
+              [
+                { v: 'none', t: 'No', d: 'They’ll RSVP online' },
+                { v: 'attending', t: 'Attending', d: 'Mark as coming' },
+                { v: 'declining', t: 'Not attending', d: 'Mark as not coming' },
+              ] as const
+            ).map((o) => (
+              <label
+                key={o.v}
+                className={cn(
+                  'cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
+                  record === o.v ? 'border-ink bg-ink/[0.03]' : 'border-line hover:border-champagne',
+                )}
+              >
+                <input type="radio" name="record-rsvp" className="sr-only" checked={record === o.v} onChange={() => setRecord(o.v)} />
+                <span className="block font-medium text-ink">{o.t}</span>
+                <span className="block text-xs text-muted">{o.d}</span>
+              </label>
+            ))}
+          </div>
+          {record !== 'none' && (
+            <TextField
+              className="mt-3"
+              label="Contact number (optional)"
+              type="tel"
+              inputMode="tel"
+              value={contact}
+              onChange={setContact}
+              maxLength={20}
+              placeholder="0917 123 4567"
+              hint="E.g. a son or daughter you can reach about the wedding."
+              error={contactError ?? undefined}
+            />
+          )}
+        </fieldset>
         <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-line bg-ivory/60 px-4 py-3.5">
           <span>
             <span className="block text-[0.95rem] font-medium text-ink-soft">Active</span>
@@ -197,6 +266,39 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
           </div>
         )}
       </form>
+      <ConfirmDialog
+        open={confirming}
+        tone="admin"
+        title={`Record “${record === 'attending' ? 'Attending' : 'Not attending'}” for ${normalizeSpaces(values.inviteeName) || 'this guest'}?`}
+        message={
+          <span className="block space-y-2">
+            {record === 'attending' ? (
+              <span className="block">
+                This saves an <strong>attending</strong> RSVP on their behalf
+                {included.filter((n) => n.trim()).length > 0 && <> together with their {included.filter((n) => n.trim()).length} included {included.filter((n) => n.trim()).length === 1 ? 'guest' : 'guests'}</>}.
+                They’ll count in your headcount, can be seated, and are tagged <strong>“Confirmed by couple”</strong>. Food, transport and other answers stay
+                blank.
+              </span>
+            ) : (
+              <span className="block">
+                This saves a <strong>not attending</strong> RSVP on their behalf. If they had a seat, it will be freed.
+              </span>
+            )}
+            {invitation?.response && !invitation.response.recordedByAdmin && (
+              <span className="block font-medium text-rose">This replaces the answers they already gave online.</span>
+            )}
+            <span className="block text-muted">To undo, delete the response in Responses. If they later RSVP online, their answers replace this.</span>
+          </span>
+        }
+        confirmLabel="Yes, record it"
+        loading={saving}
+        loadingText="Saving…"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false)
+          onSave(values, included.map(normalizeSpaces).filter(Boolean), { status: record as RecordChoice['status'], mobile: contact })
+        }}
+      />
     </Modal>
   )
 }

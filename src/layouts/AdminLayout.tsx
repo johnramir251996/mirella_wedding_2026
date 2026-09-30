@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Armchair, ExternalLink, Heart, ListChecks, Images, LayoutDashboard, Palette, LogOut, Mail, Menu, MessageSquareHeart, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
+import { Armchair, ExternalLink, Heart, ListChecks, Images, LayoutDashboard, Palette, LogOut, Mail, Menu, MessageSquareHeart, Printer, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
@@ -21,6 +21,7 @@ const NAV = [
   { to: '/admin/seating', label: 'Seating', icon: Armchair },
   { to: '/admin/entourage', label: 'Entourage', icon: Users },
   { to: '/admin/share', label: 'Share & QR', icon: QrCode },
+  { to: '/admin/printables', label: 'Printables', icon: Printer },
   { to: '/admin/look', label: 'Look & Feel', icon: Palette },
   { to: '/admin/settings', label: 'Website Settings', icon: Settings },
 ]
@@ -174,7 +175,7 @@ export default function AdminLayout() {
       </AnimatePresence>
 
       <main className="px-4 pb-16 pt-6 sm:px-6 lg:ml-64 lg:px-10 lg:pt-10 print:m-0 print:p-0">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-6xl print:max-w-none">
           <Outlet context={context} />
         </div>
       </main>

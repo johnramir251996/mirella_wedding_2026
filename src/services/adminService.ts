@@ -58,6 +58,7 @@ const mapInvitation = (r: Tables<'invitations'>): Invitation => ({
   invitationCode: r.invitation_code,
   tableNumber: r.table_number,
   tableId: r.table_id ?? null,
+  printedAt: r.printed_at ?? null,
   maxAdditionalGuests: r.max_additional_guests,
   isActive: r.is_active,
   createdAt: r.created_at,
@@ -79,6 +80,7 @@ const mapResponse = (r: Tables<'rsvp_responses'>): RSVPResponse => ({
   bringingAdditionalGuest: r.bringing_additional_guest,
   messageToCouple: r.message_to_couple ?? null,
   mobileNumber: r.mobile_number ?? null,
+  recordedByAdmin: r.recorded_by_admin === true,
   customAnswers: r.custom_answers && typeof r.custom_answers === 'object' && !Array.isArray(r.custom_answers) ? (r.custom_answers as Record<string, unknown>) : {},
   submittedAt: r.submitted_at,
   updatedAt: r.updated_at,
@@ -235,6 +237,30 @@ export async function setIncludedGuests(invitationId: string, names: string[]): 
     if ((error.message ?? '').includes('GUEST_NAME_TOO_LONG')) throw new FriendlyError('Guest names must be 150 characters or fewer.')
     if ((error.message ?? '').includes('TOO_MANY_INCLUDED_GUESTS')) throw new FriendlyError('An invitation can include at most 20 guests.')
     throw new FriendlyError('The invitation was saved, but its included guests could not be updated. Please try again.')
+  }
+}
+
+/** Records attending / not attending on a guest's behalf (e.g. elderly guests). */
+export async function recordRsvpForGuest(invitationId: string, status: 'attending' | 'declining', mobile: string): Promise<void> {
+  const { error } = await supabase.rpc('admin_record_rsvp', {
+    p_invitation_id: invitationId,
+    p_status: status,
+    p_mobile_number: mobile.trim() || null,
+  })
+  if (error) {
+    logError('recordRsvpForGuest', error)
+    if ((error.message ?? '').includes('mobile_number')) throw new FriendlyError('The invitation was saved, but the contact number looks wrong. Use a PH mobile number like 0917 123 4567.')
+    throw new FriendlyError('The invitation was saved, but the response could not be recorded. Please try again.')
+  }
+}
+
+/** Remembers when paper invitations were printed. */
+export async function markInvitationsPrinted(ids: string[]): Promise<void> {
+  if (!ids.length) return
+  const { error } = await supabase.from('invitations').update({ printed_at: new Date().toISOString() }).in('id', ids)
+  if (error) {
+    logError('markInvitationsPrinted', error)
+    throw new FriendlyError('Could not mark the invitations as printed. Please try again.')
   }
 }
 

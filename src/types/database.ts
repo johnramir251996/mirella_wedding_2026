@@ -289,6 +289,7 @@ export type Database = {
           invitee_name: string
           search_name: string
           invitation_code: string
+          printed_at: string | null
           table_number: string | null
           table_id: string | null
           max_additional_guests: number
@@ -300,6 +301,7 @@ export type Database = {
           id?: string
           invitee_name: string
           invitation_code?: string
+          printed_at?: string | null
           table_number?: string | null
           table_id?: string | null
           max_additional_guests?: number
@@ -311,6 +313,7 @@ export type Database = {
           id?: string
           invitee_name?: string
           invitation_code?: string
+          printed_at?: string | null
           table_number?: string | null
           table_id?: string | null
           max_additional_guests?: number
@@ -336,6 +339,7 @@ export type Database = {
           bringing_additional_guest: boolean
           message_to_couple: string | null
           mobile_number: string | null
+          recorded_by_admin: boolean
           custom_answers: Json
           submitted_at: string
           updated_at: string
@@ -355,6 +359,7 @@ export type Database = {
           bringing_additional_guest?: boolean
           message_to_couple?: string | null
           mobile_number?: string | null
+          recorded_by_admin?: boolean
           custom_answers?: Json
           submitted_at?: string
           updated_at?: string
@@ -374,6 +379,7 @@ export type Database = {
           bringing_additional_guest?: boolean
           message_to_couple?: string | null
           mobile_number?: string | null
+          recorded_by_admin?: boolean
           custom_answers?: Json
           submitted_at?: string
           updated_at?: string
@@ -694,6 +700,10 @@ export type Database = {
       get_public_gift: {
         Args: Record<PropertyKey, never>
         Returns: { title: string | null; message: string | null; qr_image_url: string | null }[]
+      }
+      admin_record_rsvp: {
+        Args: { p_invitation_id: string; p_status: string; p_mobile_number?: string | null }
+        Returns: string
       }
       get_invitation_table: {
         Args: { p_invitation_id: string }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
-import { createInvitation, deleteInvitation, setIncludedGuests, updateInvitation } from '../services/adminService'
+import { createInvitation, deleteInvitation, recordRsvpForGuest, setIncludedGuests, updateInvitation } from '../services/adminService'
 import type { InvitationInput, InvitationWithRSVP } from '../types/rsvp'
 import { toFriendlyMessage } from '../utils/errors'
 import { formatShortDate } from '../utils/formatting'
@@ -14,7 +14,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { ResponsiveTable, type Column } from '../components/ui/ResponsiveTable'
 import { TableSkeleton } from '../components/ui/Skeleton'
 import type { SeatingTable } from '../types/seating'
-import { InvitationFormModal } from '../components/admin/InvitationFormModal'
+import { InvitationFormModal, type RecordChoice } from '../components/admin/InvitationFormModal'
 import { ResponseDetailModal } from '../components/admin/ResponseDetailModal'
 import { AttendanceBadge } from '../components/admin/StatusBadges'
 import { PageHeader, Panel } from '../components/admin/PageHeader'
@@ -55,7 +55,17 @@ export default function AdminInvitations() {
     setFormOpen(true)
   }
 
-  const save = async (input: InvitationInput, included: string[]) => {
+  const tryRecord = async (id: string, record: RecordChoice) => {
+    try {
+      await recordRsvpForGuest(id, record.status, record.mobile)
+      return true
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+      return false
+    }
+  }
+
+  const save = async (input: InvitationInput, included: string[], record: RecordChoice | null) => {
     setSaving(true)
     try {
       if (editing) {
@@ -63,11 +73,13 @@ export default function AdminInvitations() {
         const before = includedGuestNames(editing)
         const changed = before.length !== included.length || before.some((n, i) => n !== included[i])
         if (changed) await setIncludedGuests(editing.id, included)
-        toast.success('Invitation updated.')
+        const ok = record ? await tryRecord(editing.id, record) : true
+        if (ok) toast.success(record ? 'Invitation updated and response recorded.' : 'Invitation updated.')
       } else {
         const created = await createInvitation(input)
         if (included.length) await setIncludedGuests(created.id, included)
-        toast.success('Invitation added.')
+        const ok = record ? await tryRecord(created.id, record) : true
+        if (ok) toast.success(record ? 'Invitation added and response recorded.' : 'Invitation added.')
       }
       setFormOpen(false)
       await reload()

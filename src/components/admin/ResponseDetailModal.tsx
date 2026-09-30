@@ -11,6 +11,7 @@ import {
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { AttendanceBadge, GuestStatusBadge } from './StatusBadges'
+import { Badge } from '../ui/Badge'
 import { includedGuests, requestedGuests } from '../../utils/guests'
 import { formatPhMobile } from '../../utils/validation'
 import { useAllQuestions } from '../../hooks/useAllQuestions'
@@ -39,7 +40,10 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
       {invitation && (
         <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
           <Item label="RSVP">
-            <AttendanceBadge status={invitation.status} />
+            <span className="inline-flex flex-wrap items-center gap-1.5">
+              <AttendanceBadge status={invitation.status} />
+              {r?.recordedByAdmin && <Badge tone="gold">Confirmed by couple</Badge>}
+            </span>
           </Item>
           <Item label="Allowed guest requests">{invitation.maxAdditionalGuests}</Item>
           <Item label="Included by the couple" wide>
