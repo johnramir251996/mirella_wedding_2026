@@ -13,4 +13,5 @@ export const EMPTY_RSVP: RSVPFormState = {
   bringingGuest: null,
   guestNames: [],
   messageToCouple: '',
+  mobileNumber: '',
 }

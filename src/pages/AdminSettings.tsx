@@ -13,6 +13,8 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { cn } from '../components/ui/cn'
 import { SectionIcon } from '../components/wedding/SectionIcon'
 import { PageHeader } from '../components/admin/PageHeader'
+import { RsvpSettingsCard } from '../components/admin/RsvpSettingsCard'
+import { GiftSettingsCard } from '../components/admin/GiftSettingsCard'
 
 type FieldErrors = Partial<Record<'coupleNames' | 'weddingDate' | 'heroImageUrl' | 'churchMapUrl' | 'receptionMapUrl' | 'sections', string>>
 
@@ -164,6 +166,7 @@ export default function AdminSettings() {
   }
 
   return (
+    <>
     <form onSubmit={save} noValidate>
       <PageHeader
         title="Website Settings"
@@ -372,6 +375,12 @@ export default function AdminSettings() {
         }}
       />
     </form>
+
+    <div className="mt-6 space-y-6">
+      <RsvpSettingsCard />
+      <GiftSettingsCard />
+    </div>
+    </>
   )
 }
 

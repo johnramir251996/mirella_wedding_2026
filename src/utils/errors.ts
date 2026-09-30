@@ -13,6 +13,14 @@ export class FriendlyError extends Error {
   }
 }
 
+/** Thrown when the RSVP deadline has passed or the couple closed RSVPs. */
+export class RsvpClosedError extends FriendlyError {
+  constructor() {
+    super('RSVPs are now closed.')
+    this.name = 'RsvpClosedError'
+  }
+}
+
 /** Returns a message that is safe to display. Raw database errors are never shown. */
 export function toFriendlyMessage(error: unknown, fallback: string = FRIENDLY_ERRORS.generic): string {
   if (error instanceof FriendlyError) return error.message

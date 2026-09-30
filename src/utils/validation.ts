@@ -18,6 +18,27 @@ export function normalizeSpaces(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * Philippine mobile number → "+639XXXXXXXXX", or null when invalid.
+ * Same rules as public.normalize_ph_mobile() in the database.
+ */
+export function normalizePhMobile(value: string): string | null {
+  const d = value.replace(/[^0-9]/g, '')
+  if (/^639\d{9}$/.test(d)) return `+${d}`
+  if (/^09\d{9}$/.test(d)) return `+63${d.slice(1)}`
+  if (/^9\d{9}$/.test(d)) return `+63${d}`
+  return null
+}
+
+/** "+639171234567" → "0917 123 4567" */
+export function formatPhMobile(value: string | null | undefined): string {
+  if (!value) return '—'
+  const n = normalizePhMobile(value)
+  if (!n) return value
+  const local = `0${n.slice(3)}`
+  return `${local.slice(0, 4)} ${local.slice(4, 7)} ${local.slice(7)}`
+}
+
 /** Same normalisation as public.normalize_name() in the database. */
 export function normalizeName(value: string): string {
   return normalizeSpaces(value).toLowerCase()
@@ -36,7 +57,8 @@ export type RSVPErrors = Partial<
     | 'accessibilityNeeds'
     | 'bringingGuest'
     | 'guestNames'
-    | 'messageToCouple',
+    | 'messageToCouple'
+    | 'mobileNumber',
     string
   >
 > & { guestNameAt?: Record<number, string> }
@@ -48,6 +70,8 @@ export function validateRSVP(form: RSVPFormState, maxAdditionalGuests: number): 
     errors.attendance = 'Please let us know if you can join us.'
     return errors
   }
+  if (!form.mobileNumber.trim()) errors.mobileNumber = 'Please enter your mobile number.'
+  else if (!normalizePhMobile(form.mobileNumber)) errors.mobileNumber = 'Please enter a valid Philippine mobile number, e.g. 0917 123 4567.'
   if (form.attendance === 'declining') return errors
 
   if (!form.hasTransportation) {
@@ -129,6 +153,7 @@ export function toSubmission(invitationId: string, form: RSVPFormState, maxAddit
       accessibilityNeeds: null,
       additionalGuests: [],
       messageToCouple: null,
+      mobileNumber: normalizePhMobile(form.mobileNumber) ?? '',
     }
   }
   const ownVehicle = form.hasTransportation === 'yes'
@@ -150,6 +175,7 @@ export function toSubmission(invitationId: string, form: RSVPFormState, maxAddit
         ? form.guestNames.map(normalizeSpaces).filter(Boolean).slice(0, maxAdditionalGuests)
         : [],
     messageToCouple: form.messageToCouple.trim() ? form.messageToCouple.trim() : null,
+    mobileNumber: normalizePhMobile(form.mobileNumber) ?? '',
   }
 }
 

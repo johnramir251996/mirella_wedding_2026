@@ -1,6 +1,17 @@
 import { supabase, WEDDING_ASSETS_BUCKET } from '../lib/supabase'
 import type { Json, Tables } from '../types/database'
-import type { InfoSection, OutfitSectionSettings, SectionIconName, WeddingSettings, WeddingSettingsInput } from '../types/wedding'
+import type {
+  EntourageGroup,
+  EntourageSettings,
+  InfoSection,
+  MotifColor,
+  MotifSettings,
+  OutfitSectionSettings,
+  RsvpSettings,
+  SectionIconName,
+  WeddingSettings,
+  WeddingSettingsInput,
+} from '../types/wedding'
 import { FriendlyError, logError } from '../utils/errors'
 
 export const SECTION_ICONS: { value: SectionIconName; label: string }[] = [
@@ -49,6 +60,43 @@ function parseSections(value: Json): InfoSection[] {
   })
 }
 
+const str = (v: Json | undefined): string => (typeof v === 'string' ? v : '')
+const obj = (v: Json): Record<string, Json | undefined> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, Json | undefined>) : null)
+
+function parseEntourage(value: Json): EntourageGroup[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((g, gi) => {
+    const o = obj(g)
+    if (!o) return []
+    const members = Array.isArray(o.members)
+      ? o.members.flatMap((m, mi) => {
+          const mo = obj(m as Json)
+          if (!mo) return []
+          return [{ id: str(mo.id) || `m-${gi}-${mi}`, name: str(mo.name), role: str(mo.role) }]
+        })
+      : []
+    return [{ id: str(o.id) || `g-${gi}`, title: str(o.title), layout: o.layout === 'list' ? ('list' as const) : ('pairs' as const), members }]
+  })
+}
+
+function parseMotif(value: Json): MotifColor[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((c, i) => {
+    const o = obj(c)
+    if (!o) return []
+    const hex = str(o.hex)
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return []
+    return [{ id: str(o.id) || `c-${i}`, name: str(o.name), hex }]
+  })
+}
+
+/** True while guests may still RSVP (switch on and deadline not passed). */
+export function isRsvpOpen(s: Pick<WeddingSettings, 'rsvpOpen' | 'rsvpDeadline'>, now = Date.now()): boolean {
+  if (!s.rsvpOpen) return false
+  if (!s.rsvpDeadline) return true
+  return now < new Date(s.rsvpDeadline).getTime()
+}
+
 function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
   return {
     id: row.id,
@@ -67,6 +115,15 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     outfitTitle: row.outfit_title ?? 'Attire Inspiration',
     outfitSubtitle: row.outfit_subtitle ?? '',
     outfitSectionVisible: row.outfit_section_visible !== false,
+    rsvpDeadline: row.rsvp_deadline ?? null,
+    rsvpOpen: row.rsvp_open !== false,
+    rsvpClosedMessage: row.rsvp_closed_message ?? '',
+    entourage: parseEntourage(row.entourage),
+    entourageVisible: row.entourage_visible !== false,
+    entourageTitle: row.entourage_title ?? 'The Entourage',
+    entourageSubtitle: row.entourage_subtitle ?? '',
+    motifTitle: row.motif_title ?? 'Our Motif',
+    motifColors: parseMotif(row.motif_colors),
     updatedAt: row.updated_at,
   }
 }
@@ -116,6 +173,63 @@ export async function updateWeddingSettings(id: string, input: WeddingSettingsIn
     throw new FriendlyError('We couldn’t save the website settings. Please try again.')
   }
   return fromRow(data as Tables<'wedding_settings'>)
+}
+
+async function updatePartial(id: string, patch: Record<string, unknown>, context: string, message: string): Promise<WeddingSettings> {
+  const { data, error } = await supabase.from('wedding_settings').update(patch).eq('id', id).select('*').single()
+  if (error || !data) {
+    logError(context, error)
+    throw new FriendlyError(message)
+  }
+  return fromRow(data as Tables<'wedding_settings'>)
+}
+
+/** Admin: RSVP deadline / open switch / closed message. */
+export function updateRsvpSettings(id: string, input: RsvpSettings): Promise<WeddingSettings> {
+  return updatePartial(
+    id,
+    {
+      rsvp_deadline: input.rsvpDeadline,
+      rsvp_open: input.rsvpOpen,
+      rsvp_closed_message: emptyToNull(input.rsvpClosedMessage),
+    },
+    'updateRsvpSettings',
+    'We couldn’t save the RSVP settings. Please try again.',
+  )
+}
+
+/** Admin: the entourage / processional list. */
+export function updateEntourage(id: string, input: EntourageSettings): Promise<WeddingSettings> {
+  const entourage = input.entourage.map((g) => ({
+    id: g.id,
+    title: g.title.trim(),
+    layout: g.layout,
+    members: g.members.filter((m) => m.name.trim()).map((m) => ({ id: m.id, name: m.name.trim(), role: m.role.trim() })),
+  }))
+  return updatePartial(
+    id,
+    {
+      entourage,
+      entourage_visible: input.entourageVisible,
+      entourage_title: emptyToNull(input.entourageTitle),
+      entourage_subtitle: emptyToNull(input.entourageSubtitle),
+    },
+    'updateEntourage',
+    'We couldn’t save the entourage. Please try again.',
+  )
+}
+
+/** Admin: dress-code motif colours. */
+export function updateMotif(id: string, input: MotifSettings): Promise<WeddingSettings> {
+  return updatePartial(
+    id,
+    {
+      motif_title: emptyToNull(input.motifTitle),
+      motif_colors: input.motifColors.map((c) => ({ id: c.id, name: c.name.trim(), hex: c.hex.toUpperCase() })),
+    },
+    'updateMotif',
+    'We couldn’t save the motif colours. Please try again.',
+  )
 }
 
 /** Admin: saves the title/subtitle/visibility of the outfit inspiration section. */

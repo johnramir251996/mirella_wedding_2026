@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ExternalLink, Heart, LayoutDashboard, LogOut, Mail, Menu, MessageSquareHeart, Settings, Shirt, UserPlus, X } from 'lucide-react'
+import { ExternalLink, Heart, LayoutDashboard, LogOut, Mail, Menu, MessageSquareHeart, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
@@ -16,6 +16,8 @@ const NAV = [
   { to: '/admin/responses', label: 'Responses', icon: MessageSquareHeart },
   { to: '/admin/guests', label: 'Additional Guests', icon: UserPlus },
   { to: '/admin/outfits', label: 'Outfit Gallery', icon: Shirt },
+  { to: '/admin/entourage', label: 'Entourage', icon: Users },
+  { to: '/admin/share', label: 'Share & QR', icon: QrCode },
   { to: '/admin/settings', label: 'Website Settings', icon: Settings },
 ]
 

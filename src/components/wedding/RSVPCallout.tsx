@@ -1,8 +1,16 @@
 import { Link } from 'react-router-dom'
-import { formatWeddingDate } from '../../utils/formatting'
+import { CalendarClock } from 'lucide-react'
+import { formatDeadlineDate, formatWeddingDate } from '../../utils/formatting'
 import { Reveal } from './Reveal'
 
-export function RSVPCallout({ weddingDate }: { weddingDate: string }) {
+interface Props {
+  weddingDate: string
+  open: boolean
+  deadline: string | null
+  closedMessage: string
+}
+
+export function RSVPCallout({ weddingDate, open, deadline, closedMessage }: Props) {
   return (
     <section aria-labelledby="rsvp-heading" className="px-5 pb-28 pt-20 sm:px-8">
       <Reveal>
@@ -12,16 +20,32 @@ export function RSVPCallout({ weddingDate }: { weddingDate: string }) {
             We would be honoured
             <br className="hidden sm:block" /> by your presence
           </h2>
-          <p className="mx-auto mt-5 max-w-md text-ink-soft">
-            Please let us know if you can join us on <span className="whitespace-nowrap">{formatWeddingDate(weddingDate)}</span>. It only takes a
-            minute.
-          </p>
-          <Link
-            to="/rsvp"
-            className="relative z-10 mt-10 inline-flex min-h-16 min-w-56 items-center justify-center rounded-full bg-ink px-12 text-sm font-medium uppercase tracking-[0.4em] text-ivory shadow-card transition duration-300 hover:-translate-y-0.5 hover:bg-ink-soft hover:shadow-lift"
-          >
-            RSVP
-          </Link>
+          {open ? (
+            <>
+              <p className="mx-auto mt-5 max-w-md text-ink-soft">
+                Please let us know if you can join us on <span className="whitespace-nowrap">{formatWeddingDate(weddingDate)}</span>. It only takes a
+                minute.
+              </p>
+              {deadline && (
+                <p className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-champagne/50 bg-paper px-4 py-2 text-sm text-ink-soft">
+                  <CalendarClock aria-hidden="true" className="size-4 text-gold" strokeWidth={1.5} />
+                  Kindly RSVP by <strong className="font-medium text-ink">{formatDeadlineDate(deadline)}</strong>
+                </p>
+              )}
+              <div>
+                <Link
+                  to="/rsvp"
+                  className="relative z-10 mt-10 inline-flex min-h-16 min-w-56 items-center justify-center rounded-full bg-ink px-12 text-sm font-medium uppercase tracking-[0.4em] text-ivory shadow-card transition duration-300 hover:-translate-y-0.5 hover:bg-ink-soft hover:shadow-lift"
+                >
+                  RSVP
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p className="mx-auto mt-6 max-w-md whitespace-pre-line font-serif text-xl italic leading-relaxed text-ink-soft">
+              {closedMessage || 'Our RSVP list is now closed. Thank you so much!'}
+            </p>
+          )}
         </div>
       </Reveal>
     </section>

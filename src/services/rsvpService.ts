@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { AttendanceStatus, RSVPSubmission } from '../types/rsvp'
-import { FRIENDLY_ERRORS, FriendlyError, logError } from '../utils/errors'
+import { FRIENDLY_ERRORS, FriendlyError, RsvpClosedError, logError } from '../utils/errors'
 
 /**
  * Saves (or updates) the guest's RSVP through the `submit_rsvp` RPC.
@@ -21,11 +21,13 @@ export async function submitRSVP(payload: RSVPSubmission): Promise<{ rsvpId: str
     p_accessibility_needs: payload.accessibilityNeeds,
     p_additional_guests: payload.additionalGuests,
     p_message_to_couple: payload.messageToCouple,
+    p_mobile_number: payload.mobileNumber,
   })
 
   if (error) {
     logError('submitRSVP', error)
     const msg = error.message ?? ''
+    if (msg.includes('RSVP_CLOSED')) throw new RsvpClosedError()
     if (msg.includes('RSVP_INVITATION_NOT_FOUND')) throw new FriendlyError(FRIENDLY_ERRORS.unavailable)
     if (msg.includes('RSVP_INVALID')) throw new FriendlyError(FRIENDLY_ERRORS.invalid)
     throw new FriendlyError(FRIENDLY_ERRORS.generic)

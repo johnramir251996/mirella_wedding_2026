@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarHeart, CheckCircle2, Clock, Download, Mail, RefreshCw, UserPlus, Users, XCircle } from 'lucide-react'
+import { CalendarClock, CalendarHeart, CheckCircle2, Clock, Download, Mail, RefreshCw, UserPlus, Users, XCircle } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
 import { computeAnalytics } from '../services/analyticsService'
 import { listRecentActivity } from '../services/adminService'
 import type { ActivityLog } from '../types/rsvp'
 import { buildRSVPCsv, downloadCsv } from '../utils/csvExport'
-import { formatDateTime } from '../utils/formatting'
+import { formatDateTime, formatDeadlineDateTime } from '../utils/formatting'
+import { Link } from 'react-router-dom'
+import { useWeddingSettings } from '../hooks/useWeddingSettings'
+import { isRsvpOpen } from '../services/settingsService'
+import { cn } from '../components/ui/cn'
 import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/Skeleton'
 import { StatCard } from '../components/admin/StatCard'
@@ -20,6 +24,7 @@ const ACTION_LABEL: Record<string, string> = {
   rsvp_deleted: 'RSVP deleted',
   guest_status_changed: 'Guest status changed',
   settings_updated: 'Website settings changed',
+  gift_settings_updated: 'Gift settings changed',
   included_guests_updated: 'Included guests updated',
   outfit_image_added: 'Outfit image added',
   outfit_image_removed: 'Outfit image removed',
@@ -44,6 +49,8 @@ export default function AdminDashboard() {
     }
   }, [data])
 
+  const { settings } = useWeddingSettings()
+  const rsvpOpen = settings ? isRsvpOpen(settings) : true
   const stats = useMemo(() => (data ? computeAnalytics(data.invitations, data.guests) : null), [data])
   const messages = useMemo(
     () =>
@@ -77,6 +84,26 @@ export default function AdminDashboard() {
           </>
         }
       />
+
+      {settings && (
+        <Link
+          to="/admin/settings"
+          className={cn(
+            'mb-6 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition hover:shadow-soft',
+            rsvpOpen ? 'border-sage/30 bg-sage/5 text-ink-soft' : 'border-rose/30 bg-rose/5 text-rose',
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <CalendarClock aria-hidden="true" className="size-4 shrink-0" />
+            {rsvpOpen
+              ? settings.rsvpDeadline
+                ? `RSVPs are open until ${formatDeadlineDateTime(settings.rsvpDeadline)} (PH time).`
+                : 'RSVPs are open — no deadline set.'
+              : 'RSVPs are closed. Guests can no longer respond.'}
+          </span>
+          <span className="shrink-0 text-xs font-medium uppercase tracking-[0.14em]">{rsvpOpen ? 'Set deadline' : 'Reopen'}</span>
+        </Link>
+      )}
 
       {error && (
         <p role="alert" className="mb-6 rounded-lg border border-rose/30 bg-rose/5 px-4 py-3 text-sm text-rose">

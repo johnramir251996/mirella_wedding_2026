@@ -75,6 +75,7 @@ const mapResponse = (r: Tables<'rsvp_responses'>): RSVPResponse => ({
   accessibilityNeeds: r.accessibility_needs,
   bringingAdditionalGuest: r.bringing_additional_guest,
   messageToCouple: r.message_to_couple ?? null,
+  mobileNumber: r.mobile_number ?? null,
   submittedAt: r.submitted_at,
   updatedAt: r.updated_at,
 })

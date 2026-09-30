@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
-import type { OutfitGender, OutfitImage } from '../../types/wedding'
+import type { MotifColor, OutfitGender, OutfitImage } from '../../types/wedding'
+import { MotifSwatches } from './MotifSwatches'
 import { cn } from '../ui/cn'
 import { Ornament } from '../ui/Ornament'
 import { Reveal } from './Reveal'
@@ -10,6 +11,8 @@ interface Props {
   title: string
   subtitle: string
   images: OutfitImage[]
+  motifTitle?: string
+  motifColors?: MotifColor[]
 }
 
 const TABS: { value: OutfitGender; label: string }[] = [
@@ -18,7 +21,7 @@ const TABS: { value: OutfitGender; label: string }[] = [
 ]
 
 /** "Attire inspiration" — admin-managed outfit images in a swipeable carousel. */
-export function OutfitGallery({ title, subtitle, images }: Props) {
+export function OutfitGallery({ title, subtitle, images, motifTitle = '', motifColors = [] }: Props) {
   const reduce = useReducedMotion()
   const groups = useMemo(
     () => ({
@@ -45,6 +48,12 @@ export function OutfitGallery({ title, subtitle, images }: Props) {
           {subtitle && <p className="mx-auto mt-4 max-w-lg text-ink-soft">{subtitle}</p>}
           <Ornament className="mt-8" />
         </Reveal>
+
+        {motifColors.length > 0 && (
+          <Reveal>
+            <MotifSwatches title={motifTitle} colors={motifColors} className="mt-10" />
+          </Reveal>
+        )}
 
         {available.length > 1 && (
           <div role="tablist" aria-label="Outfit ideas" className="mx-auto mt-10 flex w-fit rounded-full border border-line bg-paper p-1 shadow-soft">

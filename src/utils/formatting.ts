@@ -121,3 +121,35 @@ export function monogram(names: string, separator = ' & '): string {
   if (parts.length === 2) return `${parts[0][0]}${separator}${parts[1][0]}`
   return names.trim().slice(0, 1)
 }
+
+const MANILA = 'Asia/Manila'
+
+/** "Sunday, November 15, 2026" in Philippine time. */
+export function formatDeadlineDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { timeZone: MANILA, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+/** "November 15, 2026, 11:59 PM" in Philippine time. */
+export function formatDeadlineDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', { timeZone: MANILA, month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+/** ISO instant → { date: 'YYYY-MM-DD', time: 'HH:MM' } as seen in Manila. */
+export function toManilaParts(iso: string): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MANILA,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(iso))
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00'
+  return { date: `${get('year')}-${get('month')}-${get('day')}`, time: `${get('hour')}:${get('minute')}` }
+}
+
+/** Manila date + time → ISO instant (Philippines has no daylight saving: always +08:00). */
+export function fromManilaParts(date: string, time: string): string {
+  return new Date(`${date}T${time || '23:59'}:00+08:00`).toISOString()
+}

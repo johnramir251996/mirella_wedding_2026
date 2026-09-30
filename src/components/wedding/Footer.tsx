@@ -1,6 +1,7 @@
 import { formatWeddingDate } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from './CoupleNames'
+import { ShareLink } from './ShareLink'
 
 export function Footer({ coupleNames, weddingDate, closingMessage }: { coupleNames: string; weddingDate: string; closingMessage?: string }) {
   return (
@@ -11,6 +12,7 @@ export function Footer({ coupleNames, weddingDate, closingMessage }: { coupleNam
       <p className="mt-3 text-xs uppercase tracking-[0.36em] text-muted">{formatWeddingDate(weddingDate)}</p>
       <Ornament className="mt-8" />
       {closingMessage && <p className="mx-auto mt-8 max-w-md font-serif text-lg italic text-ink-soft">{closingMessage}</p>}
+      <ShareLink coupleNames={coupleNames} />
     </footer>
   )
 }

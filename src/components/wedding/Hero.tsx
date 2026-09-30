@@ -6,6 +6,7 @@ import type { WeddingSettings } from '../../types/wedding'
 import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from './CoupleNames'
+import { isRsvpOpen } from '../../services/settingsService'
 
 export function Hero({ settings }: { settings: WeddingSettings }) {
   const reduce = useReducedMotion()
@@ -48,12 +49,14 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
           >
             Details
           </button>
-          <Link
-            to="/rsvp"
-            className="rounded-full border border-ivory/50 px-5 py-2.5 text-ivory transition hover:border-ivory hover:bg-ivory/10"
-          >
-            RSVP
-          </Link>
+          {isRsvpOpen(settings) && (
+            <Link
+              to="/rsvp"
+              className="rounded-full border border-ivory/50 px-5 py-2.5 text-ivory transition hover:border-ivory hover:bg-ivory/10"
+            >
+              RSVP
+            </Link>
+          )}
         </div>
       </nav>
 

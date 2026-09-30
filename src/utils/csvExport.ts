@@ -7,11 +7,13 @@ import {
   vehicleLabel,
 } from './formatting'
 import { includedGuests, requestedGuests } from './guests'
+import { formatPhMobile } from './validation'
 
 const HEADERS = [
   'Invitee Name',
   'Table',
   'Attendance',
+  'Mobile Number',
   'Transportation',
   'Needs Transportation',
   'Vehicle Type',
@@ -56,6 +58,7 @@ export function buildRSVPCsv(invitations: InvitationWithRSVP[]): string {
         inv.inviteeName,
         inv.tableNumber ?? '',
         attendanceLabel(inv.status),
+        r?.mobileNumber ? formatPhMobile(r.mobileNumber) : '',
         attending ? (r?.hasTransportation ? 'Own vehicle' : 'No own vehicle') : '',
         attending && r?.hasTransportation === false ? needsTransportLabel(r.needsTransportation) : '',
         attending && r?.hasTransportation ? vehicleLabel(r.vehicleType) : '',

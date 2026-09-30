@@ -15,6 +15,7 @@ import { Skeleton } from '../components/ui/Skeleton'
 import { Spinner } from '../components/ui/Spinner'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
+import { MotifCard } from '../components/admin/MotifCard'
 
 const GROUPS: { gender: OutfitGender; title: string }[] = [
   { gender: 'male', title: 'For Him' },
@@ -118,7 +119,7 @@ export default function AdminOutfits() {
     <>
       <PageHeader
         title="Outfit Gallery"
-        description="Attire inspiration shown on the home page, below the wedding details."
+        description="Dress code motif and attire inspiration shown on the home page, below the wedding details."
       />
 
       {section ? (
@@ -156,6 +157,8 @@ export default function AdminOutfits() {
       ) : (
         <Skeleton className="mb-6 h-40" />
       )}
+
+      <MotifCard />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {GROUPS.map(({ gender, title }) => {

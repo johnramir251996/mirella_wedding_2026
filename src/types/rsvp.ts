@@ -33,6 +33,7 @@ export interface RSVPFormState {
   bringingGuest: YesNo | null
   guestNames: string[]
   messageToCouple: string
+  mobileNumber: string
 }
 
 /** Clean payload that is sent to the submit_rsvp RPC. */
@@ -49,6 +50,8 @@ export interface RSVPSubmission {
   accessibilityNeeds: string | null
   additionalGuests: string[]
   messageToCouple: string | null
+  /** Normalised +639XXXXXXXXX. */
+  mobileNumber: string
 }
 
 // ----- Admin-side shapes ------------------------------------------------------
@@ -85,6 +88,7 @@ export interface RSVPResponse {
   accessibilityNeeds: string | null
   bringingAdditionalGuest: boolean
   messageToCouple: string | null
+  mobileNumber: string | null
   submittedAt: string
   updatedAt: string
 }

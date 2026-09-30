@@ -12,6 +12,7 @@ import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
 import { AttendanceBadge, GuestStatusBadge } from './StatusBadges'
 import { includedGuests, requestedGuests } from '../../utils/guests'
+import { formatPhMobile } from '../../utils/validation'
 
 export function ResponseDetailModal({ invitation, onClose }: { invitation: InvitationWithRSVP | null; onClose: () => void }) {
   const r = invitation?.response ?? null
@@ -34,6 +35,17 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
             {includedGuests(invitation).length ? includedGuests(invitation).map((g) => g.guestName).join(', ') : 'None'}
           </Item>
           {!r && <Item label="Response" wide>This invitation has not responded yet.</Item>}
+          {r && (
+            <Item label="Mobile number">
+              {r.mobileNumber ? (
+                <a href={`tel:${r.mobileNumber}`} className="underline-offset-4 hover:underline">
+                  {formatPhMobile(r.mobileNumber)}
+                </a>
+              ) : (
+                'Not provided (responded before this was required)'
+              )}
+            </Item>
+          )}
           {r && r.attendanceStatus === 'attending' && (
             <>
               <Item label="Transportation">{transportationSummary(r.hasTransportation, r.needsTransportation, r.vehicleType)}</Item>

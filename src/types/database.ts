@@ -25,6 +25,15 @@ export type Database = {
           outfit_title: string | null
           outfit_subtitle: string | null
           outfit_section_visible: boolean
+          rsvp_deadline: string | null
+          rsvp_open: boolean
+          rsvp_closed_message: string | null
+          entourage: Json
+          entourage_visible: boolean
+          entourage_title: string | null
+          entourage_subtitle: string | null
+          motif_title: string | null
+          motif_colors: Json
           additional_info: Json
           updated_at: string
         }
@@ -45,6 +54,15 @@ export type Database = {
           outfit_title?: string | null
           outfit_subtitle?: string | null
           outfit_section_visible?: boolean
+          rsvp_deadline?: string | null
+          rsvp_open?: boolean
+          rsvp_closed_message?: string | null
+          entourage?: Json
+          entourage_visible?: boolean
+          entourage_title?: string | null
+          entourage_subtitle?: string | null
+          motif_title?: string | null
+          motif_colors?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -65,6 +83,15 @@ export type Database = {
           outfit_title?: string | null
           outfit_subtitle?: string | null
           outfit_section_visible?: boolean
+          rsvp_deadline?: string | null
+          rsvp_open?: boolean
+          rsvp_closed_message?: string | null
+          entourage?: Json
+          entourage_visible?: boolean
+          entourage_title?: string | null
+          entourage_subtitle?: string | null
+          motif_title?: string | null
+          motif_colors?: Json
           additional_info?: Json
           updated_at?: string
         }
@@ -119,6 +146,7 @@ export type Database = {
           accessibility_needs: string | null
           bringing_additional_guest: boolean
           message_to_couple: string | null
+          mobile_number: string | null
           submitted_at: string
           updated_at: string
         }
@@ -136,6 +164,7 @@ export type Database = {
           accessibility_needs?: string | null
           bringing_additional_guest?: boolean
           message_to_couple?: string | null
+          mobile_number?: string | null
           submitted_at?: string
           updated_at?: string
         }
@@ -153,6 +182,7 @@ export type Database = {
           accessibility_needs?: string | null
           bringing_additional_guest?: boolean
           message_to_couple?: string | null
+          mobile_number?: string | null
           submitted_at?: string
           updated_at?: string
         }
@@ -213,6 +243,36 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      gift_settings: {
+        Row: {
+          singleton: boolean
+          is_visible: boolean
+          placement: string
+          title: string | null
+          message: string | null
+          qr_image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          singleton?: boolean
+          is_visible?: boolean
+          placement?: string
+          title?: string | null
+          message?: string | null
+          qr_image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          singleton?: boolean
+          is_visible?: boolean
+          placement?: string
+          title?: string | null
+          message?: string | null
+          qr_image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       outfit_images: {
         Row: {
@@ -336,6 +396,7 @@ export type Database = {
           p_accessibility_needs?: string | null
           p_additional_guests?: string[]
           p_message_to_couple?: string | null
+          p_mobile_number?: string | null
         }
         Returns: {
           rsvp_id: string
@@ -345,6 +406,18 @@ export type Database = {
       admin_set_included_guests: {
         Args: { p_invitation_id: string; p_names: string[] }
         Returns: number
+      }
+      rsvp_is_open: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      get_public_gift: {
+        Args: Record<PropertyKey, never>
+        Returns: { title: string | null; message: string | null; qr_image_url: string | null }[]
+      }
+      get_invitation_gift: {
+        Args: { p_invitation_id: string }
+        Returns: { title: string | null; message: string | null; qr_image_url: string | null }[]
       }
       is_admin: {
         Args: Record<PropertyKey, never>

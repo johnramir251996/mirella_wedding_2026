@@ -107,7 +107,7 @@ cp .env.example .env.local
    - the default `wedding_settings` row (names, date, church, reception, map links, the 5 default sections)
 
    The script is safe to run again on the same project.
-   **Then run every file in `supabase/migrations/` in order** (currently `002_outfits_messages_included_guests.sql`), which adds the outfit gallery, the "message to the couple" question and admin-included guests.
+   **Then run every file in `supabase/migrations/` in order**: `002_outfits_messages_included_guests.sql` (outfit gallery, message to the couple, admin-included guests) and `003_deadline_mobile_entourage_motif_gift.sql` (RSVP deadline, required mobile number, entourage, motif colours, private gift QR).
 4. **Run `supabase/seed.sql` if testing** — adds sample invitations: *Juan Dela Cruz* (Table 5, 1 guest), *Maria Santos* (VIP, 2 guests), *Pedro Reyes* (Family Table, 0 guests), *Ana Villanueva* (A1, 3 guests) and an **inactive** *Carlos Mendoza* (must not be found by search).
 5. **Create the admin user** — see [section 5](#5-admin-account).
 6. **Configure Storage (hero image uploads)** — already done by `schema.sql` (bucket `wedding-assets`, public read, admin-only upload). Check it exists under **Storage**. If your project didn't allow the SQL to create the bucket, create it manually: *Storage → New bucket → name `wedding-assets` → Public bucket ON*, then run `schema.sql` again so the policies are added.

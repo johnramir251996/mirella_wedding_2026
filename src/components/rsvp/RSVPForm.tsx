@@ -150,6 +150,25 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
         <FieldError>{errors.attendance}</FieldError>
       </fieldset>
 
+      <Collapse open={Boolean(form.attendance)}>
+        <div className="mt-8 rounded-2xl border border-line bg-paper px-5 py-6 shadow-soft sm:px-9">
+          <TextField
+            id="mobile-number"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            label={<span className="text-[1.05rem] text-ink">Your mobile number</span>}
+            value={form.mobileNumber}
+            onChange={(v) => update({ mobileNumber: v })}
+            maxLength={20}
+            placeholder="0917 123 4567"
+            hint="Used only for wedding updates. Never shared."
+            error={errors.mobileNumber}
+            required
+          />
+        </div>
+      </Collapse>
+
       {/* Attending-only questions */}
       <Collapse open={attending}>
         <div className="mt-12 space-y-10 rounded-2xl border border-line bg-paper px-5 py-8 shadow-soft sm:px-9 sm:py-10">

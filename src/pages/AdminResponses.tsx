@@ -7,7 +7,7 @@ import { deleteResponse } from '../services/adminService'
 import type { InvitationWithRSVP, RSVPStatus } from '../types/rsvp'
 import { toFriendlyMessage } from '../utils/errors'
 import { foodLabel, formatDateTime, transportationSummary } from '../utils/formatting'
-import { normalizeName } from '../utils/validation'
+import { formatPhMobile, normalizeName } from '../utils/validation'
 import { includedGuests, requestedGuests } from '../utils/guests'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
@@ -106,6 +106,19 @@ export default function AdminResponses() {
     { key: 'name', header: 'Invitee', cell: (r) => <span className="font-medium text-ink">{r.inviteeName}</span>, hideOnMobile: true },
     { key: 'status', header: 'Attendance', cell: (r) => <AttendanceBadge status={r.status} /> },
     { key: 'table', header: 'Table', cell: (r) => r.tableNumber || '—' },
+    {
+      key: 'mobile',
+      header: 'Mobile',
+      className: 'whitespace-nowrap',
+      cell: (r) =>
+        r.response?.mobileNumber ? (
+          <a href={`tel:${r.response.mobileNumber}`} className="text-ink underline-offset-4 hover:underline">
+            {formatPhMobile(r.response.mobileNumber)}
+          </a>
+        ) : (
+          '—'
+        ),
+    },
     {
       key: 'transport',
       header: 'Transportation',
