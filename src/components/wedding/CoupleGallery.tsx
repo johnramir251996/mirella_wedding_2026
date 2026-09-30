@@ -31,13 +31,7 @@ export function CoupleGallery({ title, subtitle, layout, images }: Props) {
         </Reveal>
 
         {layout === 'carousel' ? (
-          <ul className="no-scrollbar -mx-4 mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" aria-label={title}>
-            {images.map((img, i) => (
-              <li key={img.id} className="w-[80%] shrink-0 snap-center sm:w-[46%] lg:w-[31%]">
-                <Photo img={img} index={i} total={images.length} onOpen={setOpen} className="aspect-[4/5]" />
-              </li>
-            ))}
-          </ul>
+          <Carousel title={title} images={images} onOpen={setOpen} />
         ) : (
           <ul className="mt-12 columns-2 gap-3 sm:gap-4 lg:columns-3" aria-label={title}>
             {images.map((img, i) => (
@@ -53,6 +47,72 @@ export function CoupleGallery({ title, subtitle, layout, images }: Props) {
 
       <Lightbox images={images} index={open} onChange={setOpen} />
     </section>
+  )
+}
+
+/** Swipeable row with ‹ › buttons that move one photo at a time. */
+function Carousel({ title, images, onOpen }: { title: string; images: GalleryImage[]; onOpen: (i: number) => void }) {
+  const reduce = useReducedMotion()
+  const listRef = useRef<HTMLUListElement>(null)
+  const [edge, setEdge] = useState({ start: true, end: false })
+
+  const update = useCallback(() => {
+    const el = listRef.current
+    if (!el) return
+    setEdge({ start: el.scrollLeft <= 4, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 })
+  }, [])
+
+  useEffect(() => {
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [update, images.length])
+
+  const go = (dir: -1 | 1) => {
+    const el = listRef.current
+    const item = el?.querySelector('li')
+    if (!el || !item) return
+    const gap = parseFloat(getComputedStyle(el).columnGap || '16') || 16
+    el.scrollBy({ left: dir * (item.getBoundingClientRect().width + gap), behavior: reduce ? 'auto' : 'smooth' })
+  }
+
+  const arrow = (dir: -1 | 1) => {
+    const hidden = dir < 0 ? edge.start : edge.end
+    return (
+      <button
+        type="button"
+        onClick={() => go(dir)}
+        aria-label={dir < 0 ? 'Previous photos' : 'Next photos'}
+        aria-hidden={hidden || undefined}
+        tabIndex={hidden ? -1 : 0}
+        className={cn(
+          'absolute top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-champagne/60 bg-paper/90 text-ink shadow-card backdrop-blur transition duration-300 hover:bg-paper sm:size-12',
+          dir < 0 ? 'left-1 sm:-left-5' : 'right-1 sm:-right-5',
+          hidden ? 'pointer-events-none opacity-0' : 'opacity-100',
+        )}
+      >
+        {dir < 0 ? <ChevronLeft aria-hidden="true" className="size-5" strokeWidth={1.6} /> : <ChevronRight aria-hidden="true" className="size-5" strokeWidth={1.6} />}
+      </button>
+    )
+  }
+
+  return (
+    <div className="relative mt-12">
+      {arrow(-1)}
+      <ul
+        ref={listRef}
+        onScroll={update}
+        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"
+        aria-label={title}
+      >
+        {images.map((img, i) => (
+          <li key={img.id} className="w-[80%] shrink-0 snap-center sm:w-[46%] lg:w-[31%]">
+            <Photo img={img} index={i} total={images.length} onOpen={onOpen} className="aspect-[4/5]" />
+          </li>
+        ))}
+      </ul>
+      {arrow(1)}
+    </div>
   )
 }
 

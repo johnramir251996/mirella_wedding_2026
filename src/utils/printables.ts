@@ -226,7 +226,7 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
   const base = CARD_SIZES['5x7']
   const size = CARD_SIZES[o.size]
   const k = size.w / base.w
-  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;padding:9mm 10mm 8mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center">
+  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;padding:9mm 10mm 11mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center">
     <div style="position:absolute;inset:4.5mm;border:0.4mm solid ${t.accent}"></div>
     <div style="position:absolute;inset:6mm;border:0.15mm solid ${t.accent}"></div>
     <div style="margin-top:4mm;font-size:2.7mm;letter-spacing:0.9mm;color:${t.accent}">TOGETHER WITH THEIR FAMILIES</div>
@@ -239,13 +239,12 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
     <div style="margin-top:6mm;font-size:3.6mm;letter-spacing:0.9mm;font-weight:500">${esc(o.dateText.toUpperCase())}</div>
     ${o.ceremony ? `<div style="margin-top:3mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">CEREMONY</span><br/>${esc(o.ceremony)}</div>` : ''}
     ${o.reception ? `<div style="margin-top:2.5mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">RECEPTION</span><br/>${esc(o.reception)}</div>` : ''}
-    <div style="margin-top:auto;display:flex;align-items:center;gap:4mm;text-align:left">
-      <div style="width:21mm;height:21mm;flex:none">${o.qrSvg}</div>
-      <div style="font-size:2.7mm;line-height:1.45;color:${t.soft};max-width:62mm">
-        <div style="font-size:3mm;color:${t.ink};font-weight:500">Scan to RSVP</div>
-        ${o.respondBy ? `<div>Please respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
-        <div style="word-break:break-all;color:${t.muted};font-size:2.2mm;margin-top:0.6mm">${esc(o.shortLink)}</div>
-      </div>
+    <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div style="display:flex;align-items:center;gap:2.5mm;color:${t.accent};font-size:2.4mm"><span style="width:14mm;border-top:0.3mm solid ${t.accent}"></span>◆<span style="width:14mm;border-top:0.3mm solid ${t.accent}"></span></div>
+      <div style="margin-top:3.5mm;width:24mm;height:24mm">${o.qrSvg}</div>
+      <div style="margin-top:2.2mm;font-size:3mm;letter-spacing:0.5mm;color:${t.ink};font-weight:500">SCAN TO RSVP</div>
+      ${o.respondBy ? `<div style="margin-top:1mm;font-size:2.7mm;color:${t.soft}">Please respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
+      <div style="margin-top:0.8mm;word-break:break-all;color:${t.muted};font-size:2.2mm;max-width:95mm">${esc(o.shortLink)}</div>
     </div>
   </div>`
   if (k === 1) return inner

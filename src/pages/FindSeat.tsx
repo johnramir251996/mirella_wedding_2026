@@ -72,7 +72,7 @@ export default function FindSeat() {
               </>
             ) : (
               <motion.div {...fade} transition={{ duration: 0.6 }} className="mx-auto w-full max-w-4xl">
-                <ResultView result={result} rsvpOpen={settings ? isRsvpOpen(settings) : false} />
+                <ResultView result={result} rsvpOpen={settings ? isRsvpOpen(settings) : false} couple={settings?.coupleNames || 'The couple'} />
                 <p className="mt-10 text-center">
                   <button
                     type="button"
@@ -105,11 +105,11 @@ function Message({ title, text, children }: { title: string; text: string; child
   )
 }
 
-function ResultView({ result: r, rsvpOpen }: { result: SeatSearchResult; rsvpOpen: boolean }) {
+function ResultView({ result: r, rsvpOpen, couple }: { result: SeatSearchResult; rsvpOpen: boolean; couple: string }) {
   const first = (r.name ?? '').split(' ')[0]
   if (r.status === 'pending') {
     return (
-      <Message title={`Hi ${first}!`} text="Please RSVP first — your seat will appear here once you’ve confirmed you’re coming.">
+      <Message title={`Hi ${first}!`} text={`Please RSVP first. Once you’ve confirmed, ${couple} will assign your seat and it will appear here.`}>
         {rsvpOpen && (
           <Link to="/rsvp" className="mt-7 inline-flex min-h-12 items-center rounded-full bg-ink px-8 text-sm font-medium uppercase tracking-[0.24em] text-ivory shadow-card transition hover:bg-ink-soft">
             RSVP now
@@ -122,8 +122,12 @@ function ResultView({ result: r, rsvpOpen }: { result: SeatSearchResult; rsvpOpe
   if (r.status === 'unseated' || !r.layout) {
     return (
       <Message
-        title={r.tableName ? `You’re at ${r.tableName}` : `Hi ${first}!`}
-        text={r.tableName ? 'Your exact place on the map is being finalised — please check back soon.' : 'Seating is being finalised — please check back soon.'}
+        title={r.tableName ? `You’re at ${r.tableName}` : `Thank you for confirming, ${first}!`}
+        text={
+          r.tableName
+            ? `${couple} are finalising where your table sits on the map — please check back soon. 🤍`
+            : `${couple} are arranging the seats. Yours will appear here soon. 🤍`
+        }
       />
     )
   }
