@@ -61,7 +61,7 @@ export interface WeddingSettings {
   galleryVisible: boolean
   galleryTitle: string
   gallerySubtitle: string
-  galleryLayout: 'grid' | 'carousel'
+  galleryLayout: GalleryLayout
   videoVisible: boolean
   videoTitle: string
   videoCaption: string
@@ -85,7 +85,7 @@ export interface GallerySettings {
   galleryVisible: boolean
   galleryTitle: string
   gallerySubtitle: string
-  galleryLayout: 'grid' | 'carousel'
+  galleryLayout: GalleryLayout
 }
 
 export interface VideoSettings {
@@ -186,3 +186,19 @@ export interface OutfitSectionSettings {
   outfitSubtitle: string
   outfitSectionVisible: boolean
 }
+
+/** How the couple's photos are shown on the home page (Admin → Photos & Video). */
+export type GalleryLayout = 'grid' | 'carousel' | 'polaroid' | 'filmstrip' | 'mosaic' | 'story' | 'deck' | 'coverflow' | 'arches' | 'timeline'
+
+export const GALLERY_LAYOUTS: { id: GalleryLayout; name: string; description: string }[] = [
+  { id: 'grid', name: 'Magazine grid', description: 'Mixed-size photo grid' },
+  { id: 'carousel', name: 'Swipe carousel', description: 'One row with arrows' },
+  { id: 'polaroid', name: 'Polaroid wall', description: 'Tilted instant photos with captions' },
+  { id: 'filmstrip', name: 'Film strip', description: 'Two rows drifting like a reel' },
+  { id: 'mosaic', name: 'Featured mosaic', description: 'One big photo that changes, with tiles' },
+  { id: 'story', name: 'Story', description: 'One photo at a time, like Instagram stories' },
+  { id: 'deck', name: 'Card deck', description: 'Swipe photos away like cards' },
+  { id: 'coverflow', name: 'Coverflow', description: '3D photos sliding past the centre' },
+  { id: 'arches', name: 'Arched frames', description: 'Gallery wall of arches and ovals' },
+  { id: 'timeline', name: 'Our timeline', description: 'Photos along a line, chapter by chapter' },
+]

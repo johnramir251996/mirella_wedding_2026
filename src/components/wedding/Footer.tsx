@@ -4,7 +4,7 @@ import { CoupleNames } from './CoupleNames'
 
 export function Footer({ coupleNames, weddingDate, closingMessage }: { coupleNames: string; weddingDate: string; closingMessage?: string }) {
   return (
-    <footer className="border-t border-line/70 bg-cream/50 px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-16 text-center">
+    <footer className="lux-footer border-t border-line/70 bg-cream/50 px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-16 text-center">
       <p className="font-serif text-4xl font-light text-ink">
         <CoupleNames names={coupleNames} />
       </p>

@@ -12,9 +12,12 @@ import {
   googleFontsHref,
   HEADING_FONTS,
   HERO_LAYOUTS,
+  findStyle,
   isHex,
   resolveTheme,
+  STYLES,
   TEMPLATES,
+  type StyleId,
   type HeroLayout,
   type Template,
   type ThemeSettings,
@@ -43,6 +46,7 @@ export default function AdminLookFeel() {
   const [device, setDevice] = useState<keyof typeof DEVICES>('desktop')
   const previewBox = useRef<HTMLDivElement>(null)
   const [boxWidth, setBoxWidth] = useState(600)
+  const [styleTab, setStyleTab] = useState<StyleId | null>(null)
 
   useEffect(() => {
     document.title = 'Look & Feel · Wedding admin'
@@ -99,9 +103,12 @@ export default function AdminLookFeel() {
   }
 
   const template = findTemplate(values.template)
+  const currentStyle = findStyle(template.style)
+  const tab = styleTab ?? currentStyle.id
   const dirty = JSON.stringify(values) !== savedJson
   const bg = values.background ?? template.background
-  const bgTooDark = !isLightEnough(bg)
+  // Dark pages are only designed for in styles made for them (e.g. Maison Noir).
+  const bgTooDark = !currentStyle.allowsDark && !isLightEnough(bg)
 
   const pickTemplate = (t: Template) => setValues({ template: t.id })
   const set = <K extends keyof ThemeSettings>(k: K, v: ThemeSettings[K]) => setValues({ ...values, [k]: v })
@@ -113,7 +120,7 @@ export default function AdminLookFeel() {
 
   const save = async () => {
     if (bgTooDark) {
-      toast.error('Please choose a lighter background colour.')
+      toast.error(`Please choose a lighter background colour — the ${currentStyle.name} style is designed for light pages.`)
       return
     }
     setSaving(true)
@@ -156,11 +163,30 @@ export default function AdminLookFeel() {
           {/* Templates */}
           <section aria-labelledby="templates-heading" className="rounded-xl border border-line bg-paper p-5 shadow-soft sm:p-6">
             <h2 id="templates-heading" className="text-2xl text-ink">
-              Templates
+              Style &amp; template
             </h2>
-            <p className="mt-1 text-sm text-muted">Picking a template resets fonts, colours and layout to that template’s design.</p>
-            <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-              {TEMPLATES.map((t) => {
+            <p className="mt-1 text-sm text-muted">
+              A <strong className="font-medium text-ink-soft">style</strong> is the whole design — section layouts, ornaments, textures and type. Each style has
+              ten templates (colour and font presets). Picking a template resets fonts, colours and layout to that template.
+            </p>
+            <div role="tablist" aria-label="Design style" className="mt-5 grid grid-cols-2 gap-1 rounded-lg bg-cream p-1 sm:grid-cols-4">
+              {STYLES.map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === st.id}
+                  onClick={() => setStyleTab(st.id)}
+                  className={cn('relative rounded-md px-2 py-2 text-sm transition', tab === st.id ? 'bg-paper font-medium text-ink shadow-soft' : 'text-muted hover:text-ink')}
+                >
+                  {st.name}
+                  {currentStyle.id === st.id && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-gold" aria-label="(in use)" />}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-sm text-ink-soft">{findStyle(tab).description}</p>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {TEMPLATES.filter((t) => (t.style ?? 'classic') === tab).map((t) => {
                 const selected = t.id === values.template
                 const r = resolveTheme({ template: t.id })
                 return (
@@ -243,7 +269,7 @@ export default function AdminLookFeel() {
             {bgTooDark && (
               <p role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-rose/5 px-3 py-2 text-sm text-rose">
                 <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-                This background is too dark for the invitation design. Please choose a lighter colour.
+                This background is too dark for the {currentStyle.name} style. Choose a lighter colour, or a style made for dark pages (Maison Noir or Gilded Deco).
               </p>
             )}
 

@@ -19,11 +19,11 @@ export function VideoHighlight({ title, caption, url, posterUrl }: Props) {
   const poster = posterUrl || (video.kind === 'youtube' ? video.thumbnail : '')
 
   return (
-    <section aria-labelledby="video-heading" className="bg-[#1d1b19] px-4 py-24 text-ivory sm:px-8 sm:py-28">
+    <section aria-labelledby="video-heading" className="bg-[#1d1b19] px-4 py-24 text-[#F6F1E8] sm:px-8 sm:py-28">
       <div className="mx-auto max-w-5xl">
-        <Reveal className="text-center">
+        <Reveal className="section-title text-center">
           <p className="text-[0.72rem] font-medium uppercase tracking-[0.32em] text-champagne-light/80">A Film</p>
-          <h2 id="video-heading" className="mt-4 text-4xl text-ivory sm:text-5xl">
+          <h2 id="video-heading" className="mt-4 text-4xl text-[#F6F1E8] sm:text-5xl">
             {title}
           </h2>
         </Reveal>
@@ -54,12 +54,12 @@ export function VideoHighlight({ title, caption, url, posterUrl }: Props) {
                 )}
                 <span className="absolute inset-0 bg-black/25 transition group-hover:bg-black/15" />
                 <span className="absolute left-1/2 top-1/2 flex size-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/10 backdrop-blur-sm transition duration-300 group-hover:scale-105 group-hover:bg-white/20 sm:size-24">
-                  <Play className="ml-1 size-8 fill-ivory text-ivory" strokeWidth={1} />
+                  <Play className="ml-1 size-8 fill-white text-white" strokeWidth={1} />
                 </span>
               </button>
             )}
           </div>
-          {caption && <p className="mx-auto mt-6 max-w-2xl text-center font-serif text-xl italic text-ivory/80">{caption}</p>}
+          {caption && <p className="mx-auto mt-6 max-w-2xl text-center font-serif text-xl italic text-white/80">{caption}</p>}
         </Reveal>
       </div>
     </section>

@@ -1,14 +1,18 @@
-import { googleFontsHref, resolveTheme, themeVars, type ThemeSettings } from './themes'
+import { adminTheme, googleFontsHref, resolveTheme, themeVars, type ResolvedTheme, type ThemeSettings } from './themes'
 
 export const THEME_CACHE_KEY = 'wedding-theme-cache'
 export const THEME_PREVIEW_KEY = 'wedding-theme-preview'
 
 /** Writes the theme's CSS variables on <html> and loads its Google Fonts. */
-export function applyTheme(settings: ThemeSettings | null | undefined) {
-  const t = resolveTheme(settings)
+export function applyTheme(settings: ThemeSettings | null | undefined, opts: { admin?: boolean } = {}): ResolvedTheme {
+  const full = resolveTheme(settings)
+  const t = opts.admin ? adminTheme(full) : full
   const root = document.documentElement
   for (const [k, v] of Object.entries(themeVars(t))) root.style.setProperty(k, v)
   root.dataset.template = t.templateId
+  root.dataset.style = t.style
+  root.dataset.dark = t.dark ? 'true' : 'false'
+  root.style.colorScheme = t.dark ? 'dark' : 'light'
 
   const href = googleFontsHref([t.heading, t.body])
   let link = document.getElementById('theme-fonts') as HTMLLinkElement | null
@@ -29,7 +33,7 @@ export function applyTheme(settings: ThemeSettings | null | undefined) {
 export function applyCachedTheme() {
   try {
     const raw = localStorage.getItem(THEME_CACHE_KEY)
-    if (raw) applyTheme(JSON.parse(raw) as ThemeSettings)
+    if (raw) applyTheme(JSON.parse(raw) as ThemeSettings, { admin: /^#\/admin/.test(window.location.hash) })
   } catch {
     /* storage unavailable — defaults from index.css apply */
   }

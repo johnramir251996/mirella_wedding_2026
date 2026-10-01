@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
+import './styles/styles.css'
 import { applyCachedTheme } from './theme/applyTheme'
 
 applyCachedTheme()

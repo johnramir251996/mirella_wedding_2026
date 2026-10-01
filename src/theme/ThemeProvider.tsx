@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { ThemeContext } from './themeContext'
 import { applyTheme, cacheTheme, isThemePreviewFrame, readPreviewTheme, THEME_PREVIEW_KEY } from './applyTheme'
-import { resolveTheme, type ThemeSettings } from './themes'
+import { adminTheme, resolveTheme, type ThemeSettings } from './themes'
 
 /**
  * Applies the couple's Look & Feel to the whole site. Inside the admin's
@@ -23,14 +24,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [previewFrame])
 
+  const { pathname } = useLocation()
+  const admin = !previewFrame && pathname.startsWith('/admin')
   const effective = previewFrame && preview ? preview : settings?.theme
-  const resolved = useMemo(() => resolveTheme(effective), [effective])
+  const resolved = useMemo(() => (admin ? adminTheme(resolveTheme(effective)) : resolveTheme(effective)), [effective, admin])
 
   useEffect(() => {
     if (!effective) return
-    applyTheme(effective)
+    applyTheme(effective, { admin })
     if (!previewFrame) cacheTheme(effective)
-  }, [effective, previewFrame])
+  }, [effective, previewFrame, admin])
 
   return <ThemeContext.Provider value={resolved}>{children}</ThemeContext.Provider>
 }

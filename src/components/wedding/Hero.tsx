@@ -7,6 +7,7 @@ import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { cn } from '../ui/cn'
 import { CoupleNames } from './CoupleNames'
+import { HeroDecor } from './HeroDecor'
 import { isFinderOpen, isRsvpOpen } from '../../services/settingsService'
 import { useResolvedTheme } from '../../theme/themeContext'
 
@@ -45,15 +46,16 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
   // ---------------------------------------------------------------- split
   if (heroLayout === 'split') {
     return (
-      <header className="relative flex min-h-[100svh] flex-col bg-ivory text-ink">
+      <header className="hero relative flex min-h-[100svh] flex-col bg-ivory text-ink">
         <Nav settings={settings} tone="onPaper" reduce={reduce} />
         <div className="grid flex-1 md:grid-cols-2">
           <div className="relative order-first h-[52svh] overflow-hidden md:order-last md:h-auto">{photo('absolute inset-0 size-full object-cover')}</div>
-          <div className="paper-texture flex flex-col items-center justify-center px-6 py-16 text-center md:px-12">
+          <div className="hero-paper paper-texture relative flex flex-col items-center justify-center px-6 py-16 text-center md:px-12">
+            <HeroDecor onPhoto={false} />
             <motion.p {...fade(0.2)} className="eyebrow">
               Together with their families
             </motion.p>
-            <motion.h1 {...fade(0.4)} className="mt-6 text-[clamp(3.2rem,9vw,6.5rem)] font-light leading-[0.95] tracking-tight text-ink">
+            <motion.h1 {...fade(0.4)} className="hero-names mt-6 text-[clamp(3.2rem,9vw,6.5rem)] font-light leading-[0.95] tracking-tight text-ink">
               <CoupleNames names={names} />
             </motion.h1>
             {settings.heroSubtitle && (
@@ -74,7 +76,8 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
   // ---------------------------------------------------------------- framed
   if (heroLayout === 'framed') {
     return (
-      <header className="paper-texture relative flex min-h-[100svh] flex-col text-ink">
+      <header className="hero hero-paper paper-texture relative flex min-h-[100svh] flex-col text-ink">
+        <HeroDecor onPhoto={false} />
         <Nav settings={settings} tone="onPaper" reduce={reduce} />
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 pb-20 pt-6 text-center">
           <motion.p {...fade(0.1)} className="eyebrow">
@@ -86,7 +89,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
           >
             <div className="relative size-full overflow-hidden rounded-t-full">{photo('absolute inset-0 size-full object-cover')}</div>
           </motion.div>
-          <motion.h1 {...fade(0.45)} className="mt-9 text-[clamp(3rem,10vw,5.8rem)] font-light leading-[0.95] tracking-tight text-ink">
+          <motion.h1 {...fade(0.45)} className="hero-names mt-9 text-[clamp(3rem,10vw,5.8rem)] font-light leading-[0.95] tracking-tight text-ink">
             <CoupleNames names={names} />
           </motion.h1>
           {settings.heroSubtitle && (
@@ -107,7 +110,8 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
   // ---------------------------------------------------------------- full photo (center / left)
   const left = heroLayout === 'left'
   return (
-    <header className="relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-ink text-ivory">
+    <header className="hero hero-photo relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#141211] text-white">
+      <HeroDecor onPhoto />
       {photo('absolute inset-0 -z-20 size-full object-cover')}
       {/* Soft veil for legibility — heavier toward the text on the "left" layout */}
       <div
@@ -130,7 +134,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
         <motion.p {...fade(0.2)} className="text-[0.72rem] font-medium uppercase tracking-[0.42em] text-white/80">
           Together with their families
         </motion.p>
-        <motion.h1 {...fade(0.4)} className="mt-6 text-[clamp(3.5rem,14vw,8.5rem)] font-light leading-[0.95] tracking-tight text-white">
+        <motion.h1 {...fade(0.4)} className="hero-names mt-6 text-[clamp(3.5rem,14vw,8.5rem)] font-light leading-[0.95] tracking-tight text-white">
           <CoupleNames names={names} ampClassName="text-champagne-light" />
         </motion.h1>
         {settings.heroSubtitle && (
@@ -184,7 +188,7 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
             <Link
               to="/rsvp"
               className={cn(
-                'max-w-[48vw] rounded-full border px-5 py-2.5 text-center leading-tight transition sm:max-w-none',
+                'lux-pill max-w-[48vw] rounded-full border px-5 py-2.5 text-center leading-tight transition sm:max-w-none',
                 settings.rsvpButtonLabel.length > 8 && 'tracking-[0.16em]',
                 onPhoto ? 'border-white/50 text-white hover:border-white hover:bg-white/10' : 'border-ink/40 text-ink hover:border-ink hover:bg-ink/5',
               )}

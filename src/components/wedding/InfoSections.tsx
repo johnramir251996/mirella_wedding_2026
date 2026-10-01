@@ -12,7 +12,7 @@ export function InfoSections({ sections }: { sections: InfoSection[] }) {
   return (
     <section aria-labelledby="info-heading" className="px-5 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-6xl">
-        <Reveal className="text-center">
+        <Reveal className="section-title text-center">
           <p className="eyebrow">Good to Know</p>
           <h2 id="info-heading" className="mt-4 text-4xl text-ink sm:text-5xl">
             Wedding Details
@@ -28,7 +28,7 @@ export function InfoSections({ sections }: { sections: InfoSection[] }) {
               className={cn(visible.length % 3 === 1 && i === visible.length - 1 && 'lg:col-start-2')}
             >
               <article className="flex h-full flex-col items-center text-center">
-                <span className="flex size-16 items-center justify-center rounded-full border border-champagne/50 text-champagne">
+                <span className="lux-icon flex size-16 items-center justify-center rounded-full border border-champagne/50 text-champagne">
                   <SectionIcon name={s.icon} className="size-6" />
                 </span>
                 <h3 className="mt-6 text-[1.9rem] leading-tight text-ink">{s.title}</h3>

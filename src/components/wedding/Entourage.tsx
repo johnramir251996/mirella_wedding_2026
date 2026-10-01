@@ -17,7 +17,7 @@ export function Entourage({ title, subtitle, groups }: Props) {
   return (
     <section aria-labelledby="entourage-heading" className="px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-3xl">
-        <Reveal className="text-center">
+        <Reveal className="section-title text-center">
           <p className="eyebrow">With Love &amp; Gratitude</p>
           <h2 id="entourage-heading" className="mt-4 text-4xl text-ink sm:text-5xl">
             {title}
@@ -31,7 +31,7 @@ export function Entourage({ title, subtitle, groups }: Props) {
             const members = g.members.filter((m) => m.name.trim())
             return (
               <Reveal key={g.id} className="text-center">
-                <h3 className="font-sans text-[0.75rem] font-medium uppercase tracking-[0.32em] text-gold">{g.title}</h3>
+                <h3 className="lux-subhead font-sans text-[0.75rem] font-medium uppercase tracking-[0.32em] text-gold">{g.title}</h3>
                 <ul
                   className={cn(
                     'mx-auto mt-5 grid gap-y-3',

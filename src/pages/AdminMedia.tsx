@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Film, ImagePlus, Link2, Save, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ExternalLink, Eye, EyeOff, Film, ImagePlus, Link2, Save, Trash2, Upload } from 'lucide-react'
 import { useToast } from '../hooks/useToast'
-import { setCachedWeddingSettings } from '../hooks/useWeddingSettings'
+import { setCachedWeddingSettings, useWeddingSettings } from '../hooks/useWeddingSettings'
+import { writePreviewTheme } from '../theme/applyTheme'
+import { siteLinks } from '../utils/share'
 import {
   addGalleryFromFile,
   addGalleryFromUrl,
@@ -16,7 +18,7 @@ import {
   VIDEO_MAX_MB,
 } from '../services/galleryService'
 import { getWeddingSettings, updateGallerySettings, updateVideoSettings } from '../services/settingsService'
-import type { GalleryImage, GallerySettings, VideoSettings } from '../types/wedding'
+import { GALLERY_LAYOUTS, type GalleryImage, type GallerySettings, type VideoSettings } from '../types/wedding'
 import { toFriendlyMessage } from '../utils/errors'
 import { parseVideoUrl } from '../utils/media'
 import { isValidHttpUrl } from '../utils/validation'
@@ -32,6 +34,12 @@ const isSample = (url: string) => url.startsWith('samples/') || url.includes('im
 
 export default function AdminMedia() {
   const toast = useToast()
+  const { settings: liveSettings } = useWeddingSettings()
+  // Opens the website in preview mode with this layout (and the saved look), without saving anything.
+  const previewLayout = (id: string) => {
+    if (liveSettings) writePreviewTheme(liveSettings.theme)
+    window.open(`${siteLinks().home}#/?themePreview=1&gallery=${id}`, '_blank', 'noopener')
+  }
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [gallery, setGallery] = useState<GallerySettings | null>(null)
   const [gallerySaved, setGallerySaved] = useState('')
@@ -264,26 +272,33 @@ export default function AdminMedia() {
             <TextField label="Short description" value={gallery.gallerySubtitle} onChange={(v) => setGallery({ ...gallery, gallerySubtitle: v })} maxLength={200} />
             <fieldset className="md:col-span-2">
               <legend className="mb-2 text-[0.95rem] font-medium text-ink-soft">Layout</legend>
-              <div className="flex flex-wrap gap-2">
-                {(
-                  [
-                    { v: 'grid', t: 'Photo grid', d: 'Magazine-style, mixed sizes' },
-                    { v: 'carousel', t: 'Carousel', d: 'Swipe through, one row' },
-                  ] as const
-                ).map((o) => (
-                  <label
-                    key={o.v}
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                {GALLERY_LAYOUTS.map((o) => (
+                  <div
+                    key={o.id}
                     className={cn(
-                      'cursor-pointer rounded-lg border px-4 py-2.5 text-sm transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
-                      gallery.galleryLayout === o.v ? 'border-ink bg-ink/[0.03]' : 'border-line hover:border-champagne',
+                      'relative rounded-lg border text-sm transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
+                      gallery.galleryLayout === o.id ? 'border-ink bg-ink/[0.03]' : 'border-line hover:border-champagne',
                     )}
                   >
-                    <input type="radio" name="gallery-layout" className="sr-only" checked={gallery.galleryLayout === o.v} onChange={() => setGallery({ ...gallery, galleryLayout: o.v })} />
-                    <span className="block font-medium text-ink">{o.t}</span>
-                    <span className="block text-muted">{o.d}</span>
-                  </label>
+                    <label className="block cursor-pointer px-3 pb-8 pt-2.5">
+                      <input type="radio" name="gallery-layout" className="sr-only" checked={gallery.galleryLayout === o.id} onChange={() => setGallery({ ...gallery, galleryLayout: o.id })} />
+                      <LayoutThumb id={o.id} />
+                      <span className="mt-2 block font-medium text-ink">{o.name}</span>
+                      <span className="block text-xs text-muted">{o.description}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => previewLayout(o.id)}
+                      className="absolute bottom-2 left-3 inline-flex items-center gap-1 text-xs text-gold underline-offset-4 hover:underline"
+                      aria-label={`Preview the ${o.name} layout in a new tab`}
+                    >
+                      Preview <ExternalLink aria-hidden="true" className="size-3" />
+                    </button>
+                  </div>
                 ))}
               </div>
+              <p className="mt-2 text-xs text-muted">“Preview” opens your website with that layout, using your saved photos. Nothing changes for guests until you save.</p>
             </fieldset>
             <label className="flex cursor-pointer items-center gap-3 text-sm text-ink-soft md:col-span-2">
               <input type="checkbox" checked={gallery.galleryVisible} onChange={(e) => setGallery({ ...gallery, galleryVisible: e.target.checked })} className="size-5 accent-ink" />
@@ -533,4 +548,102 @@ function Icon({ label, onClick, disabled, danger, children }: { label: string; o
       {children}
     </button>
   )
+}
+
+/** Tiny sketch of each gallery layout for the picker. */
+function LayoutThumb({ id }: { id: string }) {
+  const b = 'bg-champagne/45'
+  const box = 'flex h-12 w-full items-center justify-center gap-1 overflow-hidden rounded bg-cream p-1.5'
+  switch (id) {
+    case 'grid':
+      return (
+        <span aria-hidden="true" className={cn(box, 'grid grid-cols-3 items-stretch')}>
+          <span className={cn(b, 'row-span-2 rounded-sm')} />
+          <span className={cn(b, 'rounded-sm')} />
+          <span className={cn(b, 'row-span-2 rounded-sm')} />
+          <span className={cn(b, 'rounded-sm')} />
+        </span>
+      )
+    case 'carousel':
+      return (
+        <span aria-hidden="true" className={box}>
+          {[0, 1, 2].map((k) => <span key={k} className={cn(b, 'h-full w-1/3 shrink-0 rounded-sm', k === 2 && 'opacity-50')} />)}
+        </span>
+      )
+    case 'polaroid':
+      return (
+        <span aria-hidden="true" className={box}>
+          {[-8, 6, -4].map((r) => <span key={r} style={{ rotate: `${r}deg` }} className="h-8 w-7 rounded-[2px] bg-white p-0.5 pb-2 shadow-sm"><span className={cn(b, 'block size-full')} /></span>)}
+        </span>
+      )
+    case 'filmstrip':
+      return (
+        <span aria-hidden="true" className={cn(box, 'flex-col bg-[#1b1917]')}>
+          {[0, 1].map((r) => (
+            <span key={r} className={cn('flex w-full gap-1', r === 1 && 'translate-x-2')}>
+              {[0, 1, 2, 3].map((k) => <span key={k} className="h-3.5 flex-1 rounded-[1px] bg-white/45" />)}
+            </span>
+          ))}
+        </span>
+      )
+    case 'mosaic':
+      return (
+        <span aria-hidden="true" className={cn(box, 'grid grid-cols-[2fr_1fr] items-stretch')}>
+          <span className={cn(b, 'rounded-sm')} />
+          <span className="grid grid-rows-2 gap-1">
+            <span className={cn(b, 'rounded-sm opacity-60')} />
+            <span className={cn(b, 'rounded-sm opacity-60')} />
+          </span>
+        </span>
+      )
+    case 'story':
+      return (
+        <span aria-hidden="true" className={box}>
+          <span className="relative h-full w-6 rounded bg-[#2a2522]">
+            <span className="absolute inset-x-0.5 top-0.5 flex gap-px">
+              <span className="h-px flex-1 bg-white" />
+              <span className="h-px flex-1 bg-white/40" />
+            </span>
+          </span>
+        </span>
+      )
+    case 'deck':
+      return (
+        <span aria-hidden="true" className={cn(box, 'relative')}>
+          <span style={{ rotate: '-6deg' }} className="absolute h-8 w-6 rounded-sm bg-white shadow-sm" />
+          <span style={{ rotate: '5deg' }} className="absolute h-8 w-6 rounded-sm bg-white shadow-sm" />
+          <span className="absolute h-8 w-6 rounded-sm bg-white p-0.5 shadow"><span className={cn(b, 'block size-full rounded-[1px]')} /></span>
+        </span>
+      )
+    case 'coverflow':
+      return (
+        <span aria-hidden="true" className={cn(box, '[perspective:80px]')}>
+          <span className={cn(b, 'h-6 w-4 rounded-sm opacity-60 [transform:rotateY(40deg)]')} />
+          <span className={cn(b, 'h-8 w-6 rounded-sm')} />
+          <span className={cn(b, 'h-6 w-4 rounded-sm opacity-60 [transform:rotateY(-40deg)]')} />
+        </span>
+      )
+    case 'arches':
+      return (
+        <span aria-hidden="true" className={cn(box, 'items-end')}>
+          <span className={cn(b, 'h-8 w-5 rounded-t-full')} />
+          <span className={cn(b, 'h-7 w-5 rounded-[50%]')} />
+          <span className={cn(b, 'h-8 w-5 rounded-t-full')} />
+        </span>
+      )
+    case 'timeline':
+      return (
+        <span aria-hidden="true" className={cn(box, 'relative')}>
+          <span className="absolute inset-y-1 left-1/2 w-px bg-champagne" />
+          <span className="grid w-full grid-cols-2 gap-x-3 gap-y-1">
+            <span className={cn(b, 'h-3.5 rounded-sm')} />
+            <span />
+            <span />
+            <span className={cn(b, 'h-3.5 rounded-sm')} />
+          </span>
+        </span>
+      )
+    default:
+      return null
+  }
 }

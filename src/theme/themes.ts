@@ -9,6 +9,26 @@
 
 export type HeroLayout = 'center' | 'left' | 'split' | 'framed'
 
+/** A design style: its own section designs, ornaments, textures and type rules. */
+export type StyleId = 'classic' | 'maison' | 'deco' | 'heritage'
+
+export interface StyleInfo {
+  id: StyleId
+  name: string
+  description: string
+  /** Dark backgrounds are designed for in this style. */
+  allowsDark: boolean
+}
+
+export const STYLES: StyleInfo[] = [
+  { id: 'classic', name: 'Classic', description: 'Soft and timeless — fine lines, airy paper and a small diamond motif.', allowsDark: false },
+  { id: 'maison', name: 'Maison Noir', description: 'Dark editorial luxury — numbered sections, gold rules, fashion-magazine type.', allowsDark: true },
+  { id: 'deco', name: 'Gilded Deco', description: 'Art Deco glamour — gold fans, sunbursts, stepped frames, 1920s ballroom.', allowsDark: true },
+  { id: 'heritage', name: 'Heritage', description: 'Filipino luxury — capiz-shell shimmer and woven banig borders.', allowsDark: false },
+]
+
+export const findStyle = (id: string | undefined) => STYLES.find((s) => s.id === id) ?? STYLES[0]
+
 export interface ThemeSettings {
   template: string
   headingFont?: string
@@ -38,6 +58,11 @@ export const HEADING_FONTS: FontOption[] = [
   { id: 'marcellus', family: 'Marcellus', spec: '', fallback: 'Georgia, serif' },
   { id: 'cinzel', family: 'Cinzel', spec: 'wght@400;500;600', fallback: 'Georgia, serif' },
   { id: 'italiana', family: 'Italiana', spec: '', fallback: 'Georgia, serif' },
+  { id: 'poiret', family: 'Poiret One', spec: '', fallback: 'Futura, Georgia, serif' },
+  { id: 'forum', family: 'Forum', spec: '', fallback: 'Georgia, serif' },
+  { id: 'prata', family: 'Prata', spec: '', fallback: 'Georgia, serif' },
+  { id: 'gilda', family: 'Gilda Display', spec: '', fallback: 'Georgia, serif' },
+  { id: 'bellefair', family: 'Bellefair', spec: '', fallback: 'Georgia, serif' },
 ]
 
 export const BODY_FONTS: FontOption[] = [
@@ -62,6 +87,8 @@ export interface Template {
   headingFont: string
   bodyFont: string
   heroLayout: HeroLayout
+  /** Design style this preset belongs to (default: classic). */
+  style?: StyleId
 }
 
 export const TEMPLATES: Template[] = [
@@ -75,6 +102,39 @@ export const TEMPLATES: Template[] = [
   { id: 'lavender', name: 'Lavender Mist', description: 'Soft lilac, light and dreamy.', background: '#F9F7FB', text: '#2D2835', accent: '#9C8AB4', headingFont: 'cormorant', bodyFont: 'josefin', heroLayout: 'center' },
   { id: 'emerald', name: 'Emerald & Gold', description: 'Deep emerald with gold, formal and grand.', background: '#F7F6F1', text: '#1F3029', accent: '#B08D4C', headingFont: 'cinzel', bodyFont: 'raleway', heroLayout: 'center' },
   { id: 'burgundy', name: 'Burgundy Romance', description: 'Rich burgundy on cream, perfect for December.', background: '#FBF7F4', text: '#2B1A1D', accent: '#7E2A3A', headingFont: 'dm-serif', bodyFont: 'dm-sans', heroLayout: 'framed' },
+  // ---- Maison Noir
+  { style: 'maison', id: 'maison-noir', name: 'Noir & Gold', description: 'Black velvet with warm gold — the signature look.', background: '#0E0D0C', text: '#F3EDE2', accent: '#C8A96A', headingFont: 'bodoni', bodyFont: 'jost', heroLayout: 'center' },
+  { style: 'maison', id: 'maison-midnight', name: 'Midnight Champagne', description: 'Deep midnight blue with soft champagne.', background: '#0F1420', text: '#EEE9DF', accent: '#D4B98C', headingFont: 'playfair', bodyFont: 'montserrat', heroLayout: 'left' },
+  { style: 'maison', id: 'maison-onyx', name: 'Onyx Emerald', description: 'Near-black emerald with antique gold.', background: '#0C1512', text: '#EDEFE8', accent: '#B9975B', headingFont: 'cormorant', bodyFont: 'raleway', heroLayout: 'center' },
+  { style: 'maison', id: 'maison-bordeaux', name: 'Bordeaux Nuit', description: 'Dark wine with rose-gold light.', background: '#170C0F', text: '#F2E6E4', accent: '#C79A6B', headingFont: 'dm-serif', bodyFont: 'dm-sans', heroLayout: 'split' },
+  { style: 'maison', id: 'maison-espresso', name: 'Espresso Silk', description: 'Rich espresso brown with caramel gold.', background: '#1A1411', text: '#F1E9DF', accent: '#C9A27E', headingFont: 'gilda', bodyFont: 'lato', heroLayout: 'framed' },
+  { style: 'maison', id: 'maison-silver', name: 'Charcoal Silver', description: 'Charcoal and moonlit silver, very modern.', background: '#141414', text: '#EFEFEF', accent: '#B8B8B8', headingFont: 'italiana', bodyFont: 'inter', heroLayout: 'left' },
+  { style: 'maison', id: 'maison-navy', name: 'Navy Couture', description: 'Ink navy with brushed gold.', background: '#0D1726', text: '#ECE7DE', accent: '#C5A46D', headingFont: 'cormorant', bodyFont: 'josefin', heroLayout: 'center' },
+  { style: 'maison', id: 'maison-plum', name: 'Plum Velvet', description: 'Dark plum with soft antique gold.', background: '#1A1020', text: '#EFE6F0', accent: '#C9A87C', headingFont: 'playfair', bodyFont: 'raleway', heroLayout: 'framed' },
+  { style: 'maison', id: 'maison-atelier', name: 'Ivory Atelier', description: 'The Maison look on warm ivory paper.', background: '#F7F3EC', text: '#151312', accent: '#A6824B', headingFont: 'bodoni', bodyFont: 'jost', heroLayout: 'split' },
+  { style: 'maison', id: 'maison-blanc', name: 'Blanc Editorial', description: 'Crisp white, black type, a touch of gold.', background: '#FFFFFF', text: '#111111', accent: '#9A7B4F', headingFont: 'prata', bodyFont: 'inter', heroLayout: 'center' },
+  // ---- Gilded Deco
+  { style: 'deco', id: 'deco-gatsby', name: 'Gatsby Black & Gold', description: 'Jet black and bright gold — pure 1920s glamour.', background: '#101010', text: '#F1E7D0', accent: '#D4AF37', headingFont: 'poiret', bodyFont: 'josefin', heroLayout: 'center' },
+  { style: 'deco', id: 'deco-champagne', name: 'Champagne Ballroom', description: 'Champagne paper with polished gold.', background: '#F8F3E8', text: '#2A241B', accent: '#B08D4C', headingFont: 'poiret', bodyFont: 'montserrat', heroLayout: 'framed' },
+  { style: 'deco', id: 'deco-emerald', name: 'Emerald Deco', description: 'Deep emerald lacquer with gold inlay.', background: '#0B2A22', text: '#F0EBDD', accent: '#CDAA5C', headingFont: 'cinzel', bodyFont: 'josefin', heroLayout: 'center' },
+  { style: 'deco', id: 'deco-ivory', name: 'Ivory Sunburst', description: 'Ivory with warm brass sunbursts.', background: '#FBF7EF', text: '#23201A', accent: '#A8843F', headingFont: 'forum', bodyFont: 'raleway', heroLayout: 'split' },
+  { style: 'deco', id: 'deco-sapphire', name: 'Sapphire Jazz', description: 'Midnight sapphire with gold — a jazz-age evening.', background: '#0E1A33', text: '#EDE8DC', accent: '#CFAE6B', headingFont: 'italiana', bodyFont: 'josefin', heroLayout: 'left' },
+  { style: 'deco', id: 'deco-rosegold', name: 'Rose Gold Deco', description: 'Blush paper with rose-gold geometry.', background: '#FAF2EF', text: '#2F2223', accent: '#B07A6A', headingFont: 'poiret', bodyFont: 'montserrat', heroLayout: 'framed' },
+  { style: 'deco', id: 'deco-onyx', name: 'Onyx & Pearl', description: 'Black onyx with pearl and platinum.', background: '#121212', text: '#F4F1EA', accent: '#CFC6B4', headingFont: 'cinzel', bodyFont: 'raleway', heroLayout: 'center' },
+  { style: 'deco', id: 'deco-teal', name: 'Teal Lounge', description: 'Dark teal with antique gold.', background: '#0D2629', text: '#EAF0EE', accent: '#C9A35F', headingFont: 'forum', bodyFont: 'josefin', heroLayout: 'left' },
+  { style: 'deco', id: 'deco-blush', name: 'Blush Gilded', description: 'Soft blush and gilded lines, light and elegant.', background: '#FBF5F2', text: '#2B2224', accent: '#B98E5E', headingFont: 'italiana', bodyFont: 'montserrat', heroLayout: 'split' },
+  { style: 'deco', id: 'deco-ruby', name: 'Ruby Ballroom', description: 'Deep ruby with gold for a grand December night.', background: '#2A0C12', text: '#F3E7E3', accent: '#D2AE6D', headingFont: 'poiret', bodyFont: 'raleway', heroLayout: 'center' },
+  // ---- Heritage
+  { style: 'heritage', id: 'heritage-capiz', name: 'Capiz Ivory', description: 'Capiz-shell ivory with deep Filipiniana maroon.', background: '#FBF7EE', text: '#2B201A', accent: '#8C2F39', headingFont: 'marcellus', bodyFont: 'jost', heroLayout: 'framed' },
+  { style: 'heritage', id: 'heritage-banig', name: 'Banig Natural', description: 'Woven-mat naturals: sand, rattan and brown.', background: '#F7F0E3', text: '#33261C', accent: '#9C6B3C', headingFont: 'cormorant', bodyFont: 'karla', heroLayout: 'left' },
+  { style: 'heritage', id: 'heritage-sampaguita', name: 'Sampaguita', description: 'Jasmine white with leaf green.', background: '#FCFBF6', text: '#26302A', accent: '#6E8B5C', headingFont: 'eb-garamond', bodyFont: 'lato', heroLayout: 'framed' },
+  { style: 'heritage', id: 'heritage-pina', name: 'Piña Cloth', description: 'Piña fibre cream with soft golden thread.', background: '#F8F5EC', text: '#2E2A24', accent: '#A28449', headingFont: 'prata', bodyFont: 'jost', heroLayout: 'center' },
+  { style: 'heritage', id: 'heritage-inabel', name: 'Inabel Indigo', description: 'Ilocano weave indigo on cotton white.', background: '#F5F6F8', text: '#1C2433', accent: '#2F4E86', headingFont: 'marcellus', bodyFont: 'nunito-sans', heroLayout: 'split' },
+  { style: 'heritage', id: 'heritage-narra', name: 'Narra Wood', description: 'Warm narra wood and carved brown.', background: '#F6EFE6', text: '#2E1E15', accent: '#8A5A36', headingFont: 'lora', bodyFont: 'karla', heroLayout: 'left' },
+  { style: 'heritage', id: 'heritage-santan', name: 'Santan Coral', description: 'Santan-flower coral, bright and joyful.', background: '#FCF5F1', text: '#33221E', accent: '#B24E39', headingFont: 'playfair', bodyFont: 'montserrat', heroLayout: 'framed' },
+  { style: 'heritage', id: 'heritage-mangrove', name: 'Mangrove Green', description: 'Island greens for garden and beach weddings.', background: '#F3F5EE', text: '#1F2B22', accent: '#47704F', headingFont: 'cormorant', bodyFont: 'raleway', heroLayout: 'center' },
+  { style: 'heritage', id: 'heritage-perlas', name: 'Perlas Pearl', description: 'South Sea pearl and soft taupe.', background: '#FAF8F5', text: '#2A2826', accent: '#8F7F63', headingFont: 'gilda', bodyFont: 'lato', heroLayout: 'framed' },
+  { style: 'heritage', id: 'heritage-terno', name: 'Terno Burgundy', description: 'Terno-gown burgundy on capiz cream.', background: '#FBF6F3', text: '#2B171B', accent: '#7E2A3A', headingFont: 'dm-serif', bodyFont: 'dm-sans', heroLayout: 'left' },
 ]
 
 export const HERO_LAYOUTS: { id: HeroLayout; name: string; description: string }[] = [
@@ -111,6 +171,9 @@ function luminance(h: string): number {
   })
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
+/** True for page colours dark enough to need light text. */
+export const isDarkColor = (hex: string) => luminance(hex) < 0.18
+
 export function contrast(a: string, b: string): number {
   const la = luminance(a)
   const lb = luminance(b)
@@ -140,13 +203,15 @@ export interface Palette {
 /** Full site palette from three base colours, with contrast guaranteed. */
 export function derivePalette(background: string, text: string, accent: string): Palette {
   const bg = background
+  const dark = isDarkColor(bg)
   const ink = ensure(text, bg, luminance(bg) > 0.5 ? '#000000' : '#FFFFFF', 7)
   return {
     ivory: bg,
-    cream: mix(bg, accent, 0.08),
-    paper: mix(bg, '#FFFFFF', 0.6),
-    linen: mix(bg, accent, 0.2),
-    line: mix(bg, accent, 0.28),
+    cream: mix(bg, accent, dark ? 0.07 : 0.08),
+    // On dark pages, cards sit just slightly lighter than the page.
+    paper: dark ? mix(bg, '#FFFFFF', 0.045) : mix(bg, '#FFFFFF', 0.6),
+    linen: mix(bg, accent, dark ? 0.16 : 0.2),
+    line: mix(bg, accent, dark ? 0.32 : 0.28),
     ink,
     inkSoft: ensure(mix(ink, bg, 0.18), bg, ink, 7),
     muted: ensure(mix(ink, bg, 0.42), mix(bg, accent, 0.08), ink, 4.6),
@@ -180,6 +245,8 @@ export function contrastReport(p: Palette): ContrastCheck[] {
 
 export interface ResolvedTheme {
   templateId: string
+  style: StyleId
+  dark: boolean
   palette: Palette
   heading: FontOption
   body: FontOption
@@ -197,6 +264,8 @@ export function resolveTheme(s: ThemeSettings | null | undefined): ResolvedTheme
   const accent = isHex(s?.accent) ? s.accent : t.accent
   return {
     templateId: t.id,
+    style: t.style ?? 'classic',
+    dark: isDarkColor(background),
     palette: derivePalette(background, text, accent),
     heading: findHeading(s?.headingFont) ?? findHeading(t.headingFont) ?? HEADING_FONTS[0],
     body: findBody(s?.bodyFont) ?? findBody(t.bodyFont) ?? BODY_FONTS[0],
@@ -243,5 +312,20 @@ export function themeVars(t: ResolvedTheme): Record<string, string> {
     '--color-gold': p.gold,
     '--font-serif': `"${t.heading.family}", ${t.heading.fallback}`,
     '--font-sans': `"${t.body.family}", ${t.body.fallback}`,
+  }
+}
+
+/**
+ * The admin pages keep the couple's accent and fonts but always use the
+ * classic, light design so forms and tables stay familiar (and Printables,
+ * which read these colours, always print on light paper).
+ */
+export function adminTheme(t: ResolvedTheme): ResolvedTheme {
+  if (t.style === 'classic' && !t.dark) return t
+  return {
+    ...t,
+    style: 'classic',
+    dark: false,
+    palette: t.dark ? derivePalette('#FAF7F2', '#2B2A28', t.palette.champagne) : t.palette,
   }
 }

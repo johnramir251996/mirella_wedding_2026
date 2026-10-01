@@ -14,6 +14,7 @@ import type {
   WeddingSettings,
   WeddingSettingsInput,
 } from '../types/wedding'
+import { GALLERY_LAYOUTS } from '../types/wedding'
 import { FriendlyError, logError } from '../utils/errors'
 import { parseThemeSettings, type ThemeSettings } from '../theme/themes'
 import type { BuiltinKey, RsvpConfig } from '../types/questions'
@@ -162,7 +163,7 @@ function fromRow(row: Tables<'wedding_settings'>): WeddingSettings {
     galleryVisible: row.gallery_visible !== false,
     galleryTitle: row.gallery_title ?? 'Our Story in Frames',
     gallerySubtitle: row.gallery_subtitle ?? '',
-    galleryLayout: row.gallery_layout === 'carousel' ? 'carousel' : 'grid',
+    galleryLayout: GALLERY_LAYOUTS.find((g) => g.id === row.gallery_layout)?.id ?? 'grid',
     videoVisible: row.video_visible !== false,
     videoTitle: row.video_title ?? 'Our Prenup Film',
     videoCaption: row.video_caption ?? '',

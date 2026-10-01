@@ -21,6 +21,8 @@ import { isRsvpOpen } from '../services/settingsService'
 import { getPublicGift } from '../services/giftService'
 import type { PublicGift } from '../types/wedding'
 import { formatWeddingDate } from '../utils/formatting'
+import { GALLERY_LAYOUTS, type GalleryLayout } from '../types/wedding'
+import { isThemePreviewFrame } from '../theme/applyTheme'
 
 export default function Home() {
   const { settings, loading, error, refresh } = useWeddingSettings()
@@ -44,6 +46,9 @@ export default function Home() {
   if (error || !settings) return <PublicError message={error ?? undefined} onRetry={() => refresh()} />
 
   const showOutfits = settings.outfitSectionVisible && outfits.length > 0
+  // Inside the admin's preview, "&gallery=polaroid" tries a layout without saving it.
+  const previewLayout = isThemePreviewFrame() ? (/[?&]gallery=([a-z]+)/.exec(window.location.hash)?.[1] as GalleryLayout | undefined) : undefined
+  const galleryLayout = GALLERY_LAYOUTS.some((g) => g.id === previewLayout) ? previewLayout! : settings.galleryLayout
 
   return (
     <>
@@ -51,7 +56,7 @@ export default function Home() {
       <main>
         <Introduction settings={settings} />
         {settings.galleryVisible && (
-          <CoupleGallery title={settings.galleryTitle} subtitle={settings.gallerySubtitle} layout={settings.galleryLayout} images={gallery} />
+          <CoupleGallery title={settings.galleryTitle} subtitle={settings.gallerySubtitle} layout={galleryLayout} images={gallery} />
         )}
         {settings.videoVisible && settings.videoUrl && (
           <VideoHighlight title={settings.videoTitle} caption={settings.videoCaption} url={settings.videoUrl} posterUrl={settings.videoPosterUrl} />

@@ -40,7 +40,7 @@ export function OutfitGallery({ title, subtitle, images, motifTitle = '', motifC
   return (
     <section aria-labelledby="outfits-heading" className="overflow-hidden bg-cream/60 px-5 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <Reveal className="text-center">
+        <Reveal className="section-title text-center">
           <p className="eyebrow">Dress Code</p>
           <h2 id="outfits-heading" className="mt-4 text-4xl text-ink sm:text-5xl">
             {title}
@@ -251,7 +251,7 @@ function Lightbox({ image, onClose }: { image: OutfitImage | null; onClose: () =
           role="dialog"
           aria-modal="true"
           aria-label={image.caption || 'Outfit idea'}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -266,7 +266,7 @@ function Lightbox({ image, onClose }: { image: OutfitImage | null; onClose: () =
             onClick={(e) => e.stopPropagation()}
           >
             <img src={image.imageUrl} alt={image.caption || 'Outfit idea'} className="max-h-[80dvh] w-full rounded-sm bg-paper object-contain shadow-lift" />
-            {image.caption && <figcaption className="mt-4 text-center font-serif text-2xl text-ivory">{image.caption}</figcaption>}
+            {image.caption && <figcaption className="mt-4 text-center font-serif text-2xl text-white">{image.caption}</figcaption>}
             <button
               type="button"
               onClick={onClose}

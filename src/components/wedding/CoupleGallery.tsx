@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
-import type { GalleryImage } from '../../types/wedding'
+import type { GalleryImage, GalleryLayout } from '../../types/wedding'
 import { Ornament } from '../ui/Ornament'
 import { cn } from '../ui/cn'
 import { Reveal } from './Reveal'
 
+// The other eight layouts are downloaded only when chosen.
+const GalleryLayoutView = lazy(() => import('./GalleryLayouts'))
+
 interface Props {
   title: string
   subtitle: string
-  layout: 'grid' | 'carousel'
+  layout: GalleryLayout
   images: GalleryImage[]
 }
 
@@ -21,7 +24,7 @@ export function CoupleGallery({ title, subtitle, layout, images }: Props) {
   return (
     <section aria-labelledby="gallery-heading" className="px-4 py-24 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <Reveal className="text-center">
+        <Reveal className="section-title text-center">
           <p className="eyebrow">Moments</p>
           <h2 id="gallery-heading" className="mt-4 text-4xl text-ink sm:text-5xl">
             {title}
@@ -32,6 +35,10 @@ export function CoupleGallery({ title, subtitle, layout, images }: Props) {
 
         {layout === 'carousel' ? (
           <Carousel title={title} images={images} onOpen={setOpen} />
+        ) : layout !== 'grid' ? (
+          <Suspense fallback={<div className="mt-12 h-72 animate-pulse rounded-sm bg-linen/60" />}>
+            <GalleryLayoutView layout={layout} title={title} images={images} onOpen={setOpen} />
+          </Suspense>
         ) : (
           <ul className="mt-12 columns-2 gap-3 sm:gap-4 lg:columns-3" aria-label={title}>
             {images.map((img, i) => (
@@ -135,7 +142,7 @@ function Photo({ img, index, total, onOpen, className }: { img: GalleryImage; in
         />
       </button>
       {img.caption && (
-        <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/60 to-transparent px-4 pb-3 pt-10 font-serif text-lg italic text-ivory opacity-0 transition duration-300 group-hover:opacity-100">
+        <figcaption className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-4 pb-3 pt-10 font-serif text-lg italic text-white opacity-0 transition duration-300 group-hover:opacity-100">
           {img.caption}
         </figcaption>
       )}
@@ -195,7 +202,7 @@ function Lightbox({ images, index, onChange }: { images: GalleryImage[]; index: 
             touchX.current = null
           }}
         >
-          <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] text-ivory/80">
+          <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] text-white/80">
             <span className="text-xs uppercase tracking-[0.3em]">
               {index + 1} / {count}
             </span>
@@ -216,7 +223,7 @@ function Lightbox({ images, index, onChange }: { images: GalleryImage[]; index: 
                 onClick={(e) => e.stopPropagation()}
               >
                 <img src={img.imageUrl} alt={img.caption || `Photo ${index + 1}`} className="max-h-[78dvh] w-auto max-w-full rounded-sm object-contain shadow-lift" />
-                {img.caption && <figcaption className="mt-4 text-center font-serif text-2xl italic text-ivory">{img.caption}</figcaption>}
+                {img.caption && <figcaption className="mt-4 text-center font-serif text-2xl italic text-white">{img.caption}</figcaption>}
               </motion.figure>
             </AnimatePresence>
 
@@ -229,7 +236,7 @@ function Lightbox({ images, index, onChange }: { images: GalleryImage[]; index: 
                     go(-1)
                   }}
                   aria-label="Previous photo"
-                  className="absolute left-2 top-1/2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-ivory transition hover:bg-white/20 sm:flex"
+                  className="absolute left-2 top-1/2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:flex"
                 >
                   <ChevronLeft className="size-6" />
                 </button>
@@ -240,14 +247,14 @@ function Lightbox({ images, index, onChange }: { images: GalleryImage[]; index: 
                     go(1)
                   }}
                   aria-label="Next photo"
-                  className="absolute right-2 top-1/2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-ivory transition hover:bg-white/20 sm:flex"
+                  className="absolute right-2 top-1/2 hidden size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:flex"
                 >
                   <ChevronRight className="size-6" />
                 </button>
               </>
             )}
           </div>
-          <p className="pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-center text-xs text-ivory/50 sm:hidden">Swipe to see more</p>
+          <p className="pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-center text-xs text-white/50 sm:hidden">Swipe to see more</p>
         </motion.div>
       )}
     </AnimatePresence>
