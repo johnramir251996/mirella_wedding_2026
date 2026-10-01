@@ -628,9 +628,20 @@ export default function AdminSeating() {
                         <span className="truncate">
                           {t.name} <span className="text-muted">· {t.capacity} seats</span>
                         </span>
-                        <Button size="sm" variant="subtle" onClick={() => patchTable(t.id, { placed: true, ...spot(placed.length + n) })}>
-                          Place
-                        </Button>
+                        <span className="flex shrink-0 items-center gap-1">
+                          <Button size="sm" variant="subtle" onClick={() => patchTable(t.id, { placed: true, ...spot(placed.length + n) })}>
+                            Place
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-rose hover:bg-rose/10 hover:text-rose"
+                            onClick={() => setToDelete({ kind: 'table', id: t.id, name: t.name })}
+                            aria-label={`Delete ${t.name}`}
+                            title={`Delete ${t.name}`}
+                            icon={<Trash2 aria-hidden="true" className="size-4" />}
+                          />
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -640,6 +651,7 @@ export default function AdminSeating() {
               <Card title="Tips">
                 <ul className="list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>Select a table to change its name, shape and number of seats.</li>
+                  <li>To delete a table, select it and press Delete, or use the bin next to a table that isn’t on the plan.</li>
                   <li>Use “Seat a whole party” to fill a table in one go.</li>
                   <li>Only guests who RSVP’d “attending” can be seated.</li>
                 </ul>
