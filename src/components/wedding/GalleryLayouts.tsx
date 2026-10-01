@@ -345,7 +345,8 @@ function CardDeck({ title, images, onOpen }: LayoutProps) {
               style={{ zIndex: 10 - depth }}
               initial={{ opacity: 0, scale: 0.9, rotate: 0 }}
               animate={{ opacity: 1, scale: 1 - depth * 0.05, y: depth * 14, rotate: depth === 0 ? 0 : depth % 2 ? 3 : -3 }}
-              exit={(d: number) => ({ x: d * -420, rotate: d * -18, opacity: 0, transition: { duration: reduce ? 0.1 : 0.45 } })}
+              variants={{ gone: (d: number) => ({ x: d * -420, rotate: d * -18, opacity: 0, transition: { duration: reduce ? 0.1 : 0.45 } }) }}
+              exit="gone"
               transition={{ type: 'spring', stiffness: 260, damping: 26 }}
               drag={depth === 0 && !reduce ? 'x' : false}
               dragSnapToOrigin
