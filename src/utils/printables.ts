@@ -4,6 +4,9 @@
  * in the browser's print dialog and in tests. All user text is escaped.
  */
 
+import type { StyleId } from '../theme/themes'
+import { bandSvg, frameSvg, ornamentSvg, sealSvg, styleType } from './printStyles'
+
 export type Paper = 'a4' | 'legal'
 
 /** Landscape sheet sizes in mm. */
@@ -13,6 +16,8 @@ export const SHEETS: Record<Paper, { w: number; h: number; label: string }> = {
 }
 
 export interface PrintTheme {
+  /** Design style (Look & Feel); defaults to classic. */
+  style?: StyleId
   ink: string
   soft: string
   muted: string
@@ -41,11 +46,19 @@ function coupleHtml(names: string, t: PrintTheme): string {
   return `${esc(parts[0])} <span style="font-style:italic;color:${t.accent}">&amp;</span> ${esc(parts.slice(1).join(' & '))}`
 }
 
-// ---------------------------------------------------------------- money envelope
+// ---------------------------------------------------------------- money envelope (policy type)
 
-/** Finished envelope ≈ 175 × 90 mm — fits peso bills folded once (or flat). */
-export const ENV = { W: 175, H: 90, side: 18, top: 38, bottom: 58 }
-export const ENV_FLAT = { w: ENV.W + ENV.side * 2, h: ENV.top + ENV.H + ENV.bottom } // 211 × 186
+/**
+ * A tall, open-end "policy" envelope: 92 × 185 mm finished, opening on the
+ * short top edge, so peso bills (160 × 66 mm) slide in flat.
+ *
+ * Flat layout on the sheet (lying on its side, top of the envelope → right):
+ *   - front panel, with the back panel below it (fold between them)
+ *   - a glue strip above the front, a bottom flap on the left end,
+ *     and the closing flap on the right end — all fold onto the back.
+ */
+export const ENV = { W: 92, L: 185, glue: 10, bottom: 16, flap: 44 }
+export const ENV_FLAT = { w: ENV.bottom + ENV.L + ENV.flap, h: ENV.glue + ENV.W * 2 } // 245 × 194
 
 export interface EnvelopeOptions {
   coupleNames: string
@@ -55,142 +68,143 @@ export interface EnvelopeOptions {
   /** e.g. "Our Lady of the Pillar Parish · 2:00 PM" */
   ceremony?: string
   reception?: string
+  /** The couple's GCash / InstaPay QR (image URL), printed on the front. */
+  giftQrUrl?: string | null
 }
 
-export function envelopeSvg({ coupleNames, dateText, monogram, theme, ceremony = '', reception = '' }: EnvelopeOptions): string {
-  const t = safe(theme)
-  const { W, H, side: s, top: tf, bottom: bf } = ENV
-  const x0 = s
-  const y0 = tf // front panel top-left
-  const cut = `fill="none" stroke="${t.ink}" stroke-width="0.35"`
-  const fold = `fill="none" stroke="${t.muted}" stroke-width="0.3" stroke-dasharray="2.2 1.6"`
-  const r = 5 // corner radius on flaps
+const r2 = (v: number) => Math.round(v * 100) / 100
 
-  // Outline (cut line), clockwise from the front panel's top-left corner.
+/** Fits text on one line: a font size (mm) for `text` within `width` mm (approximate). */
+function fit(text: string, width: number, max: number, perChar = 0.56): number {
+  return r2(Math.min(max, width / Math.max(1, text.length * perChar)))
+}
+
+export function envelopeSvg({ coupleNames, dateText, monogram, theme, ceremony = '', reception = '', giftQrUrl }: EnvelopeOptions): string {
+  const t = safe(theme)
+  const style = t.style ?? 'classic'
+  const c = { ink: t.ink, accent: t.accent, accentLight: t.accentLight, paper: t.paper, line: t.line, serif: t.serif }
+  const ty = styleType(style)
+  const { W, L, glue: G, bottom: B, flap: F } = ENV
+  const xr = B + L // the envelope's top edge (flap hinge) in flat coordinates
+  const yF = G // front panel top
+  const yB = G + W // back panel top (fold)
+  const cy = yB + W / 2
+  const flapPath = `L ${xr + F - 14} ${yF + 6} Q ${xr + F} ${yF + 12} ${xr + F} ${yF + W / 2} Q ${xr + F} ${yF + W - 12} ${xr + F - 14} ${yF + W - 6} L ${xr} ${yF + W}`
+
+  // Cut outline, clockwise from the front panel's bottom-left corner.
   const outline = [
-    `M ${x0} ${y0}`,
-    // top flap
-    `L ${x0 + 16} ${y0 - tf + r}`,
-    `Q ${x0 + 18} ${y0 - tf} ${x0 + 18 + r} ${y0 - tf}`,
-    `L ${x0 + W - 18 - r} ${y0 - tf}`,
-    `Q ${x0 + W - 18} ${y0 - tf} ${x0 + W - 16} ${y0 - tf + r}`,
-    `L ${x0 + W} ${y0}`,
-    // right side flap
-    `L ${x0 + W + s - 2} ${y0 + 10}`,
-    `Q ${x0 + W + s} ${y0 + 11} ${x0 + W + s} ${y0 + 14}`,
-    `L ${x0 + W + s} ${y0 + H - 14}`,
-    `Q ${x0 + W + s} ${y0 + H - 11} ${x0 + W + s - 2} ${y0 + H - 10}`,
-    `L ${x0 + W} ${y0 + H}`,
-    // bottom flap
-    `L ${x0 + W - 8} ${y0 + H + bf - r}`,
-    `Q ${x0 + W - 9} ${y0 + H + bf} ${x0 + W - 9 - r} ${y0 + H + bf}`,
-    `L ${x0 + 9 + r} ${y0 + H + bf}`,
-    `Q ${x0 + 9} ${y0 + H + bf} ${x0 + 8} ${y0 + H + bf - r}`,
-    `L ${x0} ${y0 + H}`,
-    // left side flap
-    `L ${2} ${y0 + H - 10}`,
-    `Q ${0} ${y0 + H - 11} ${0} ${y0 + H - 14}`,
-    `L ${0} ${y0 + 14}`,
-    `Q ${0} ${y0 + 11} ${2} ${y0 + 10}`,
-    'Z',
+    `M ${B} ${yF}`,
+    `L ${B + 6} 0 L ${xr - 6} 0 L ${xr} ${yF}`, // glue strip
+    flapPath, // closing flap
+    `L ${xr} ${cy - 9} A 9 9 0 0 0 ${xr} ${cy + 9}`, // thumb notch at the opening
+    `L ${xr} ${yB + W} L ${B} ${yB + W} L ${B} ${yB}`, // back panel
+    `L 1 ${yF + W - 7} L 1 ${yF + 7} Z`, // bottom flap
   ].join(' ')
 
-  const cx = x0 + W / 2
+  const cut = `fill="none" stroke="${t.ink}" stroke-width="0.35"`
+  const fold = `fill="none" stroke="${t.muted}" stroke-width="0.3" stroke-dasharray="2.2 1.6"`
+
+  // ---------------- front (portrait coords: u across 0–92, v down 0–185)
   const parts = coupleNames.split(/\s*(?:&|and)\s*/i).filter(Boolean)
-  const coupleSvg =
-    parts.length >= 2
-      ? `${esc(parts[0])} <tspan font-style="italic" fill="${t.accent}">&amp;</tspan> ${esc(parts.slice(1).join(' & '))}`
-      : esc(coupleNames)
-  const nameSize = Math.min(12, 250 / Math.max(8, coupleNames.length))
-  // Bottom-flap content is designed "as seen on the back" then turned 180° so it reads upright once folded.
-  const bcx = cx
-  const bcy = y0 + H + bf / 2
-  // (The far edge of this flap is overlapped ~6 mm by the top flap, so content starts lower.)
-  const backLines = [0, 1, 2]
-    .map((i) => `<line x1="${x0 + 22}" x2="${x0 + W - 22}" y1="${y0 + H + 34 + i * 7.5}" y2="${y0 + H + 34 + i * 7.5}" stroke="${t.line}" stroke-width="0.3"/>`)
-    .join('')
-  const bottomContent = `
-    <g transform="rotate(180 ${bcx} ${bcy})">
-      <text x="${x0 + 22}" y="${y0 + H + 18}" font-family="${t.sans}" font-size="2.9" letter-spacing="0.5" fill="${t.accent}">FROM</text>
-      <line x1="${x0 + 34}" x2="${x0 + W - 22}" y1="${y0 + H + 18.5}" y2="${y0 + H + 18.5}" stroke="${t.line}" stroke-width="0.3"/>
-      <text x="${x0 + 22}" y="${y0 + H + 28}" font-family="${t.sans}" font-size="2.9" letter-spacing="0.5" fill="${t.accent}">A MESSAGE FOR THE COUPLE</text>
-      ${backLines}
-    </g>`
-
-  // Top flap: a small wax-seal monogram, turned 180° to face up when closed.
-  const tcy = y0 - tf / 2 + 3
-  const topContent = `
-    <g transform="rotate(180 ${cx} ${tcy})">
-      <circle cx="${cx}" cy="${tcy}" r="8.5" fill="${t.accentLight}" stroke="${t.accent}" stroke-width="0.4"/>
-      <text x="${cx}" y="${tcy + 1.6}" text-anchor="middle" font-family="${t.serif}" font-style="italic" font-size="5.2" fill="${t.ink}">${esc(monogram)}</text>
-    </g>`
-
+  const nameA = parts[0] ?? coupleNames
+  const nameB = parts.length > 1 ? parts.slice(1).join(' & ') : ''
+  const caseName = (s: string) => esc(ty.namesCase === 'uppercase' ? s.toUpperCase() : s)
+  const nameSize = fit(nameB ? (nameA.length > nameB.length ? nameA : nameB) : nameA, 70, 14 * ty.namesScale, ty.namesCase === 'uppercase' ? 0.72 : 0.55)
+  const u0 = W / 2
+  const hasQr = Boolean(giftQrUrl)
   const details = [
     ['CEREMONY', ceremony],
     ['RECEPTION', reception],
   ].filter(([, v]) => v.trim())
-  const hasDetails = details.length > 0
-  const detailSize = (v: string) => Math.min(2.8, 150 / Math.max(40, v.length + 12) * 1.9)
-  const front = `
-    <rect x="${x0 + 5}" y="${y0 + 5}" width="${W - 10}" height="${H - 10}" fill="none" stroke="${t.accent}" stroke-width="0.35"/>
-    <rect x="${x0 + 6.6}" y="${y0 + 6.6}" width="${W - 13.2}" height="${H - 13.2}" fill="none" stroke="${t.accent}" stroke-width="0.15"/>
-    <text x="${cx}" y="${y0 + (hasDetails ? 18 : 27)}" text-anchor="middle" font-family="${t.sans}" font-size="2.8" letter-spacing="1.2" fill="${t.accent}">WITH LOVE &amp; BEST WISHES FOR</text>
-    <text x="${cx}" y="${y0 + (hasDetails ? 36 : 51)}" text-anchor="middle" font-family="${t.serif}" font-size="${hasDetails ? Math.min(nameSize, 11) : nameSize}" fill="${t.ink}">${coupleSvg}</text>
-    <line x1="${cx - 12}" x2="${cx + 12}" y1="${y0 + (hasDetails ? 43.5 : 62)}" y2="${y0 + (hasDetails ? 43.5 : 62)}" stroke="${t.accent}" stroke-width="0.3"/>
-    <text x="${cx}" y="${y0 + (hasDetails ? 51 : 70)}" text-anchor="middle" font-family="${t.sans}" font-size="2.9" letter-spacing="1.4" fill="${t.ink}">${esc(dateText.toUpperCase())}</text>
-    ${details
-      .map(
-        ([label, value], i) =>
-          `<text x="${cx}" y="${y0 + 60 + i * 8}" text-anchor="middle" font-family="${t.sans}" font-size="${detailSize(value)}" fill="${t.soft}"><tspan fill="${t.accent}" letter-spacing="0.5">${label}</tspan>  ·  ${esc(value)}</text>`,
-      )
-      .join('')}`
+  const top = hasQr ? 20 : 30
+  let v = top
+  const out: string[] = []
+  out.push(frameSvg(style, 5, 5, W - 10, L - 10, c))
+  out.push(
+    `<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.sans}" font-size="2.3" letter-spacing="${ty.eyebrowTracking * 0.8}" fill="${t.accent}">WITH LOVE &amp; BEST WISHES</text>`,
+  )
+  v += 16
+  out.push(
+    `<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.serif}" font-size="${nameSize}" font-weight="${ty.namesWeight}" letter-spacing="${ty.namesTracking.replace('mm', '')}" fill="${t.ink}">${caseName(nameA)}</text>`,
+  )
+  if (nameB) {
+    v += nameSize * 0.82
+    out.push(`<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.serif}" font-style="italic" font-size="${r2(nameSize * 0.7)}" fill="${t.accent}">&amp;</text>`)
+    v += nameSize * 0.98
+    out.push(
+      `<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.serif}" font-size="${nameSize}" font-weight="${ty.namesWeight}" letter-spacing="${ty.namesTracking.replace('mm', '')}" fill="${t.ink}">${caseName(nameB)}</text>`,
+    )
+  }
+  v += 9
+  out.push(ornamentSvg(style, u0, v, 34, c))
+  v += 9
+  out.push(`<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.sans}" font-size="${fit(dateText, 76, 2.9, 0.62)}" letter-spacing="0.6" fill="${t.ink}">${esc(dateText.toUpperCase())}</text>`)
+  for (const [label, value] of details) {
+    const [place, time] = value.split(/\s+·\s+/)
+    v += 7.5
+    out.push(`<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.sans}" font-size="2.1" letter-spacing="0.6" fill="${t.accent}">${label}${time ? `  ·  ${esc(time)}` : ''}</text>`)
+    v += 3.8
+    out.push(`<text x="${u0}" y="${v}" text-anchor="middle" font-family="${t.serif}" font-size="${fit(place, 74, 3.3, 0.5)}" fill="${t.soft}">${esc(place)}</text>`)
+  }
+  if (hasQr) {
+    const qr = 32
+    const qy = L - 14 - 9 - qr
+    out.push(`<text x="${u0}" y="${qy - 5}" text-anchor="middle" font-family="${t.sans}" font-size="2.15" letter-spacing="${ty.eyebrowTracking * 0.6}" fill="${t.accent}">OR SEND YOUR GIFT ONLINE</text>`)
+    out.push(`<rect x="${u0 - qr / 2 - 2}" y="${qy - 2}" width="${qr + 4}" height="${qr + 4}" rx="${style === 'heritage' ? 2.5 : style === 'classic' ? 1.5 : 0}" fill="#ffffff" stroke="${t.line}" stroke-width="0.3"/>`)
+    out.push(`<image href="${esc(giftQrUrl!)}" x="${u0 - qr / 2}" y="${qy}" width="${qr}" height="${qr}" preserveAspectRatio="xMidYMid meet"/>`)
+    out.push(`<text x="${u0}" y="${qy + qr + 6}" text-anchor="middle" font-family="${t.sans}" font-size="2.1" fill="${t.soft}">Scan with GCash, Maya or your banking app</text>`)
+  } else {
+    out.push(sealSvg(style, u0, L - 34, 8, monogram, c, esc))
+  }
+  const front = `<g transform="translate(${xr} ${yF}) rotate(90)">${out.join('')}</g>`
 
-  const glue = (x: number) => `
-    <text x="${x}" y="${y0 + H / 2}" text-anchor="middle" font-family="${t.sans}" font-size="2.3" letter-spacing="0.6" fill="${t.muted}" transform="rotate(-90 ${x} ${y0 + H / 2})">GLUE</text>`
+  // ---------------- back panel (as seen when the envelope is turned over)
+  // Covered once folded: top 44 mm (closing flap), right 10 mm (glue strip), bottom 16 mm (bottom flap).
+  const back: string[] = []
+  const bl = 7
+  const br = W - G - 5
+  back.push(`<text x="${(bl + br) / 2}" y="${F + 14}" text-anchor="middle" font-family="${t.sans}" font-size="2.3" letter-spacing="${ty.eyebrowTracking * 0.6}" fill="${t.accent}">A MESSAGE FOR THE COUPLE</text>`)
+  for (let i = 0; i < 9; i++) {
+    const ly = F + 26 + i * 8.5
+    back.push(`<line x1="${bl}" x2="${br}" y1="${ly}" y2="${ly}" stroke="${t.line}" stroke-width="0.3"/>`)
+  }
+  const fy = F + 26 + 9 * 8.5 + 6
+  back.push(`<text x="${bl}" y="${fy}" font-family="${t.sans}" font-size="2.3" letter-spacing="0.5" fill="${t.accent}">FROM</text>`)
+  back.push(`<line x1="${bl + 11}" x2="${br}" y1="${fy + 0.4}" y2="${fy + 0.4}" stroke="${t.line}" stroke-width="0.3"/>`)
+  // Glue guides (hidden once glued)
+  back.push(`<text x="${W - G / 2}" y="${L / 2}" text-anchor="middle" font-family="${t.sans}" font-size="2.2" letter-spacing="0.6" fill="${t.muted}" transform="rotate(-90 ${W - G / 2} ${L / 2})">GLUE</text>`)
+  back.push(`<text x="${W / 2 - 3}" y="${L - B / 2 + 0.8}" text-anchor="middle" font-family="${t.sans}" font-size="2.2" letter-spacing="0.6" fill="${t.muted}">GLUE</text>`)
+  const backG = `<g transform="translate(${xr} ${yB}) rotate(90)">${back.join('')}</g>`
+
+  // ---------------- closing flap: seal facing up when closed (seen on the back)
+  const sealD = 25
+  const flapArt = `<g transform="translate(${xr + sealD} ${yF + W / 2}) rotate(-90)">${sealSvg(style, 0, 0, 7.5, monogram, c, esc)}</g>`
+  const flapEdge =
+    style === 'maison'
+      ? ''
+      : style === 'deco'
+        ? `<line x1="${xr + 4}" x2="${xr + 4}" y1="${yF + 5}" y2="${yF + W - 5}" stroke="${t.accent}" stroke-width="0.3"/><line x1="${xr + 5.4}" x2="${xr + 5.4}" y1="${yF + 6}" y2="${yF + W - 6}" stroke="${t.accent}" stroke-width="0.15"/>`
+        : `<line x1="${xr + 4}" x2="${xr + 4}" y1="${yF + 8}" y2="${yF + W - 8}" stroke="${t.accent}" stroke-width="0.22" ${style === 'heritage' ? 'stroke-dasharray="1.1 0.8"' : ''}/>`
+
+  // Heritage: woven bands on the glue strip and bottom flap (they show on the back).
+  const bands =
+    style === 'heritage'
+      ? `${bandSvg(B + 8, 2.2, L - 16, 5, c, 'env-band-a')}<g transform="rotate(90 ${B / 2} ${yF + W / 2})">${bandSvg(B / 2 - (W - 22) / 2, yF + W / 2 - 2.5, W - 22, 5, c, 'env-band-b')}</g>`
+      : ''
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${ENV_FLAT.w}mm" height="${ENV_FLAT.h}mm" viewBox="0 0 ${ENV_FLAT.w} ${ENV_FLAT.h}">
     <path d="${outline}" fill="${t.paper}"/>
     ${front}
-    ${bottomContent}
-    ${topContent}
-    ${glue(s / 2)}${glue(x0 + W + s / 2)}
+    ${backG}
+    ${flapArt}
+    ${flapEdge}
+    ${bands}
     <path d="${outline}" ${cut}/>
-    <line x1="${x0}" y1="${y0}" x2="${x0 + W}" y2="${y0}" ${fold}/>
-    <line x1="${x0}" y1="${y0 + H}" x2="${x0 + W}" y2="${y0 + H}" ${fold}/>
-    <line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0 + H}" ${fold}/>
-    <line x1="${x0 + W}" y1="${y0}" x2="${x0 + W}" y2="${y0 + H}" ${fold}/>
+    <line x1="${B}" y1="${yB}" x2="${xr}" y2="${yB}" ${fold}/>
+    <line x1="${B}" y1="${yF}" x2="${xr}" y2="${yF}" ${fold}/>
+    <line x1="${B}" y1="${yF}" x2="${B}" y2="${yB}" ${fold}/>
+    <line x1="${xr}" y1="${yF}" x2="${xr}" y2="${yB}" ${fold}/>
   </svg>`
-}
-
-export interface NoteCardOptions {
-  coupleNames: string
-  theme: PrintTheme
-  /** Inline SVG of the gift QR (optional). */
-  qrImageUrl?: string | null
-  width: number
-  height: number
-}
-
-/** A small message card that fits inside the envelope. */
-export function noteCardHtml({ coupleNames, theme, qrImageUrl, width, height }: NoteCardOptions): string {
-  const t = safe(theme)
-  const lines = Math.max(4, Math.floor((height - (qrImageUrl ? 58 : 34)) / 8))
-  return `<div style="box-sizing:border-box;width:${width}mm;height:${height}mm;border:0.35mm solid ${t.ink};background:${t.paper};padding:6mm 6mm 5mm;display:flex;flex-direction:column;font-family:${t.sans};color:${t.ink}">
-    <div style="text-align:center;font-size:2.6mm;letter-spacing:0.5mm;color:${t.accent}">A NOTE FOR</div>
-    <div style="text-align:center;font-family:${t.serif};font-size:6.2mm;line-height:1.1;margin-top:1.5mm">${coupleHtml(coupleNames, t)}</div>
-    <div style="margin-top:4mm;flex:1;display:flex;flex-direction:column;justify-content:space-around">
-      ${Array.from({ length: lines }, () => `<div style="border-bottom:0.25mm solid ${t.line};height:0"></div>`).join('')}
-    </div>
-    <div style="margin-top:3mm;font-size:2.6mm;color:${t.soft}">From: <span style="display:inline-block;width:70%;border-bottom:0.25mm solid ${t.line}"></span></div>
-    ${
-      qrImageUrl
-        ? `<div style="margin-top:4mm;display:flex;align-items:center;gap:3mm;border-top:0.25mm solid ${t.line};padding-top:3mm">
-            <img src="${esc(qrImageUrl)}" alt="" style="width:20mm;height:20mm;object-fit:contain"/>
-            <div style="font-size:2.5mm;line-height:1.35;color:${t.soft}">Prefer to send your gift digitally? Scan with GCash, Maya or your banking app.</div>
-          </div>`
-        : ''
-    }
-  </div>`
 }
 
 // ---------------------------------------------------------------- invitation cards
@@ -228,13 +242,18 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
   const base = CARD_SIZES['5x7']
   const size = CARD_SIZES[o.size]
   const k = size.w / base.w
-  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;padding:9mm 10mm 11mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center">
-    <div style="position:absolute;inset:4.5mm;border:0.4mm solid ${t.accent}"></div>
-    <div style="position:absolute;inset:6mm;border:0.15mm solid ${t.accent}"></div>
-    <div style="margin-top:4mm;font-size:2.7mm;letter-spacing:0.9mm;color:${t.accent}">TOGETHER WITH THEIR FAMILIES</div>
-    <div style="margin-top:5mm;font-family:${t.serif};font-size:13mm;line-height:1.02;font-weight:300">${coupleHtml(o.coupleNames, t)}</div>
+  const style = t.style ?? 'classic'
+  const ty = styleType(style)
+  const c = { ink: t.ink, accent: t.accent, accentLight: t.accentLight, paper: t.paper, line: t.line, serif: t.serif }
+  const svgBox = (w: number, h: number, body: string, css = '') =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}" style="display:block;${css}">${body}</svg>`
+  const couple = ty.namesCase === 'uppercase' ? coupleHtml(o.coupleNames.toUpperCase(), t) : coupleHtml(o.coupleNames, t)
+  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;padding:${style === 'heritage' ? '11mm 10mm 12mm' : '9mm 10mm 11mm'};background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center">
+    ${svgBox(base.w, base.h, frameSvg(style, 4.5, 4.5, base.w - 9, base.h - 9, c), 'position:absolute;left:0;top:0;pointer-events:none')}
+    <div style="margin-top:4mm;font-size:2.7mm;letter-spacing:${ty.eyebrowTracking}mm;color:${t.accent};position:relative">TOGETHER WITH THEIR FAMILIES</div>
+    <div style="margin-top:5mm;font-family:${t.serif};font-size:${r2(13 * ty.namesScale)}mm;line-height:1.02;font-weight:${ty.namesWeight};letter-spacing:${ty.namesTracking};position:relative">${couple}</div>
     <div style="margin-top:4mm;font-family:${t.serif};font-style:italic;font-size:4.2mm;color:${t.soft}">request the pleasure of your company</div>
-    <div style="margin-top:5mm;width:22mm;border-top:0.3mm solid ${t.accent}"></div>
+    <div style="margin-top:4mm">${svgBox(40, 8, ornamentSvg(style, 20, 4.5, 38, c))}</div>
     <div style="margin-top:5mm;font-size:2.6mm;letter-spacing:0.6mm;color:${t.muted}">DEAR</div>
     <div style="margin-top:1.5mm;font-family:${t.serif};font-size:7.4mm;line-height:1.1">${esc(o.guestName)}</div>
     ${o.position ? `<div style="margin-top:1.4mm;font-size:2.7mm;letter-spacing:0.7mm;color:${t.accent};font-weight:500">${esc(o.position.toUpperCase())}</div>` : ''}
@@ -243,7 +262,7 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
     ${o.ceremony ? `<div style="margin-top:3mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">CEREMONY</span><br/>${esc(o.ceremony)}</div>` : ''}
     ${o.reception ? `<div style="margin-top:2.5mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">RECEPTION</span><br/>${esc(o.reception)}</div>` : ''}
     <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;text-align:center">
-      <div style="display:flex;align-items:center;gap:2.5mm;color:${t.accent};font-size:2.4mm"><span style="width:14mm;border-top:0.3mm solid ${t.accent}"></span>◆<span style="width:14mm;border-top:0.3mm solid ${t.accent}"></span></div>
+      ${svgBox(40, 7, ornamentSvg(style, 20, 4, 32, c))}
       <div style="margin-top:3.5mm;width:24mm;height:24mm">${o.qrSvg}</div>
       <div style="margin-top:2.2mm;font-size:3mm;letter-spacing:0.5mm;color:${t.ink};font-weight:500">SCAN TO RSVP</div>
       ${o.respondBy ? `<div style="margin-top:1mm;font-size:2.7mm;color:${t.soft}">Please respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
@@ -303,9 +322,15 @@ export function invitationBackHtml(o: { coupleNames: string; dateText: string; m
   const t = safe(o.theme)
   const s = CARD_SIZES[o.size]
   const k = s.w / CARD_SIZES['5x7'].w
+  const style = t.style ?? 'classic'
+  const c = { ink: t.ink, accent: t.accent, accentLight: t.paper, paper: t.paper, line: t.line, serif: t.serif }
+  const box = 40 * k
+  const crest = sealSvg(style, 20, 20, style === 'deco' ? 11 : 12, o.monogram, c, esc)
+  const names = styleType(style).namesCase === 'uppercase' ? o.coupleNames.toUpperCase() : o.coupleNames
   return `<div style="box-sizing:border-box;width:${s.w}mm;height:${s.h}mm;background:${t.paper};display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:${t.sans}">
-    <div style="width:${24 * k}mm;height:${24 * k}mm;border-radius:50%;border:0.4mm solid ${t.accent};display:flex;align-items:center;justify-content:center;font-family:${t.serif};font-style:italic;font-size:${8.5 * k}mm;color:${t.ink}">${esc(o.monogram)}</div>
-    <div style="margin-top:${5 * k}mm;font-family:${t.serif};font-size:${5 * k}mm;color:${t.ink}">${coupleHtml(o.coupleNames, t)}</div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="${box}mm" height="${box}mm" viewBox="0 0 40 40" style="display:block">${crest}</svg>
+    <div style="margin-top:${4 * k}mm;font-family:${t.serif};font-size:${5 * k}mm;color:${t.ink};letter-spacing:${styleType(style).namesTracking}">${coupleHtml(names, t)}</div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="${30 * k}mm" height="${6 * k}mm" viewBox="0 0 30 6" style="display:block;margin-top:${2.5 * k}mm">${ornamentSvg(style, 15, 3, 24, c)}</svg>
     <div style="margin-top:${2 * k}mm;font-size:${2.6 * k}mm;letter-spacing:0.8mm;color:${t.accent}">${esc(o.dateText.toUpperCase())}</div>
   </div>`
 }
@@ -360,13 +385,16 @@ export function posterHtml(o: PosterOptions): string {
   const k = size.w / base.w
   const n = Math.max(1, o.qrs.length)
   const qrSize = n === 1 ? 170 : n === 2 ? 135 : 104
+  const style = t.style ?? 'classic'
+  const c = { ink: t.ink, accent: t.accent, accentLight: t.accentLight, paper: t.paper, line: t.line, serif: t.serif }
+  const ty = styleType(style)
+  // Ornament drawn at card scale and enlarged ×2.6 for the poster.
   const ornament = (w: number) =>
-    `<div style="display:flex;align-items:center;justify-content:center;gap:5mm;color:${t.accent};font-size:6mm"><span style="width:${w}mm;border-top:0.6mm solid ${t.accent}"></span>◆<span style="width:${w}mm;border-top:0.6mm solid ${t.accent}"></span></div>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${2 * w + 10}mm" height="${8 * 2.6}mm" viewBox="0 0 ${(2 * w + 10) / 2.6} 8" style="display:block;margin:0 auto">${ornamentSvg(style, (2 * w + 10) / 5.2, 4.5, (2 * w) / 2.6, c)}</svg>`
   const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:40mm 24mm 30mm">
-    <div style="position:absolute;inset:12mm;border:1.2mm solid ${t.accent}"></div>
-    <div style="position:absolute;inset:16mm;border:0.4mm solid ${t.accent}"></div>
-    <div style="font-size:9mm;letter-spacing:3mm;color:${t.accent}">${esc(o.headline.toUpperCase())}</div>
-    <div style="margin-top:12mm;font-family:${t.serif};font-size:${Math.min(46, 900 / Math.max(10, o.coupleNames.length))}mm;line-height:1;font-weight:300">${coupleHtml(o.coupleNames, t)}</div>
+    <svg xmlns="http://www.w3.org/2000/svg" width="${base.w}mm" height="${base.h}mm" viewBox="0 0 ${base.w / 2.6} ${base.h / 2.6}" style="position:absolute;left:0;top:0;pointer-events:none">${frameSvg(style, 12 / 2.6, 12 / 2.6, (base.w - 24) / 2.6, (base.h - 24) / 2.6, c)}</svg>
+    <div style="font-size:9mm;letter-spacing:${ty.eyebrowTracking * 3.3}mm;color:${t.accent};position:relative">${esc(o.headline.toUpperCase())}</div>
+    <div style="margin-top:12mm;font-family:${t.serif};font-size:${r2(Math.min(46, 900 / Math.max(10, o.coupleNames.length)) * ty.namesScale)}mm;line-height:1;font-weight:${ty.namesWeight};letter-spacing:${ty.namesCase === 'uppercase' ? '3mm' : '0'};position:relative">${coupleHtml(ty.namesCase === 'uppercase' ? o.coupleNames.toUpperCase() : o.coupleNames, t)}</div>
     <div style="margin-top:12mm;font-size:9mm;letter-spacing:2.4mm;color:${t.ink}">${esc(o.dateText.toUpperCase())}</div>
     ${o.venue ? `<div style="margin-top:4mm;font-family:${t.serif};font-style:italic;font-size:9mm;color:${t.soft}">${esc(o.venue)}</div>` : ''}
     <div style="margin-top:16mm">${ornament(40)}</div>

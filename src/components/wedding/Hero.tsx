@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { Armchair, ChevronDown } from 'lucide-react'
 import type { WeddingSettings } from '../../types/wedding'
 import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
@@ -51,7 +51,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
         <div className="grid flex-1 md:grid-cols-2">
           <div className="relative order-first h-[52svh] overflow-hidden md:order-last md:h-auto">{photo('absolute inset-0 size-full object-cover')}</div>
           <div className="hero-paper paper-texture relative flex flex-col items-center justify-center px-6 py-16 text-center md:px-12">
-            <HeroDecor onPhoto={false} />
+            <HeroDecor onPhoto={false} inPanel />
             <motion.p {...fade(0.2)} className="eyebrow">
               Together with their families
             </motion.p>
@@ -163,11 +163,20 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
         onPhoto ? '' : 'sticky top-0 border-b border-line/60 bg-ivory/85 backdrop-blur-md supports-[backdrop-filter]:bg-ivory/70',
       )}
     >
-      <div className={cn('mx-auto flex w-full max-w-6xl items-center justify-between px-5 sm:px-8', onPhoto ? 'pt-[max(1.25rem,env(safe-area-inset-top))]' : 'py-3 pt-[max(0.75rem,env(safe-area-inset-top))]')}>
-        <Link to="/" className={cn('font-serif text-2xl italic tracking-wide', onPhoto ? 'text-white/95' : 'text-ink')} aria-label={`${settings.coupleNames} — home`}>
+      <div
+        className={cn(
+          'mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 min-[400px]:px-5 sm:px-8',
+          onPhoto ? 'pt-[max(1.25rem,env(safe-area-inset-top))]' : 'py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
+        )}
+      >
+        <Link
+          to="/"
+          className={cn('shrink-0 whitespace-nowrap font-serif text-2xl italic tracking-wide', onPhoto ? 'text-white/95' : 'text-ink')}
+          aria-label={`${settings.coupleNames} — home`}
+        >
           {monogram(settings.coupleNames)}
         </Link>
-        <div className="flex items-center gap-1 text-[0.72rem] font-medium uppercase tracking-[0.28em] sm:gap-4">
+        <div className="flex min-w-0 items-center justify-end gap-1 text-[0.72rem] font-medium uppercase tracking-[0.28em] sm:gap-4">
           <button
             type="button"
             onClick={() => scrollToSection('details', reduce)}
@@ -178,18 +187,20 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
           {isFinderOpen(settings.seatingConfig) && (
             <Link
               to="/seat"
-              className={cn('rounded px-2 py-2 uppercase tracking-[0.28em] transition', onPhoto ? 'text-white/85 hover:text-white' : 'text-ink-soft hover:text-ink')}
+              className={cn('flex shrink-0 items-center rounded px-2 py-2 uppercase tracking-[0.28em] transition', onPhoto ? 'text-white/85 hover:text-white' : 'text-ink-soft hover:text-ink')}
             >
-              <span className="sm:hidden">My Seat</span>
-              <span className="hidden sm:inline">Find My Seat</span>
+              {/* Very narrow phones: just a seat icon, so the row never overlaps */}
+              <Armchair aria-hidden="true" className="size-5 min-[400px]:hidden" strokeWidth={1.5} />
+              <span className="sr-only min-[400px]:not-sr-only min-[400px]:whitespace-nowrap sm:hidden">My Seat</span>
+              <span className="hidden whitespace-nowrap sm:inline">Find My Seat</span>
             </Link>
           )}
           {isRsvpOpen(settings) && (
             <Link
               to="/rsvp"
               className={cn(
-                'lux-pill max-w-[48vw] rounded-full border px-5 py-2.5 text-center leading-tight transition sm:max-w-none',
-                settings.rsvpButtonLabel.length > 8 && 'tracking-[0.16em]',
+                'lux-pill max-w-[52vw] shrink rounded-full border px-4 py-2.5 text-center leading-tight transition min-[400px]:px-5 sm:max-w-none',
+                settings.rsvpButtonLabel.length > 8 && 'tracking-[0.12em] min-[400px]:tracking-[0.16em]',
                 onPhoto ? 'border-white/50 text-white hover:border-white hover:bg-white/10' : 'border-ink/40 text-ink hover:border-ink hover:bg-ink/5',
               )}
             >

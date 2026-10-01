@@ -5,13 +5,19 @@ import { cn } from '../ui/cn'
  * Decoration layered over the hero for each design style (purely visual).
  * `onPhoto` = drawn over the couple's photo (light lines) instead of paper.
  */
-export function HeroDecor({ onPhoto }: { onPhoto: boolean }) {
+export function HeroDecor({ onPhoto, inPanel = false }: { onPhoto: boolean; inPanel?: boolean }) {
   const { style } = useResolvedTheme()
   const color = onPhoto ? 'text-white/55' : 'text-champagne/80'
 
+  // The frame starts below the menu row, so it never runs into the logo or the RSVP button.
+  // (Inside the split layout's paper panel there is no menu, so the frame uses the whole panel.)
+  const frame = inPanel
+    ? 'pointer-events-none absolute inset-3 z-10 sm:inset-6'
+    : 'pointer-events-none absolute inset-x-3 bottom-3 top-[5.75rem] z-10 sm:inset-x-6 sm:bottom-6 sm:top-[6.25rem]'
+
   if (style === 'maison') {
     return (
-      <div aria-hidden="true" className={cn('pointer-events-none absolute inset-3 z-10 sm:inset-6', color)}>
+      <div aria-hidden="true" className={cn(frame, color)}>
         <div className="absolute inset-0 border border-current opacity-70" />
         <p className="absolute left-0 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 -rotate-90 bg-transparent px-3 text-[0.6rem] uppercase tracking-[0.6em] lg:block">
           The wedding of
@@ -25,7 +31,7 @@ export function HeroDecor({ onPhoto }: { onPhoto: boolean }) {
 
   if (style === 'deco') {
     const corner = (cls: string) => (
-      <svg className={cn('absolute size-16 sm:size-24', cls)} viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="1">
+      <svg className={cn('absolute size-12 sm:size-20', cls)} viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="1">
         <path d="M2 94V2h92" />
         <path d="M10 94V10h84" opacity="0.7" />
         <path d="M18 60V18h42" opacity="0.5" />
@@ -34,7 +40,7 @@ export function HeroDecor({ onPhoto }: { onPhoto: boolean }) {
       </svg>
     )
     return (
-      <div aria-hidden="true" className={cn('pointer-events-none absolute inset-3 z-10 sm:inset-6', color)}>
+      <div aria-hidden="true" className={cn(frame, color)}>
         {corner('left-0 top-0')}
         {corner('right-0 top-0 -scale-x-100')}
         {corner('bottom-0 left-0 -scale-y-100')}

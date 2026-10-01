@@ -1,5 +1,5 @@
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { ENV } from '../../utils/printables'
+import { ENV, ENV_FLAT } from '../../utils/printables'
 
 const MM = 96 / 25.4 // CSS px per mm
 
@@ -63,7 +63,7 @@ const face = (extra: CSSProperties = {}): CSSProperties => ({
   ...extra,
 })
 
-// ---------------------------------------------------------------- envelope
+// ---------------------------------------------------------------- envelope (policy type)
 
 interface EnvelopeProps {
   /** The flat envelope SVG (from envelopeSvg). */
@@ -71,97 +71,96 @@ interface EnvelopeProps {
   paper: string
   /** px per mm on screen */
   scale: number
-  folded: boolean
+  open: boolean
   spin: ReturnType<typeof useSpin>
 }
 
-function EnvelopeModel({ svg, paper, scale: k, folded, spin }: EnvelopeProps) {
-  const { W, H, side: s, top: tf, bottom: bf } = ENV
-  const flatW = W + 2 * s
-  // Each piece shows its own part of the printed sheet.
-  const art = (x: number, y: number) => (
-    <div style={{ position: 'absolute', left: -x * k, top: -y * k, width: flatW * k, height: (tf + H + bf) * k }}>
-      <div style={{ width: flatW * MM, transform: `scale(${k / MM})`, transformOrigin: 'top left' }} dangerouslySetInnerHTML={{ __html: svg }} />
+/**
+ * The folded policy envelope, built from pieces of the flat print so the
+ * preview matches the paper exactly. Portrait: width W, height L (mm).
+ * Each piece maps flat-sheet coordinates (x, y) to the face it ends up on.
+ */
+function EnvelopeModel({ svg, paper, scale: k, open, spin }: EnvelopeProps) {
+  const { W, L, glue: G, bottom: B, flap: F } = ENV
+  const xr = B + L
+  const flat = (transform: string) => (
+    <div style={{ position: 'absolute', left: 0, top: 0, width: ENV_FLAT.w * MM, transformOrigin: '0 0', transform }} dangerouslySetInnerHTML={{ __html: svg }} />
+  )
+  // A clipped window (ux, vy, w, h in mm on the face) showing the flat print through `transform`.
+  const piece = (ux: number, vy: number, w: number, h: number, rot: 90 | -90, tx: number, ty: number, extra: CSSProperties = {}) => (
+    <div style={{ position: 'absolute', left: ux * k, top: vy * k, width: w * k, height: h * k, overflow: 'hidden', ...extra }}>
+      {flat(`translate(${(tx - ux) * k}px, ${(ty - vy) * k}px) rotate(${rot}deg) scale(${k / MM})`)}
     </div>
   )
-  const plain: CSSProperties = { background: paper, boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.12), inset 0 0 18px rgba(0,0,0,0.05)' }
-  const t = (d: number) => `transform 0.8s cubic-bezier(0.22,1,0.36,1) ${d}s`
-  // Fold order: sides → bottom → top.  Unfold in reverse.
-  const delay = folded ? { side: 0, bottom: 0.55, top: 1.1 } : { side: 1.1, bottom: 0.55, top: 0 }
+  const edge: CSSProperties = { boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.14)' }
+  const lift: CSSProperties = { boxShadow: '0 1px 2px rgba(0,0,0,0.12)' }
+  // Rounded closing-flap outline (as a polygon), and its mirror for the inside face.
+  const flapPts: [number, number][] = [[0, 0], [W, 0], [W - 6, F - 14], [W - 12, F - 6], [W / 2, F], [12, F - 6], [6, F - 14]]
+  const flapClip = `polygon(${flapPts.map(([u, v]) => `${(u / W) * 100}% ${(v / F) * 100}%`).join(', ')})`
+  const flapClipMirror = `polygon(${flapPts.map(([u, v]) => `${((W - u) / W) * 100}% ${(v / F) * 100}%`).join(', ')})`
 
-  const piece = (style: CSSProperties, clip: string, artXY: [number, number], backRotate: string) => (
-    <div style={{ position: 'absolute', transformStyle: 'preserve-3d', ...style }}>
-      <div style={face({ clipPath: clip })}>{art(...artXY)}</div>
-      <div style={face({ clipPath: clip, transform: backRotate, ...plain })} />
-    </div>
-  )
-
-  const a = (n: number, total: number) => `${(n / total) * 100}%`
   return (
     <div
       style={{
         position: 'relative',
         width: W * k,
-        height: H * k,
+        height: L * k,
         transformStyle: 'preserve-3d',
         transform: `rotateX(${spin.rot.x}deg) rotateY(${spin.rot.y}deg)`,
         transition: spin.rot.y % 180 === 0 ? 'transform 0.9s cubic-bezier(0.22,1,0.36,1)' : undefined,
       }}
     >
-      {/* front panel */}
-      <div style={{ position: 'absolute', inset: 0, transformStyle: 'preserve-3d' }}>
-        <div style={face()}>{art(s, tf)}</div>
-        <div style={face({ transform: 'rotateY(180deg)', ...plain })} />
+      {/* front: u = y − G, v = xr − x */}
+      <div style={face({ transform: 'translateZ(0.6px)', ...edge })}>{piece(0, 0, W, L, -90, -G, xr)}</div>
+
+      {/* back (seen from behind): back panel, then the glue strip and bottom flap glued over it */}
+      <div style={{ ...face({ transform: 'rotateY(180deg) translateZ(0.6px)', overflow: 'visible' }), transformStyle: 'preserve-3d' }}>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', ...edge }}>
+          {piece(0, 0, W, L, -90, -(G + W), xr)}
+          {piece(W - G, 6, G, L - 12, -90, W - G, xr, lift)}
+          {piece(7, L - B, W - 14, B, 90, G + W, L - B, lift)}
+        </div>
+        {/* closing flap, hinged at the top edge: closed = lying on the back, open = standing up */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: W * k,
+            height: F * k,
+            transformStyle: 'preserve-3d',
+            transformOrigin: 'top center',
+            transform: `translateZ(0.8px) rotateX(${open ? 180 : 0}deg)`,
+            transition: 'transform 0.9s cubic-bezier(0.22,1,0.36,1)',
+          }}
+        >
+          {/* (clip-path goes on each face — on the hinge it would flatten the 3D) */}
+          <div style={face({ ...lift, clipPath: flapClip })}>{piece(0, 0, W, F, 90, G + W, -xr)}</div>
+          <div style={face({ transform: 'rotateY(180deg)', background: paper, boxShadow: 'inset 0 0 14px rgba(0,0,0,0.06)', clipPath: flapClipMirror })} />
+        </div>
       </div>
-      {/* side flaps (fold in first, so they sit closest to the front) */}
-      {piece(
-        { left: -s * k, top: 0, width: s * k, height: H * k, transformOrigin: 'right center', transform: `translateZ(${folded ? -0.4 : 0}px) rotateY(${folded ? -180 : 0}deg)`, transition: t(delay.side) },
-        `polygon(100% 0%, 0% ${a(12, H)}, 0% ${a(H - 12, H)}, 100% 100%)`,
-        [0, tf],
-        'rotateY(180deg)',
-      )}
-      {piece(
-        { left: W * k, top: 0, width: s * k, height: H * k, transformOrigin: 'left center', transform: `translateZ(${folded ? -0.4 : 0}px) rotateY(${folded ? 180 : 0}deg)`, transition: t(delay.side) },
-        `polygon(0% 0%, 100% ${a(12, H)}, 100% ${a(H - 12, H)}, 0% 100%)`,
-        [s + W, tf],
-        'rotateY(180deg)',
-      )}
-      {/* bottom flap */}
-      {piece(
-        { left: 0, top: H * k, width: W * k, height: bf * k, transformOrigin: 'center top', transform: `translateZ(${folded ? -0.9 : 0}px) rotateX(${folded ? -180 : 0}deg)`, transition: t(delay.bottom) },
-        `polygon(0% 0%, 100% 0%, ${a(W - 9, W)} 100%, ${a(9, W)} 100%)`,
-        [s, tf + H],
-        'rotateX(180deg)',
-      )}
-      {/* top flap (closes last, outermost) */}
-      {piece(
-        { left: 0, top: -tf * k, width: W * k, height: tf * k, transformOrigin: 'center bottom', transform: `translateZ(${folded ? -1.4 : 0}px) rotateX(${folded ? 180 : 0}deg)`, transition: t(delay.top) },
-        `polygon(0% 100%, ${a(18, W)} 0%, ${a(W - 18, W)} 0%, 100% 100%)`,
-        [s, 0],
-        'rotateX(180deg)',
-      )}
     </div>
   )
 }
 
 export function Envelope3D({ svg, paper, width }: { svg: string; paper: string; width: number }) {
-  const [folded, setFolded] = useState(false)
-  const spin = useSpin({ x: -14, y: -18 })
-  const k = Math.max(0.9, Math.min(1.7, (width - 40) / (ENV.W + ENV.side * 2)))
+  const [open, setOpen] = useState(false)
+  const spin = useSpin({ x: -10, y: -20 })
+  const k = Math.max(1.2, Math.min(2.6, Math.min((width - 60) / ENV.W, 560 / (ENV.L + ENV.flap))))
   const showBack = () => spin.setRot((r) => ({ x: -10, y: Math.round(r.y / 180) * 180 + 180 }))
   return (
     <div>
-      <Stage height={Math.max(360, (ENV.top + ENV.H + ENV.bottom) * k + 90)} spin={spin} hint="Drag to turn it around">
-        <EnvelopeModel svg={svg} paper={paper} scale={k} folded={folded} spin={spin} />
+      <Stage height={(ENV.L + ENV.flap * 2) * k + 70} spin={spin} hint="Drag to turn it around">
+        <EnvelopeModel svg={svg} paper={paper} scale={k} open={open} spin={spin} />
       </Stage>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={() => setFolded((f) => !f)} className="min-h-10 rounded-full bg-ink px-5 text-sm font-medium text-ivory shadow-soft transition hover:bg-ink-soft">
-          {folded ? 'Unfold' : 'Fold it up'}
-        </button>
-        <button type="button" onClick={showBack} className="min-h-10 rounded-full border border-line bg-paper px-5 text-sm text-ink transition hover:bg-cream">
+        <button type="button" onClick={showBack} className="min-h-10 rounded-full bg-ink px-5 text-sm font-medium text-ivory shadow-soft transition hover:bg-ink-soft">
           Turn over
         </button>
-        <button type="button" onClick={() => spin.setRot({ x: -14, y: -18 })} className="min-h-10 rounded-full px-4 text-sm text-muted transition hover:bg-cream">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="min-h-10 rounded-full border border-line bg-paper px-5 text-sm text-ink transition hover:bg-cream">
+          {open ? 'Close the flap' : 'Open the flap'}
+        </button>
+        <button type="button" onClick={() => spin.setRot({ x: -10, y: -20 })} className="min-h-10 rounded-full px-4 text-sm text-muted transition hover:bg-cream">
           Reset view
         </button>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { POSTER_SIZES, posterHtml, type PosterSize, type PrintTheme } from '../utils/printables'
+import { resolveTheme } from '../theme/themes'
 import QRCode from 'qrcode'
 import { Copy, Download, ExternalLink, FileImage, Printer, Share2 } from 'lucide-react'
 import { useToast } from '../hooks/useToast'
@@ -295,7 +296,7 @@ function PosterCard({ links }: { links: Record<'home' | 'rsvp' | 'seat', string>
   const [size, setSize] = useState<PosterSize>('a2')
   const [svgs, setSvgs] = useState<Record<string, string>>({})
   const [width, setWidth] = useState(500)
-  const theme = useMemo(readPosterTheme, [settings?.theme])
+  const theme = useMemo(() => ({ ...readPosterTheme(), style: resolveTheme(settings?.theme).style }), [settings?.theme])
 
   useEffect(() => {
     let active = true

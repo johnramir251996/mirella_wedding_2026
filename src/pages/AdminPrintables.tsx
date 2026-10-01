@@ -26,7 +26,6 @@ import {
   invitationCardHtml,
   layoutRow,
   orientationMarkHtml,
-  noteCardHtml,
   type CardSize,
   type Paper,
   type PrintTheme,
@@ -36,6 +35,7 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
+import { STYLES, resolveTheme, type StyleId } from '../theme/themes'
 import { Card3D, Envelope3D } from '../components/printables/Preview3D'
 
 type Tab = 'invitations' | 'envelope'
@@ -62,6 +62,11 @@ const chunk = <T,>(list: T[], n: number) => Array.from({ length: Math.ceil(list.
 export default function AdminPrintables() {
   const [tab, setTab] = useState<Tab>('invitations')
   const [paper, setPaper] = useState<Paper>('a4')
+  const { settings } = useWeddingSettings()
+  // Printables follow the website's design style; another can be tried here without changing the website.
+  const savedStyle = resolveTheme(settings?.theme).style
+  const [designPick, setDesignPick] = useState<StyleId | null>(null)
+  const design = designPick ?? savedStyle
   const sheet = SHEETS[paper]
 
   useEffect(() => {
@@ -79,7 +84,7 @@ export default function AdminPrintables() {
   return (
     <>
       <div className="print:hidden">
-        <PageHeader title="Printables" description="Print-ready paper invitations and a cut-and-fold money envelope, in your website’s colours and fonts." />
+        <PageHeader title="Printables" description="Print-ready paper invitations and a cut-and-fold money envelope, in your website’s design, colours and fonts." />
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <div role="tablist" aria-label="Printable type" className="flex gap-1 rounded-lg bg-cream p-1">
             {(
@@ -107,9 +112,20 @@ export default function AdminPrintables() {
               <option value="legal">Legal (8.5 × 14 in)</option>
             </select>
           </label>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            Design
+            <select className="input-base min-h-10 w-auto py-1.5" value={design} onChange={(e) => setDesignPick(e.target.value as StyleId)}>
+              {STYLES.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.name}
+                  {st.id === savedStyle ? ' (your website)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
-      {tab === 'invitations' ? <InvitationsTab paper={paper} /> : <EnvelopeTab paper={paper} />}
+      {tab === 'invitations' ? <InvitationsTab paper={paper} design={design} /> : <EnvelopeTab paper={paper} design={design} />}
     </>
   )
 }
@@ -191,7 +207,7 @@ export interface PrintablesHandoff {
   side?: SideFilter
 }
 
-function InvitationsTab({ paper }: { paper: Paper }) {
+function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
   const toast = useToast()
   const { data, reload } = useAdminData()
   const { settings } = useWeddingSettings()
@@ -240,7 +256,7 @@ function InvitationsTab({ paper }: { paper: Paper }) {
       })
   const box = useWidth()
   const [marking, setMarking] = useState(false)
-  const theme = useMemo(readTheme, [settings?.theme])
+  const theme = useMemo(() => ({ ...readTheme(), style: design }), [settings?.theme, design])
   const links = useMemo(() => siteLinks(), [])
 
   // Arriving with invitations that already responded: show everyone so they're visible.
@@ -556,13 +572,12 @@ function InvitationsTab({ paper }: { paper: Paper }) {
 
 // ---------------------------------------------------------------- envelope
 
-function EnvelopeTab({ paper }: { paper: Paper }) {
+function EnvelopeTab({ paper, design }: { paper: Paper; design: StyleId }) {
   const { settings } = useWeddingSettings()
   const [copies, setCopies] = useState(1)
-  const [withCard, setWithCard] = useState(true)
   const [withQr, setWithQr] = useState(true)
   const [giftQr, setGiftQr] = useState<string | null>(null)
-  const theme = useMemo(readTheme, [settings?.theme])
+  const theme = useMemo(() => ({ ...readTheme(), style: design }), [settings?.theme, design])
   const [view, setView] = useState<View>('sheets')
   const box = useWidth()
 
@@ -573,10 +588,6 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
   }, [])
 
   const s = SHEETS[paper]
-  const card = paper === 'a4' ? { w: 66, h: 100 } : { w: 80, h: 140 }
-  const gap = 8
-  const total = ENV_FLAT.w + (withCard ? gap + card.w : 0)
-  const x = (s.w - total) / 2
   const envSvg = envelopeSvg({
     coupleNames: settings?.coupleNames ?? '',
     dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
@@ -584,19 +595,9 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
     theme,
     ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
     reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
+    giftQrUrl: withQr ? giftQr : null,
   })
-  const sheetHtml =
-    `<div style="position:absolute;left:${x}mm;top:${(s.h - ENV_FLAT.h) / 2}mm">${envSvg}</div>` +
-    (withCard
-      ? `<div style="position:absolute;left:${x + ENV_FLAT.w + gap}mm;top:${(s.h - card.h) / 2}mm">${noteCardHtml({
-          coupleNames: settings?.coupleNames ?? '',
-          theme,
-          qrImageUrl: withQr ? giftQr : null,
-          width: card.w,
-          height: card.h,
-        })}</div>`
-      : '') +
-    calibrationHtml(theme)
+  const sheetHtml = `<div style="position:absolute;left:${(s.w - ENV_FLAT.w) / 2}mm;top:${(s.h - ENV_FLAT.h) / 2}mm">${envSvg}</div>` + calibrationHtml(theme)
 
   return (
     <div className="grid gap-5 print:block xl:grid-cols-[360px_1fr]">
@@ -613,32 +614,31 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
               className="input-base min-h-10 w-24 py-1.5"
             />
           </label>
-          <label className="flex items-center justify-between gap-2 text-sm text-ink-soft">
-            Add a message card beside it
-            <input type="checkbox" checked={withCard} onChange={(e) => setWithCard(e.target.checked)} className="size-5 accent-ink" />
-          </label>
-          <label className={cn('flex items-center justify-between gap-2 text-sm', giftQr && withCard ? 'text-ink-soft' : 'text-muted')}>
+          <label className={cn('flex items-center justify-between gap-2 text-sm', giftQr ? 'text-ink-soft' : 'text-muted')}>
             <span>
-              Gift QR on the card
-              {!giftQr && <span className="block text-xs">Upload your QR in Website Settings first.</span>}
+              Gift QR on the envelope
+              <span className="block text-xs text-muted">
+                {giftQr ? 'Printed on the front: “Or send your gift online”. Without it, your monogram seal goes there.' : 'Upload your GCash / InstaPay QR in Website Settings first.'}
+              </span>
             </span>
-            <input type="checkbox" disabled={!giftQr || !withCard} checked={Boolean(giftQr) && withCard && withQr} onChange={(e) => setWithQr(e.target.checked)} className="size-5 accent-ink" />
+            <input type="checkbox" disabled={!giftQr} checked={Boolean(giftQr) && withQr} onChange={(e) => setWithQr(e.target.checked)} className="size-5 shrink-0 accent-ink" />
           </label>
           <Button fullWidth onClick={() => window.print()} icon={<Printer aria-hidden="true" className="size-4" />}>
-            Print {copies} {copies === 1 ? 'sheet' : 'sheets'}
+            Print {copies} {copies === 1 ? 'envelope' : 'envelopes'}
           </Button>
         </section>
         <Tips>
-          <ol className="list-decimal space-y-1 pl-5">
+          <p className="font-medium text-ink">Folding the policy envelope</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5">
             <li>
               Print at <strong>Actual size / 100%</strong> on 120–160 gsm paper. The bar at the bottom should measure 5 cm.
             </li>
-            <li>Cut along the solid outline.</li>
-            <li>Fold the two side flaps inwards along the dashed lines.</li>
-            <li>Fold the bottom flap up and glue it onto the side flaps (“GLUE”).</li>
-            <li>Slip the money in (bills folded once fit easily), then fold the top flap down — seal with a sticker.</li>
+            <li>Cut along the solid outline (including the little half-circle).</li>
+            <li>Fold the back panel under the front along the long dashed line.</li>
+            <li>Fold the long glue strip and the short bottom flap onto the back, over the areas marked “GLUE”, and press flat.</li>
+            <li>Slip the bills in flat through the top, then fold the rounded flap down over the back — close it with a sticker.</li>
           </ol>
-          <p className="mt-2 text-xs text-muted">Finished size about 17.5 × 9 cm. Guests write their name and a message on the back.</p>
+          <p className="mt-2 text-xs text-muted">Finished size about 9.2 × 18.5 cm — peso bills fit without folding. Guests write a message and their name on the back.</p>
         </Tips>
       </aside>
       <section aria-label="Print preview" className="min-w-0" ref={box.ref}>
