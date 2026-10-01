@@ -326,3 +326,64 @@ export function orientationMarkHtml(side: 'front' | 'back', sheetNo: number, tot
         : ''
     }`
 }
+
+// ---------------------------------------------------------------- QR poster (A2 portrait)
+
+export type PosterSize = 'a1' | 'a2' | 'a3'
+export const POSTER_SIZES: Record<PosterSize, { w: number; h: number; label: string }> = {
+  a1: { w: 594, h: 841, label: 'A1 (594 × 841 mm)' },
+  a2: { w: 420, h: 594, label: 'A2 (420 × 594 mm)' },
+  a3: { w: 297, h: 420, label: 'A3 (297 × 420 mm)' },
+}
+
+export interface PosterQr {
+  title: string
+  caption: string
+  svg: string
+}
+
+export interface PosterOptions {
+  coupleNames: string
+  dateText: string
+  venue: string
+  headline: string
+  qrs: PosterQr[]
+  theme: PrintTheme
+  size: PosterSize
+}
+
+/** One welcome-sign layout with up to three QR codes, designed at A2 and scaled for A1 / A3. */
+export function posterHtml(o: PosterOptions): string {
+  const t = safe(o.theme)
+  const base = POSTER_SIZES.a2
+  const size = POSTER_SIZES[o.size]
+  const k = size.w / base.w
+  const n = Math.max(1, o.qrs.length)
+  const qrSize = n === 1 ? 170 : n === 2 ? 135 : 104
+  const ornament = (w: number) =>
+    `<div style="display:flex;align-items:center;justify-content:center;gap:5mm;color:${t.accent};font-size:6mm"><span style="width:${w}mm;border-top:0.6mm solid ${t.accent}"></span>◆<span style="width:${w}mm;border-top:0.6mm solid ${t.accent}"></span></div>`
+  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:40mm 24mm 30mm">
+    <div style="position:absolute;inset:12mm;border:1.2mm solid ${t.accent}"></div>
+    <div style="position:absolute;inset:16mm;border:0.4mm solid ${t.accent}"></div>
+    <div style="font-size:9mm;letter-spacing:3mm;color:${t.accent}">${esc(o.headline.toUpperCase())}</div>
+    <div style="margin-top:12mm;font-family:${t.serif};font-size:${Math.min(46, 900 / Math.max(10, o.coupleNames.length))}mm;line-height:1;font-weight:300">${coupleHtml(o.coupleNames, t)}</div>
+    <div style="margin-top:12mm;font-size:9mm;letter-spacing:2.4mm;color:${t.ink}">${esc(o.dateText.toUpperCase())}</div>
+    ${o.venue ? `<div style="margin-top:4mm;font-family:${t.serif};font-style:italic;font-size:9mm;color:${t.soft}">${esc(o.venue)}</div>` : ''}
+    <div style="margin-top:16mm">${ornament(40)}</div>
+    <div style="margin-top:auto;margin-bottom:auto;display:flex;justify-content:center;gap:${n === 3 ? 10 : 30}mm;width:100%">
+      ${o.qrs
+        .map(
+          (q, i) => `<div style="flex:0 0 ${qrSize + 8}mm;display:flex;flex-direction:column;align-items:center">
+            <div style="width:12mm;height:12mm;border-radius:50%;background:${t.accent};color:${t.paper};font-size:6.5mm;font-weight:600;display:flex;align-items:center;justify-content:center">${i + 1}</div>
+            <div style="margin-top:4mm;font-family:${t.serif};font-size:${n === 3 ? 11 : 13}mm;line-height:1.05">${esc(q.title)}</div>
+            <div style="margin-top:3mm;font-size:${n === 3 ? 5.6 : 6.2}mm;line-height:1.35;color:${t.soft};min-height:${n === 3 ? 14 : 0}mm">${esc(q.caption)}</div>
+            <div style="margin-top:6mm;background:#fff;padding:4mm;border:0.6mm solid ${t.line};border-radius:3mm"><div style="width:${qrSize}mm;height:${qrSize}mm">${q.svg}</div></div>
+          </div>`,
+        )
+        .join('')}
+    </div>
+    <div style="margin-top:14mm;font-size:6.5mm;letter-spacing:1.6mm;color:${t.muted}">SCAN WITH YOUR PHONE CAMERA</div>
+  </div>`
+  if (k === 1) return inner
+  return `<div style="width:${size.w}mm;height:${size.h}mm;overflow:hidden"><div style="transform:scale(${k});transform-origin:top left">${inner}</div></div>`
+}

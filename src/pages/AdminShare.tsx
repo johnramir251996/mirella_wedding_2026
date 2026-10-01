@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { POSTER_SIZES, posterHtml, type PosterSize, type PrintTheme } from '../utils/printables'
 import QRCode from 'qrcode'
 import { Copy, Download, ExternalLink, FileImage, Printer, Share2 } from 'lucide-react'
 import { useToast } from '../hooks/useToast'
@@ -37,15 +38,7 @@ export default function AdminShare() {
   const [target, setTarget] = useState<Target>('rsvp')
   const [qrSvg, setQrSvg] = useState('')
   const [busy, setBusy] = useState(false)
-  const [sheet, setSheet] = useState<string[] | null>(null)
-  const [paper, setPaper] = useState<'a4' | 'legal'>('a4')
 
-  useEffect(() => {
-    const el = document.createElement('style')
-    el.textContent = paper === 'a4' ? '@page { size: 297mm 210mm; margin: 0; }' : '@page { size: 355.6mm 215.9mm; margin: 0; }'
-    document.head.appendChild(el)
-    return () => el.remove()
-  }, [paper])
   const url = links[target]
   const couple = settings?.coupleNames ?? 'Our wedding'
   const shareText = `${couple} are getting married! Kindly RSVP here:`
@@ -145,21 +138,6 @@ export default function AdminShare() {
       download(await renderCard(target), `wedding-${target}-card.png`)
     } catch {
       toast.error('The printable card could not be created. Please try the plain QR download.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  /** All three cards side by side on one landscape sheet, labelled, ready to cut. */
-  const printAll = async () => {
-    setBusy(true)
-    try {
-      const imgs = await Promise.all((['home', 'rsvp', 'seat'] as const).map((t) => renderCard(t)))
-      setSheet(imgs)
-      // let the images render before the print dialog opens
-      window.setTimeout(() => window.print(), 400)
-    } catch {
-      toast.error('The cards could not be created. Please try again.')
     } finally {
       setBusy(false)
     }
@@ -277,69 +255,147 @@ export default function AdminShare() {
           </div>
           <p className="mt-3 text-center text-xs text-muted">SVG stays sharp at any print size — best for your printer or layout artist.</p>
 
-          <div className="mt-6 rounded-lg border border-line bg-ivory/60 p-4">
-            <p className="text-sm font-medium text-ink">Print all three on one page</p>
-            <p className="mt-0.5 text-xs text-muted">Website, RSVP and Find My Seat cards side by side, each labelled, with cut marks.</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <select className="input-base min-h-10 w-auto py-1.5 text-sm" value={paper} onChange={(e) => setPaper(e.target.value as 'a4' | 'legal')} aria-label="Paper size">
-                <option value="a4">A4</option>
-                <option value="legal">Legal (8.5 × 14 in)</option>
-              </select>
-              <Button onClick={() => void printAll()} loading={busy} loadingText="Preparing…" icon={<Printer aria-hidden="true" className="size-4" />}>
-                Print all three
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-muted">Print at 100% / Actual size. {paper === 'legal' ? 'Cards print at their full 4 × 5.5 in size.' : 'On A4 the cards are slightly smaller (about 3.5 × 4.8 in) so all three fit.'}</p>
-          </div>
         </section>
       </div>
       </div>
 
-      {sheet && <PrintAllSheet images={sheet} paper={paper} />}
+      <PosterCard links={links} />
     </>
   )
 }
 
-const SHEET_LABELS = ['1 · Wedding website', '2 · RSVP', '3 · Find My Seat']
+const POSTER_QRS = [
+  { key: 'home', title: 'Our Wedding Website', caption: 'Details, entourage, photos & more' },
+  { key: 'rsvp', title: 'RSVP', caption: 'Confirm your attendance' },
+  { key: 'seat', title: 'Find My Seat', caption: 'See your table in the venue' },
+] as const
 
-/** Print-only sheet: the three QR cards in a row, labelled, with cut marks. */
-function PrintAllSheet({ images, paper }: { images: string[]; paper: 'a4' | 'legal' }) {
-  const sheetW = paper === 'a4' ? 297 : 355.6
-  const sheetH = paper === 'a4' ? 210 : 215.9
-  const cardW = paper === 'a4' ? 88 : 101.6 // card is 4 × 5.5 in (ratio 1 : 1.375)
-  const cardH = cardW * 1.375
-  const gap = paper === 'a4' ? 8 : 12
-  const x0 = (sheetW - (3 * cardW + 2 * gap)) / 2
-  const y0 = (sheetH - cardH) / 2 + 3
+function readPosterTheme(): PrintTheme {
+  const cs = getComputedStyle(document.documentElement)
+  const v = (name: string, d: string) => cs.getPropertyValue(name).trim() || d
+  return {
+    ink: v('--color-ink', '#2b2a28'),
+    soft: v('--color-ink-soft', '#55504a'),
+    muted: v('--color-muted', '#8a847b'),
+    accent: v('--color-gold', '#b89b6a'),
+    accentLight: v('--color-champagne-light', '#efe4cf'),
+    paper: v('--color-paper', '#fffdf9'),
+    line: v('--color-line', '#d9d0c1'),
+    serif: v('--font-serif', 'Georgia, serif'),
+    sans: v('--font-sans', 'Arial, sans-serif'),
+  }
+}
+
+/** One welcome-sign poster with the three QR codes together (A2 portrait by default). */
+function PosterCard({ links }: { links: Record<'home' | 'rsvp' | 'seat', string> }) {
+  const { settings } = useWeddingSettings()
+  const [pick, setPick] = useState<Record<string, boolean>>({ home: true, rsvp: true, seat: true })
+  const [headline, setHeadline] = useState('Welcome to the wedding of')
+  const [venue, setVenue] = useState<string | null>(null)
+  const [size, setSize] = useState<PosterSize>('a2')
+  const [svgs, setSvgs] = useState<Record<string, string>>({})
+  const [width, setWidth] = useState(500)
+  const theme = useMemo(readPosterTheme, [settings?.theme])
+
+  useEffect(() => {
+    let active = true
+    Promise.all(
+      POSTER_QRS.map(async (q) => [q.key, await QRCode.toString(links[q.key], { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })] as const),
+    ).then((pairs) => active && setSvgs(Object.fromEntries(pairs)))
+    return () => {
+      active = false
+    }
+  }, [links])
+
+  // The print dialog uses the poster's exact size (portrait, no margins).
+  useEffect(() => {
+    const p = POSTER_SIZES[size]
+    const el = document.createElement('style')
+    el.textContent = `@page { size: ${p.w}mm ${p.h}mm; margin: 0; }`
+    document.head.appendChild(el)
+    return () => el.remove()
+  }, [size])
+
+  const qrs = POSTER_QRS.filter((q) => pick[q.key]).map((q) => ({ title: q.title, caption: q.caption, svg: svgs[q.key] ?? '' }))
+  const html = posterHtml({
+    coupleNames: settings?.coupleNames ?? '',
+    dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
+    venue: venue ?? settings?.receptionName ?? '',
+    headline,
+    qrs,
+    theme,
+    size,
+  })
+  const p = POSTER_SIZES[size]
+  const scale = Math.min(1, width / (p.w * (96 / 25.4)))
+
   return (
-    <div className="hidden print:block">
-      <div className="print-sheet" style={{ width: `${sheetW}mm`, height: `${sheetH - 1}mm` }}>
-        {images.map((src, i) => {
-          const x = x0 + i * (cardW + gap)
-          return (
-            <div key={i}>
-              <div
-                style={{ position: 'absolute', left: `${x}mm`, top: `${y0 - 9}mm`, width: `${cardW}mm`, textAlign: 'center', fontFamily: 'Jost, Arial, sans-serif', fontSize: '3mm', letterSpacing: '0.5mm', color: '#6b655c' }}
-              >
-                {SHEET_LABELS[i].toUpperCase()}
+    <>
+      <section className="mt-6 rounded-xl border border-line bg-paper p-5 shadow-soft sm:p-6 print:hidden" aria-labelledby="poster-heading">
+        <h2 id="poster-heading" className="text-2xl text-ink">
+          Welcome sign poster
+        </h2>
+        <p className="mt-1 text-sm text-muted">All your QR codes together in one elegant layout — print it on an A2 sintra board for the venue entrance.</p>
+        <div className="mt-5 grid gap-6 lg:grid-cols-[320px_1fr]">
+          <div className="space-y-4">
+            <fieldset>
+              <legend className="mb-2 text-sm font-medium text-ink-soft">QR codes to include</legend>
+              <div className="space-y-2">
+                {POSTER_QRS.map((q) => (
+                  <label key={q.key} className="flex items-center gap-3 text-sm text-ink-soft">
+                    <input
+                      type="checkbox"
+                      className="size-5 accent-ink"
+                      checked={pick[q.key]}
+                      onChange={(e) => setPick((cur) => ({ ...cur, [q.key]: e.target.checked }))}
+                      disabled={pick[q.key] && Object.values(pick).filter(Boolean).length === 1}
+                    />
+                    {q.title}
+                  </label>
+                ))}
               </div>
-              <img src={src} alt="" style={{ position: 'absolute', left: `${x}mm`, top: `${y0}mm`, width: `${cardW}mm`, height: `${cardH}mm` }} />
-              {/* corner cut marks */}
-              {[
-                [x, y0],
-                [x + cardW, y0],
-                [x, y0 + cardH],
-                [x + cardW, y0 + cardH],
-              ].map(([cx, cy], k) => (
-                <div key={k}>
-                  <div style={{ position: 'absolute', left: `${cx + (cx === x ? -6 : 1.5)}mm`, top: `${cy}mm`, width: '4.5mm', borderTop: '0.2mm solid #8a847b' }} />
-                  <div style={{ position: 'absolute', left: `${cx}mm`, top: `${cy + (cy === y0 ? -6 : 1.5)}mm`, height: '4.5mm', borderLeft: '0.2mm solid #8a847b' }} />
-                </div>
-              ))}
+            </fieldset>
+            <label className="block text-sm text-ink-soft">
+              Headline
+              <input className="input-base mt-1.5" value={headline} maxLength={60} onChange={(e) => setHeadline(e.target.value)} />
+            </label>
+            <label className="block text-sm text-ink-soft">
+              Venue line (optional)
+              <input className="input-base mt-1.5" value={venue ?? settings?.receptionName ?? ''} maxLength={120} onChange={(e) => setVenue(e.target.value)} />
+            </label>
+            <label className="block text-sm text-ink-soft">
+              Size (portrait)
+              <select className="input-base mt-1.5" value={size} onChange={(e) => setSize(e.target.value as PosterSize)}>
+                {(Object.keys(POSTER_SIZES) as PosterSize[]).map((k) => (
+                  <option key={k} value={k}>
+                    {POSTER_SIZES[k].label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button fullWidth onClick={() => window.print()} disabled={qrs.some((q) => !q.svg)} icon={<Printer aria-hidden="true" className="size-4" />}>
+              Print / Save as PDF
+            </Button>
+            <p className="text-xs text-muted">
+              For a sintra board, choose <strong>Save as PDF</strong> in the print dialog and send the PDF to your print shop — it’s exactly {p.label} and the QR codes stay
+              perfectly sharp at any size. If “Paper size” appears, pick {size.toUpperCase()} and 100% / Actual size.
+            </p>
+          </div>
+          <div
+            ref={(el) => {
+              if (el && Math.abs(el.clientWidth - width) > 4) setWidth(el.clientWidth)
+            }}
+            className="min-w-0"
+          >
+            <div className="mx-auto overflow-hidden rounded-md shadow-card" style={{ width: p.w * (96 / 25.4) * scale, height: p.h * (96 / 25.4) * scale }}>
+              <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }} dangerouslySetInnerHTML={{ __html: html }} />
             </div>
-          )
-        })}
+          </div>
+        </div>
+      </section>
+      <div className="hidden print:block">
+        <div className="print-sheet" style={{ width: `${p.w}mm`, height: `${p.h - 1}mm` }} dangerouslySetInnerHTML={{ __html: html }} />
       </div>
-    </div>
+    </>
   )
 }

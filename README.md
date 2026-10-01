@@ -74,7 +74,7 @@ If you include a name the invitee had already requested, that request becomes an
 | **Photos & Video** | Couple gallery (grid or carousel, up to 30 photos, auto-resized) and prenup video (YouTube/Vimeo link, or an MP4/WebM upload up to 30 MB). |
 | **Entourage** | Principal sponsors, bridesmaids, etc., in pairs or lists, with presets. Names can be typed or picked from your guest list (“Pick from guest list”), which links them to their invitation. |
 | **Outfit Gallery** | Also holds the motif colour swatches. |
-| **Share & QR** | Website link, share buttons, QR code (PNG/SVG), a printable QR card, and “Print all three” (website, RSVP and Find My Seat cards on one labelled sheet). Link previews (Facebook/Messenger/Viber) use the couple names, date and hero photo; the site rebuilds daily to refresh them. |
+| **Share & QR** | Website link, share buttons, QR code (PNG/SVG), a printable QR card, and a **welcome sign poster** (A2 portrait by default, also A1 / A3) with the website, RSVP and Find My Seat QR codes together in one layout — save as PDF for a sintra board. Link previews (Facebook/Messenger/Viber) use the couple names, date and hero photo; the site rebuilds daily to refresh them. |
 | **Look & Feel** | 10 templates, heading/body fonts, colours (with a readability check), hero layout, live phone/desktop preview. |
 | **Website Settings** | Also: RSVP deadline (closed automatically; reopen for 7/14 days; show or hide it to guests), RSVP button text, and the gift QR (upload, show/hide, invited-guests-only or everyone). |
 
