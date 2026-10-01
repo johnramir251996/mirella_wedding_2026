@@ -16,6 +16,7 @@ const NAV_GROUPS: { title: string | null; items: { to: string; label: string; ic
     title: 'Guests',
     items: [
       { to: '/admin/invitations', label: 'Invitations', icon: Mail },
+      { to: '/admin/printables', label: 'Printables', icon: Printer },
       { to: '/admin/responses', label: 'Responses', icon: MessageSquareHeart },
       { to: '/admin/guests', label: 'Additional Guests', icon: UserPlus },
       { to: '/admin/questions', label: 'RSVP Questions', icon: ListChecks },
@@ -36,7 +37,6 @@ const NAV_GROUPS: { title: string | null; items: { to: string; label: string; ic
     title: 'Share',
     items: [
       { to: '/admin/share', label: 'Share & QR', icon: QrCode },
-      { to: '/admin/printables', label: 'Printables', icon: Printer },
     ],
   },
 ]

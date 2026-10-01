@@ -61,6 +61,7 @@ const mapInvitation = (r: Tables<'invitations'>): Invitation => ({
   printedAt: r.printed_at ?? null,
   positionMode: (['custom', 'none'].includes(r.position_mode) ? r.position_mode : 'auto') as Invitation['positionMode'],
   positionLabel: r.position_label ?? '',
+  side: r.side === 'bride' ? 'bride' : 'groom',
   maxAdditionalGuests: r.max_additional_guests,
   isActive: r.is_active,
   createdAt: r.created_at,
@@ -209,6 +210,7 @@ function toInvitationRow(input: InvitationInput) {
     table_id: input.tableId,
     position_mode: input.positionMode,
     position_label: input.positionMode === 'custom' && input.positionLabel.trim() ? input.positionLabel.trim().slice(0, 80) : null,
+    side: input.side ?? 'groom',
     max_additional_guests: input.maxAdditionalGuests,
     is_active: input.isActive,
   }
@@ -224,6 +226,16 @@ export async function updateInvitation(id: string, input: InvitationInput): Prom
   const { data, error } = await supabase.from('invitations').update(toInvitationRow(input)).eq('id', id).select('*').single()
   if (error || !data) invitationError('updateInvitation', error)
   return mapInvitation(data as Tables<'invitations'>)
+}
+
+/** Changes only the position printed under the name (used from Printables). */
+export async function updateInvitationPosition(id: string, mode: Invitation['positionMode'], label: string): Promise<void> {
+  const clean = label.trim().slice(0, 80)
+  const { error } = await supabase
+    .from('invitations')
+    .update({ position_mode: mode, position_label: mode === 'custom' && clean ? clean : null })
+    .eq('id', id)
+  if (error) invitationError('updateInvitationPosition', error)
 }
 
 /**

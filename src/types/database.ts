@@ -303,6 +303,7 @@ export type Database = {
           invitation_code: string
           printed_at: string | null
           position_mode: string
+          side: string
           position_label: string | null
           table_number: string | null
           table_id: string | null
@@ -317,6 +318,7 @@ export type Database = {
           invitation_code?: string
           printed_at?: string | null
           position_mode?: string
+          side?: string
           position_label?: string | null
           table_number?: string | null
           table_id?: string | null
@@ -331,6 +333,7 @@ export type Database = {
           invitation_code?: string
           printed_at?: string | null
           position_mode?: string
+          side?: string
           position_label?: string | null
           table_number?: string | null
           table_id?: string | null

@@ -33,7 +33,7 @@ interface Props {
   autoPosition?: string
 }
 
-const EMPTY: InvitationInput = { inviteeName: '', tableId: null, positionMode: 'auto', positionLabel: '', maxAdditionalGuests: 0, isActive: true }
+const EMPTY: InvitationInput = { inviteeName: '', tableId: null, positionMode: 'auto', positionLabel: '', side: null, maxAdditionalGuests: 0, isActive: true }
 
 export function InvitationFormModal({ open, invitation, saving, onClose, onSave, onCopyLink, tables, invitations, onTableCreated, autoPosition = '' }: Props) {
   const priceEach = guestPriceEach(useWeddingSettings().settings?.rsvpConfig)
@@ -62,6 +62,7 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
             tableId: invitation.tableId,
             positionMode: invitation.positionMode,
             positionLabel: invitation.positionLabel,
+            side: invitation.side,
             maxAdditionalGuests: invitation.maxAdditionalGuests,
             isActive: invitation.isActive,
           }
@@ -124,6 +125,38 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
           data-autofocus
           autoComplete="off"
         />
+        <fieldset>
+          <legend className="mb-2 text-[0.95rem] font-medium text-ink-soft">Guest of</legend>
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-cream p-1" role="radiogroup" aria-label="Guest of">
+            {(
+              [
+                { v: 'groom', l: 'Groom’s side' },
+                { v: 'bride', l: 'Bride’s side' },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                role="radio"
+                aria-checked={values.side === o.v}
+                onClick={() => {
+                  setValues((s) => ({ ...s, side: o.v }))
+                  setErrors((e) => ({ ...e, side: undefined }))
+                }}
+                className={cn('min-h-10 rounded-md px-2 py-1.5 text-sm transition', values.side === o.v ? 'bg-paper font-medium text-ink shadow-soft' : 'text-muted hover:text-ink')}
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
+          {errors.side ? (
+            <p role="alert" className="mt-1.5 text-sm text-rose">
+              {errors.side}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-sm text-muted">Included guests are counted on the same side.</p>
+          )}
+        </fieldset>
         <TablePicker
           tables={tables}
           used={plannedPerTable(invitations, invitation?.id)}

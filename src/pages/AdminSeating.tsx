@@ -1015,14 +1015,37 @@ function UnseatedCard({
   tableName: (id: string | null) => string | undefined
 }) {
   const [q, setQ] = useState('')
+  const [side, setSide] = useState<'all' | 'groom' | 'bride'>('all')
   const planned = new Map(invitations.map((i) => [i.id, i.tableId]))
-  const list = people.filter((p) => !q || normalizeName(p.name).includes(normalizeName(q)) || normalizeName(p.partyName).includes(normalizeName(q)))
+  const list = people
+    .filter((p) => side === 'all' || p.side === side)
+    .filter((p) => !q || normalizeName(p.name).includes(normalizeName(q)) || normalizeName(p.partyName).includes(normalizeName(q)))
+  const count = (s: 'groom' | 'bride') => people.filter((p) => p.side === s).length
   return (
     <Card title={`Not yet seated (${people.length})`}>
       {people.length === 0 ? (
         <p className="text-sm text-muted">Everyone who’s attending has a seat. 🎉</p>
       ) : (
         <>
+          <div role="group" aria-label="Guest side" className="mb-2 grid grid-cols-3 gap-1 rounded-lg bg-cream p-1 text-xs">
+            {(
+              [
+                { v: 'all', l: `All ${people.length}` },
+                { v: 'groom', l: `Groom ${count('groom')}` },
+                { v: 'bride', l: `Bride ${count('bride')}` },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                aria-pressed={side === o.v}
+                onClick={() => setSide(o.v)}
+                className={cn('rounded-md px-2 py-1.5 transition', side === o.v ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
           <div className="relative mb-2">
             <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input className="input-base min-h-10 py-1.5 pl-9 text-sm" placeholder="Search names" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search unseated guests" />
@@ -1034,6 +1057,7 @@ function UnseatedCard({
                 <li key={`${p.invitationId}:${p.guestId ?? ''}`} className="rounded-md px-2 py-1.5 hover:bg-cream">
                   <span className="text-ink">{p.name}</span>
                   {!p.isInvitee && <span className="text-muted"> · with {p.partyName}</span>}
+                  <span className="text-muted"> · {p.side === 'bride' ? 'Bride' : 'Groom'}</span>
                   {plan && <span className="ml-1 rounded bg-champagne-light/50 px-1.5 py-0.5 text-[0.7rem] text-ink-soft">{plan}</span>}
                 </li>
               )
@@ -1099,7 +1123,7 @@ function SeatPicker({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-ink">{p.name}</span>
                     <span className="block truncate text-xs text-muted">
-                      {p.isInvitee ? 'Invitee' : `With ${p.partyName}`}
+                      {p.side === 'bride' ? 'Bride’s side' : 'Groom’s side'} · {p.isInvitee ? 'Invitee' : `With ${p.partyName}`}
                       {seat ? ` · now at ${tableName(seat.tableId)}, chair ${seat.seatIndex + 1} (will move)` : ' · not seated'}
                     </span>
                   </span>

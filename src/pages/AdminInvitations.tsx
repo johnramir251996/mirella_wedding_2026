@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Eye, Pencil, Plus, Printer, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
 import { createInvitation, deleteInvitation, recordRsvpForGuest, setIncludedGuests, updateInvitation } from '../services/adminService'
@@ -21,12 +22,18 @@ import { InvitationFormModal, type RecordChoice } from '../components/admin/Invi
 import { ResponseDetailModal } from '../components/admin/ResponseDetailModal'
 import { AttendanceBadge } from '../components/admin/StatusBadges'
 import { PageHeader, Panel } from '../components/admin/PageHeader'
-import { SearchInput } from '../components/admin/FilterTabs'
+import { FilterTabs, SearchInput } from '../components/admin/FilterTabs'
+import { HeadcountSummary } from '../components/admin/HeadcountSummary'
+import { SIDE_LABEL, bySide, type SideFilter } from '../utils/headcount'
+import type { PrintablesHandoff } from './AdminPrintables'
 
 export default function AdminInvitations() {
   const { data, loading, error, reload } = useAdminData()
   const toast = useToast()
   const [query, setQuery] = useState('')
+  const [side, setSide] = useState<SideFilter>('all')
+  const navigate = useNavigate()
+  const toPrint = (state: PrintablesHandoff) => navigate('/admin/printables', { state })
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<InvitationWithRSVP | null>(null)
   const [saving, setSaving] = useState(false)
@@ -46,11 +53,11 @@ export default function AdminInvitations() {
     document.title = 'Invitations · Wedding admin'
   }, [])
 
+  const sideList = useMemo(() => bySide(data?.invitations ?? [], side), [data, side])
   const rows = useMemo(() => {
-    const list = data?.invitations ?? []
     const q = normalizeName(query)
-    return q ? list.filter((i) => normalizeName(i.inviteeName).includes(q)) : list
-  }, [data, query])
+    return q ? sideList.filter((i) => normalizeName(i.inviteeName).includes(q)) : sideList
+  }, [sideList, query])
 
   const openCreate = () => {
     setEditing(null)
@@ -132,6 +139,15 @@ export default function AdminInvitations() {
       </Button>
       <Button
         size="sm"
+        variant="subtle"
+        onClick={() => toPrint({ select: [inv.id] })}
+        icon={<Printer aria-hidden="true" className="size-3.5" />}
+        aria-label={`Print the invitation for ${inv.inviteeName}`}
+      >
+        Print
+      </Button>
+      <Button
+        size="sm"
         variant="ghost"
         className="text-rose hover:bg-rose/10 hover:text-rose"
         onClick={() => setToDelete(inv)}
@@ -145,6 +161,7 @@ export default function AdminInvitations() {
 
   const columns: Column<InvitationWithRSVP>[] = [
     { key: 'name', header: 'Invitee', cell: (r) => <span className="font-medium text-ink">{r.inviteeName}</span>, hideOnMobile: true },
+    { key: 'side', header: 'Side', cell: (r) => <Badge tone={r.side === 'bride' ? 'rose' : 'gold'}>{r.side === 'bride' ? 'Bride' : 'Groom'}</Badge>, className: 'whitespace-nowrap' },
     { key: 'table', header: 'Table', cell: (r) => r.tableNumber || '—' },
     {
       key: 'included',
@@ -167,12 +184,28 @@ export default function AdminInvitations() {
         title="Invitations"
         description={data ? `${data.invitations.length} invitations` : 'Manage who can RSVP.'}
         actions={
-          <Button onClick={openCreate} icon={<Plus aria-hidden="true" className="size-4" />}>
-            Add Invitation
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => toPrint({ side })} icon={<Printer aria-hidden="true" className="size-4" />}>
+              Print invitations
+            </Button>
+            <Button onClick={openCreate} icon={<Plus aria-hidden="true" className="size-4" />}>
+              Add Invitation
+            </Button>
+          </>
         }
       />
-      <div className="mb-4">
+      {data && <HeadcountSummary invitations={data.invitations} side={side} />}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <FilterTabs
+          label="Guest side"
+          value={side}
+          onChange={setSide}
+          options={[
+            { value: 'all', label: 'All', count: data?.invitations.length },
+            { value: 'groom', label: 'Groom’s side', count: data ? bySide(data.invitations, 'groom').length : undefined },
+            { value: 'bride', label: 'Bride’s side', count: data ? bySide(data.invitations, 'bride').length : undefined },
+          ]}
+        />
         <SearchInput label="Search by invitee name" placeholder="Search by invitee name…" value={query} onChange={setQuery} />
       </div>
       {error && (
@@ -191,7 +224,7 @@ export default function AdminInvitations() {
             rowKey={(r) => r.id}
             mobileTitle={(r) => r.inviteeName}
             mobileActions={actions}
-            empty={query ? 'No invitations match your search.' : 'No invitations yet. Add your first invitation.'}
+            empty={query ? 'No invitations match your search.' : side !== 'all' ? `No invitations on the ${SIDE_LABEL[side]} yet.` : 'No invitations yet. Add your first invitation.'}
           />
         )}
       </Panel>

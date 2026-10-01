@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { CheckCircle2, Mail, Printer, Wallet } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
@@ -7,9 +8,11 @@ import { entouragePositions, invitationPosition } from '../utils/positions'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { getGiftSettings } from '../services/giftService'
-import { markInvitationsPrinted } from '../services/adminService'
+import { markInvitationsPrinted, updateInvitationPosition } from '../services/adminService'
 import { isRsvpOpen } from '../services/settingsService'
-import type { InvitationWithRSVP } from '../types/rsvp'
+import type { InvitationWithRSVP, PositionMode } from '../types/rsvp'
+import { bySide, type SideFilter } from '../utils/headcount'
+import { FilterTabs } from '../components/admin/FilterTabs'
 import { toFriendlyMessage } from '../utils/errors'
 import { formatDateTime, formatDeadlineDate, formatWeddingDate, monogram } from '../utils/formatting'
 import {
@@ -182,13 +185,24 @@ function Tips({ children }: { children: ReactNode }) {
 
 // ---------------------------------------------------------------- invitations
 
+/** Sent from the Invitations page: which invitations to pre-select and which side to show. */
+export interface PrintablesHandoff {
+  select?: string[]
+  side?: SideFilter
+}
+
 function InvitationsTab({ paper }: { paper: Paper }) {
   const toast = useToast()
   const { data, reload } = useAdminData()
   const { settings } = useWeddingSettings()
+  const location = useLocation()
+  const [handoff] = useState<PrintablesHandoff>(() => (location.state as PrintablesHandoff | null) ?? {})
   const [size, setSize] = useState<CardSize>('5x7')
   const [showAll, setShowAll] = useState(false)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [side, setSide] = useState<SideFilter>(handoff.side ?? 'all')
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(handoff.select ?? []))
+  // Position edits made here show in the preview straight away, while they save.
+  const [posEdits, setPosEdits] = useState<Record<string, { mode: PositionMode; label: string }>>({})
   const [qr, setQr] = useState<Record<string, string>>({})
   const [askMark, setAskMark] = useState(false)
   const [view, setView] = useState<View>('sheets')
@@ -198,7 +212,25 @@ function InvitationsTab({ paper }: { paper: Paper }) {
   const [showPositions, setShowPositions] = useState(true)
   const { links: entLinks } = useEntourageLinks()
   const autoPositions = useMemo(() => entouragePositions(settings?.entourage ?? [], entLinks), [settings, entLinks])
-  const positionOf = (inv: InvitationWithRSVP) => (showPositions ? invitationPosition(inv, autoPositions) : '')
+  const effective = (inv: InvitationWithRSVP): InvitationWithRSVP => {
+    const e = posEdits[inv.id]
+    return e ? { ...inv, positionMode: e.mode, positionLabel: e.label } : inv
+  }
+  const positionOf = (inv: InvitationWithRSVP) => (showPositions ? invitationPosition(effective(inv), autoPositions) : '')
+  const savePosition = async (inv: InvitationWithRSVP, mode: PositionMode, label: string) => {
+    setPosEdits((p) => ({ ...p, [inv.id]: { mode, label } }))
+    try {
+      await updateInvitationPosition(inv.id, mode, label)
+      void reload()
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+      setPosEdits((p) => {
+        const n = { ...p }
+        delete n[inv.id]
+        return n
+      })
+    }
+  }
   const withNamesOf = (inv: InvitationWithRSVP) =>
     inv.guests
       .filter((g) => g.addedBy === 'admin')
@@ -211,13 +243,14 @@ function InvitationsTab({ paper }: { paper: Paper }) {
   const theme = useMemo(readTheme, [settings?.theme])
   const links = useMemo(() => siteLinks(), [])
 
-  const list = useMemo(
-    () =>
-      (data?.invitations ?? [])
-        .filter((i) => i.isActive && (showAll || i.status === 'pending'))
-        .sort((a, b) => a.inviteeName.localeCompare(b.inviteeName)),
-    [data, showAll],
-  )
+  // Arriving with invitations that already responded: show everyone so they're visible.
+  useEffect(() => {
+    if (!data || !handoff.select?.length) return
+    if (data.invitations.some((i) => handoff.select!.includes(i.id) && i.status !== 'pending')) setShowAll(true)
+  }, [data, handoff])
+
+  const active = useMemo(() => (data?.invitations ?? []).filter((i) => i.isActive && (showAll || i.status === 'pending')), [data, showAll])
+  const list = useMemo(() => bySide(active, side).sort((a, b) => a.inviteeName.localeCompare(b.inviteeName)), [active, side])
   const chosen = list.filter((i) => selected.has(i.id))
   const linkFor = (i: InvitationWithRSVP) => `${links.rsvp}?invite=${encodeURIComponent(i.invitationCode)}`
 
@@ -324,6 +357,18 @@ function InvitationsTab({ paper }: { paper: Paper }) {
               <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} className="accent-ink" /> Show everyone
             </label>
           </div>
+          <div className="mb-3">
+            <FilterTabs
+              label="Guest side"
+              value={side}
+              onChange={setSide}
+              options={[
+                { value: 'all', label: 'All', count: active.length },
+                { value: 'groom', label: 'Groom', count: bySide(active, 'groom').length },
+                { value: 'bride', label: 'Bride', count: bySide(active, 'bride').length },
+              ]}
+            />
+          </div>
           <div className="mb-2 flex flex-wrap gap-2 text-xs">
             <button type="button" className="rounded-md bg-cream px-2.5 py-1.5 hover:bg-linen" onClick={() => setSelected(new Set(list.filter((i) => !i.printedAt).map((i) => i.id)))}>
               Select not yet printed
@@ -340,8 +385,8 @@ function InvitationsTab({ paper }: { paper: Paper }) {
           ) : (
             <ul className="max-h-[55vh] divide-y divide-line overflow-y-auto">
               {list.map((i) => (
-                <li key={i.id}>
-                  <label className="flex cursor-pointer items-center gap-3 px-1 py-2.5 text-sm hover:bg-cream/60">
+                <li key={i.id} className="py-1.5">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-1 text-sm hover:bg-cream/60">
                     <input type="checkbox" checked={selected.has(i.id)} onChange={() => toggle(i.id)} className="size-4 accent-ink" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-ink">{i.inviteeName}</span>
@@ -351,6 +396,11 @@ function InvitationsTab({ paper }: { paper: Paper }) {
                     </span>
                     {i.printedAt && <Badge tone="gray">Printed {formatDateTime(i.printedAt).split(',')[0]}</Badge>}
                   </label>
+                  <PositionPicker
+                    invitation={effective(i)}
+                    auto={autoPositions.get(`${i.id}:`) ?? ''}
+                    onSave={(mode, label) => void savePosition(i, mode, label)}
+                  />
                 </li>
               ))}
             </ul>
@@ -599,6 +649,52 @@ function EnvelopeTab({ paper }: { paper: Paper }) {
           <Sheets paper={paper} sheets={Array.from({ length: copies }, () => sheetHtml)} />
         )}
       </section>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- position per invitation
+
+/** Same three choices as in Add/Edit Invitation; saves to the invitation. */
+function PositionPicker({ invitation, auto, onSave }: { invitation: InvitationWithRSVP; auto: string; onSave: (mode: PositionMode, label: string) => void }) {
+  const [draft, setDraft] = useState(invitation.positionLabel)
+  useEffect(() => setDraft(invitation.positionLabel), [invitation.positionLabel])
+  const id = `pos-${invitation.id}`
+  const commit = () => {
+    if (draft.trim() !== invitation.positionLabel.trim()) onSave('custom', draft)
+  }
+  return (
+    <div className="ml-8 mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+      <label htmlFor={id} className="text-muted">
+        Position
+      </label>
+      <select
+        id={id}
+        className="input-base min-h-8 w-auto py-0.5 pl-2 pr-7 text-xs"
+        value={invitation.positionMode}
+        onChange={(e) => onSave(e.target.value as PositionMode, e.target.value === 'custom' ? draft : invitation.positionLabel)}
+      >
+        <option value="auto">From entourage{auto ? ` (${auto})` : ' (not linked)'}</option>
+        <option value="custom">Type it</option>
+        <option value="none">Don’t show</option>
+      </select>
+      {invitation.positionMode === 'custom' && (
+        <input
+          aria-label={`Position for ${invitation.inviteeName}`}
+          className="input-base min-h-8 min-w-0 flex-1 basis-32 py-0.5 text-xs"
+          value={draft}
+          maxLength={80}
+          placeholder="e.g. Ninang"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              ;(e.target as HTMLInputElement).blur()
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

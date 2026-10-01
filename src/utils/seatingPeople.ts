@@ -1,4 +1,4 @@
-import type { InvitationWithRSVP } from '../types/rsvp'
+import type { GuestSide, InvitationWithRSVP } from '../types/rsvp'
 
 export interface SeatPerson {
   key: string
@@ -8,15 +8,17 @@ export interface SeatPerson {
   /** The invitee's name, for "party of …" grouping. */
   partyName: string
   isInvitee: boolean
+  /** Groom's or bride's side (from the invitation). */
+  side: GuestSide
 }
 
 /** Everyone who can be seated on an invitation (invitee + included + approved requests). */
 export function partyMembers(inv: InvitationWithRSVP): SeatPerson[] {
   return [
-    { key: `${inv.id}:`, invitationId: inv.id, guestId: null, name: inv.inviteeName, partyName: inv.inviteeName, isInvitee: true },
+    { key: `${inv.id}:`, invitationId: inv.id, guestId: null, name: inv.inviteeName, partyName: inv.inviteeName, isInvitee: true, side: inv.side },
     ...inv.guests
       .filter((g) => g.addedBy === 'admin' || g.status === 'approved')
-      .map((g) => ({ key: `${inv.id}:${g.id}`, invitationId: inv.id, guestId: g.id, name: g.guestName, partyName: inv.inviteeName, isInvitee: false })),
+      .map((g) => ({ key: `${inv.id}:${g.id}`, invitationId: inv.id, guestId: g.id, name: g.guestName, partyName: inv.inviteeName, isInvitee: false, side: inv.side })),
   ]
 }
 

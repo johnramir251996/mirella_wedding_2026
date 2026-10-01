@@ -1,6 +1,8 @@
 import type { CustomAnswers } from './questions'
 
 export type PositionMode = 'auto' | 'custom' | 'none'
+/** Whose guest list an invitation belongs to. */
+export type GuestSide = 'groom' | 'bride'
 
 export type AttendanceStatus = 'attending' | 'declining'
 export type RSVPStatus = AttendanceStatus | 'pending'
@@ -73,6 +75,7 @@ export interface Invitation {
   /** Position on the printed invitation: from the entourage, typed in, or none. */
   positionMode: PositionMode
   positionLabel: string
+  side: GuestSide
   maxAdditionalGuests: number
   isActive: boolean
   createdAt: string
@@ -84,6 +87,8 @@ export interface InvitationInput {
   tableId: string | null
   positionMode: PositionMode
   positionLabel: string
+  /** null only while adding a new invitation, before a side is picked. */
+  side: GuestSide | null
   maxAdditionalGuests: number
   isActive: boolean
 }
