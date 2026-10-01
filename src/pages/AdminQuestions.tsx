@@ -24,6 +24,7 @@ import {
   type RsvpQuestionInput,
 } from '../types/questions'
 import { toFriendlyMessage } from '../utils/errors'
+import { additionalGuestDefaultLabel, guestPrice } from '../utils/questions'
 import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Modal } from '../components/ui/Modal'
@@ -334,7 +335,7 @@ function BuiltinCard() {
   if (!config || !id) return <Skeleton className="h-72" />
 
   const get = (k: BuiltinKey) => config.builtins[k] ?? { enabled: true }
-  const set = (k: BuiltinKey, patch: Partial<{ enabled: boolean; label: string; required: boolean }>) =>
+  const set = (k: BuiltinKey, patch: Partial<{ enabled: boolean; label: string; required: boolean; price: number }>) =>
     setConfig({ builtins: { ...config.builtins, [k]: { ...get(k), ...patch } } })
   const dirty = JSON.stringify(config) !== savedJson
 
@@ -350,6 +351,7 @@ function BuiltinCard() {
           enabled: b.alwaysOn ? true : c.enabled,
           ...(c.label?.trim() ? { label: c.label.trim() } : {}),
           ...(b.canRequire && c.required === false ? { required: false } : {}),
+          ...(b.key === 'additionalGuest' && typeof c.price === 'number' ? { price: c.price } : {}),
         }
       }
       const s = await updateRsvpConfig(id, clean)
@@ -391,12 +393,29 @@ function BuiltinCard() {
                   label={<span className="sr-only">Question wording</span>}
                   hideLabel
                   value={c.label ?? ''}
-                  placeholder={b.defaultLabel}
+                  placeholder={b.key === 'additionalGuest' ? additionalGuestDefaultLabel(guestPrice(config)) : b.defaultLabel}
                   onChange={(v) => set(b.key, { label: v })}
                   maxLength={200}
                   disabled={!c.enabled}
                 />
                 <p className="mt-1.5 text-xs text-muted">{b.description} Leave blank to use the wording shown.</p>
+                {b.key === 'additionalGuest' && (
+                  <div className="mt-3 max-w-xs">
+                    <TextField
+                      label="Price per additional guest (₱)"
+                      inputMode="numeric"
+                      value={guestPrice(config) > 0 ? String(guestPrice(config)) : ''}
+                      placeholder="No price"
+                      onChange={(v) => {
+                        const digits = v.replace(/[^0-9]/g, '')
+                        const n = digits === '' ? 0 : Number(digits)
+                        if (Number.isFinite(n) && n <= 1_000_000) set('additionalGuest', { price: n })
+                      }}
+                      maxLength={7}
+                      hint="Shown on the RSVP form and in your admin pages. Leave blank for no price."
+                    />
+                  </div>
+                )}
                 {b.canRequire && c.enabled && (
                   <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
                     <input type="checkbox" checked={c.required !== false} onChange={(e) => set(b.key, { required: e.target.checked })} className="size-4 accent-ink" />

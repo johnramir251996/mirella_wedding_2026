@@ -12,6 +12,8 @@ import { Spinner } from '../components/ui/Spinner'
 import { GuestStatusBadge } from '../components/admin/StatusBadges'
 import { Badge } from '../components/ui/Badge'
 import { guestSourceLabel } from '../utils/guests'
+import { useWeddingSettings } from '../hooks/useWeddingSettings'
+import { guestPriceEach } from '../utils/questions'
 import { PageHeader, Panel } from '../components/admin/PageHeader'
 import { FilterTabs, SearchInput } from '../components/admin/FilterTabs'
 
@@ -20,6 +22,7 @@ type Filter = 'all' | GuestStatus
 export default function AdminGuests() {
   const { data, loading, error, reload } = useAdminData()
   const toast = useToast()
+  const priceEach = guestPriceEach(useWeddingSettings().settings?.rsvpConfig)
   const [filter, setFilter] = useState<Filter>('all')
   const [source, setSource] = useState<'all' | GuestSource>('all')
   const [query, setQuery] = useState('')
@@ -92,7 +95,7 @@ export default function AdminGuests() {
     <>
       <PageHeader
         title="Additional Guests"
-        description="Guests included by you are confirmed automatically. Guest requests (₱799 each) need your approval."
+        description={`Guests included by you are confirmed automatically. Guest requests${priceEach ? ` (${priceEach})` : ''} need your approval.`}
       />
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <FilterTabs

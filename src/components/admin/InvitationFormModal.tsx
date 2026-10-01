@@ -10,6 +10,8 @@ import { Modal } from '../ui/Modal'
 import { TablePicker } from './TablePicker'
 import type { SeatingTable } from '../../types/seating'
 import { plannedPerTable } from '../../utils/seatingPeople'
+import { useWeddingSettings } from '../../hooks/useWeddingSettings'
+import { guestPriceEach } from '../../utils/questions'
 
 export interface RecordChoice {
   status: 'attending' | 'declining'
@@ -34,6 +36,7 @@ interface Props {
 const EMPTY: InvitationInput = { inviteeName: '', tableId: null, positionMode: 'auto', positionLabel: '', maxAdditionalGuests: 0, isActive: true }
 
 export function InvitationFormModal({ open, invitation, saving, onClose, onSave, onCopyLink, tables, invitations, onTableCreated, autoPosition = '' }: Props) {
+  const priceEach = guestPriceEach(useWeddingSettings().settings?.rsvpConfig)
   const [values, setValues] = useState<InvitationInput>(EMPTY)
   const [errors, setErrors] = useState<InvitationErrors>({})
   const [included, setIncluded] = useState<string[]>([])
@@ -181,7 +184,7 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
           max={LIMITS.maxAdditionalGuestsPerInvitation}
           value={String(values.maxAdditionalGuests)}
           onChange={(v) => setValues((s) => ({ ...s, maxAdditionalGuests: v === '' ? 0 : Math.trunc(Number(v)) }))}
-          hint="Extra guests the invitee may request on the RSVP form (₱799 each, needs your approval). 0 hides that question."
+          hint={`Extra guests the invitee may request on the RSVP form (${priceEach ? `${priceEach}, ` : ''}needs your approval). 0 hides that question.`}
           error={errors.maxAdditionalGuests}
         />
         <fieldset className="rounded-lg border border-line px-4 pb-4 pt-3">

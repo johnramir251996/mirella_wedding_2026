@@ -115,6 +115,7 @@ function parseRsvpConfig(value: Json): RsvpConfig {
       enabled: c.enabled !== false,
       label: typeof c.label === 'string' ? c.label : undefined,
       required: typeof c.required === 'boolean' ? c.required : undefined,
+      price: typeof c.price === 'number' && c.price >= 0 ? c.price : undefined,
     }
   }
   return { builtins }

@@ -6,8 +6,32 @@ export function builtinEnabled(config: RsvpConfig | undefined, key: BuiltinKey):
   return config?.builtins?.[key]?.enabled !== false
 }
 
+export const DEFAULT_GUEST_PRICE = 799
+
+/** Price per additional guest the couple set in RSVP Questions (0 = no price shown). */
+export function guestPrice(config: RsvpConfig | undefined | null): number {
+  const p = config?.builtins?.additionalGuest?.price
+  return typeof p === 'number' && Number.isFinite(p) && p >= 0 ? p : DEFAULT_GUEST_PRICE
+}
+
+export const formatPeso = (n: number) => `₱${n.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`
+
+/** "₱799 each" style text, or '' when no price is set. */
+export function guestPriceEach(config: RsvpConfig | undefined | null): string {
+  const p = guestPrice(config)
+  return p > 0 ? `${formatPeso(p)} each` : ''
+}
+
+export function additionalGuestDefaultLabel(price: number): string {
+  return price > 0 ? `Would you like to bring an additional guest for ${formatPeso(price)}?` : 'Would you like to bring an additional guest?'
+}
+
 export function builtinLabel(config: RsvpConfig | undefined, key: BuiltinKey): string {
   const custom = config?.builtins?.[key]?.label?.trim()
+  if (key === 'additionalGuest') {
+    const price = guestPrice(config)
+    return custom ? custom.replace(/\{price\}/gi, price > 0 ? formatPeso(price) : '').replace(/\s{2,}/g, ' ').trim() : additionalGuestDefaultLabel(price)
+  }
   return custom || BUILTIN_QUESTIONS.find((b) => b.key === key)?.defaultLabel || ''
 }
 

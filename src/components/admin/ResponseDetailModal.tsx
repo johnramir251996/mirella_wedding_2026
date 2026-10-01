@@ -15,9 +15,11 @@ import { Badge } from '../ui/Badge'
 import { includedGuests, requestedGuests } from '../../utils/guests'
 import { formatPhMobile } from '../../utils/validation'
 import { useAllQuestions } from '../../hooks/useAllQuestions'
-import { formatCustomAnswer } from '../../utils/questions'
+import { formatCustomAnswer, guestPriceEach } from '../../utils/questions'
+import { useWeddingSettings } from '../../hooks/useWeddingSettings'
 
 export function ResponseDetailModal({ invitation, onClose }: { invitation: InvitationWithRSVP | null; onClose: () => void }) {
+  const priceEach = guestPriceEach(useWeddingSettings().settings?.rsvpConfig)
   const r = invitation?.response ?? null
   const questions = useAllQuestions()
   const answered = r
@@ -76,7 +78,7 @@ export function ResponseDetailModal({ invitation, onClose }: { invitation: Invit
               <Item label="Accessibility needs" wide>
                 {r.accessibilityNeeds || 'None'}
               </Item>
-              <Item label="Requested additional guests (₱799)" wide>
+              <Item label={`Requested additional guests${priceEach ? ` (${priceEach})` : ''}`} wide>
                 {requestedGuests(invitation).length ? (
                   <ul className="space-y-1.5">
                     {requestedGuests(invitation).map((g) => (

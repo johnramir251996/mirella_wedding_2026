@@ -35,6 +35,8 @@ export interface BuiltinConfig {
   enabled: boolean
   label?: string
   required?: boolean
+  /** additionalGuest only: price per extra guest in pesos (0 = don't mention a price). */
+  price?: number
 }
 
 export interface RsvpConfig {
@@ -50,7 +52,7 @@ export const BUILTIN_QUESTIONS: { key: BuiltinKey; defaultLabel: string; descrip
   {
     key: 'additionalGuest',
     defaultLabel: 'Would you like to bring an additional guest for ₱799?',
-    description: 'Only shown to attending guests whose invitation allows additional guests (set per invitation). Always asked.',
+    description: 'Only shown to attending guests whose invitation allows additional guests (set per invitation). Always asked. Type {price} in your wording to insert the price.',
     alwaysOn: true,
   },
   { key: 'message', defaultLabel: 'Leave a message for the couple 💌', description: 'Optional, 500 characters. Always the last question.' },

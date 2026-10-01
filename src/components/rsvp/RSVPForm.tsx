@@ -19,7 +19,7 @@ import { cn } from '../ui/cn'
 import { Collapse } from './Collapse'
 import { CustomQuestionField } from './CustomQuestionField'
 import type { BuiltinKey, CustomAnswer, RsvpConfig, RsvpQuestion } from '../../types/questions'
-import { builtinEnabled, builtinLabel, comingFromRequired, visibleQuestions } from '../../utils/questions'
+import { builtinEnabled, builtinLabel, comingFromRequired, formatPeso, guestPrice, visibleQuestions } from '../../utils/questions'
 
 const YES_NO: { value: YesNo; label: string }[] = [
   { value: 'yes', label: 'Yes' },
@@ -367,7 +367,11 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
                     label('additionalGuest')
                   ) : (
                     <>
-                      Would you like to <strong className="font-semibold">bring an additional guest for ₱799</strong>?
+                      Would you like to{' '}
+                      <strong className="font-semibold">
+                        bring an additional guest{guestPrice(config) > 0 ? ` for ${formatPeso(guestPrice(config))}` : ''}
+                      </strong>
+                      ?
                     </>
                   )
                 }

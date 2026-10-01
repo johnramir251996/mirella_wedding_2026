@@ -50,7 +50,7 @@ GitHub Pages only serves the built HTML/JS/CSS. **Every RSVP, invitation and set
 
 | | Included guests | Guest requests |
 |---|---|---|
-| Added by | the couple, in *Admin → Invitations → Edit* | the invitee, on the RSVP form (₱799 each) |
+| Added by | the couple, in *Admin → Invitations → Edit* | the invitee, on the RSVP form (price set in *RSVP Questions*, default ₱799 each) |
 | Shown to the invitee | yes — on the invitation card and at the top of the RSVP form | only what they entered |
 | Approval | confirmed automatically | *Pending* until you approve or decline in *Additional Guests* |
 | Limit | up to 20 per invitation | *Maximum Additional Guests* on the invitation |
