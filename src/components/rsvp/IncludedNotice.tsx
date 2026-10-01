@@ -31,6 +31,7 @@ export function IncludedNotice({ included, showSeat }: { included: IncludedGuest
       {showSeat && s === 'attending' && (
         <Link
           to="/seat"
+          state={{ name: included.searchedName }}
           className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-ivory shadow-soft transition hover:bg-ink-soft"
         >
           <Armchair aria-hidden="true" className="size-4" strokeWidth={1.6} />

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Armchair, MapPin, Minus, Plus, Users } from 'lucide-react'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
@@ -24,6 +24,13 @@ export default function FindSeat() {
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<SeatSearchResult | null>(null)
+  // A name handed over from the RSVP page ("Find my seat") — kept in router state, not the URL.
+  const location = useLocation()
+  const [prefill] = useState(() => {
+    const n = (location.state as { name?: unknown } | null)?.name
+    return typeof n === 'string' ? n.slice(0, 150) : ''
+  })
+  const autoSearched = useRef(false)
 
   useEffect(() => {
     document.title = settings ? `Find My Seat · ${settings.coupleNames}` : 'Find My Seat'
@@ -44,6 +51,14 @@ export default function FindSeat() {
   }
 
   const open = settings ? isFinderOpen(settings.seatingConfig) : false
+
+  // Arriving with a name: look it up straight away.
+  useEffect(() => {
+    if (!prefill || !open || autoSearched.current) return
+    autoSearched.current = true
+    void search(prefill)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill, open])
   const fade = reduce ? { initial: { opacity: 0 }, animate: { opacity: 1 } } : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
   return (
@@ -68,7 +83,7 @@ export default function FindSeat() {
             ) : !result ? (
               <>
                 <p className="mx-auto -mt-4 mb-8 max-w-md text-center text-ink-soft">Type your name to see your table and where it is in the venue.</p>
-                <SearchForm onSearch={(n) => void search(n)} searching={searching} error={error} />
+                <SearchForm onSearch={(n) => void search(n)} searching={searching} error={error} initialName={prefill} />
               </>
             ) : (
               <motion.div {...fade} transition={{ duration: 0.6 }} className="mx-auto w-full max-w-4xl">

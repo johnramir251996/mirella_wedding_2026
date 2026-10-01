@@ -7,10 +7,12 @@ interface SearchFormProps {
   onSearch: (name: string) => void
   searching: boolean
   error: string | null
+  /** Pre-filled name (e.g. when arriving from the RSVP page). */
+  initialName?: string
 }
 
-export function SearchForm({ onSearch, searching, error }: SearchFormProps) {
-  const [name, setName] = useState('')
+export function SearchForm({ onSearch, searching, error, initialName = '' }: SearchFormProps) {
+  const [name, setName] = useState(initialName)
   const [touched, setTouched] = useState(false)
   const empty = !name.trim()
 

@@ -144,6 +144,8 @@ export interface ActivityLog {
 
 /** Someone who is part of another person's invitation (included guest or approved request). */
 export interface IncludedGuestLookup {
+  /** The name the guest searched with (used to pre-fill Find My Seat). */
+  searchedName: string
   inviteeName: string
   attendanceStatus: AttendanceStatus | null
 }

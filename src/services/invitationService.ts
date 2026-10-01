@@ -72,5 +72,5 @@ export async function findIncludedGuest(fullName: string): Promise<IncludedGuest
   const row = Array.isArray(data) ? data[0] : undefined
   if (!row?.invitee_name) return null
   const st = row.attendance_status
-  return { inviteeName: row.invitee_name, attendanceStatus: st === 'attending' || st === 'declining' ? st : null }
+  return { searchedName: searchName, inviteeName: row.invitee_name, attendanceStatus: st === 'attending' || st === 'declining' ? st : null }
 }
