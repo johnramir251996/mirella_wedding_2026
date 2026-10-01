@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { InvitationLookup } from '../types/rsvp'
+import type { IncludedGuestLookup, InvitationLookup } from '../types/rsvp'
 import { FRIENDLY_ERRORS, FriendlyError, logError } from '../utils/errors'
 import { normalizeSpaces } from '../utils/validation'
 
@@ -54,4 +54,23 @@ export async function findInvitationByCode(code: string): Promise<InvitationLook
   }
   const row = Array.isArray(data) ? (data[0] as LookupRow | undefined) : undefined
   return row ? toLookup(row) : null
+}
+
+/**
+ * When a name isn't the main name on any invitation, checks whether that person is
+ * included in someone else's invitation, so the page can explain instead of "not found".
+ */
+export async function findIncludedGuest(fullName: string): Promise<IncludedGuestLookup | null> {
+  const searchName = normalizeSpaces(fullName)
+  if (!searchName) return null
+  const { data, error } = await supabase.rpc('find_included_guest', { search_name: searchName })
+  if (error) {
+    // Never block the normal "not found" message on this extra check.
+    logError('findIncludedGuest', error)
+    return null
+  }
+  const row = Array.isArray(data) ? data[0] : undefined
+  if (!row?.invitee_name) return null
+  const st = row.attendance_status
+  return { inviteeName: row.invitee_name, attendanceStatus: st === 'attending' || st === 'declining' ? st : null }
 }

@@ -674,6 +674,13 @@ export type Database = {
           included_guests: string[]
         }[]
       }
+      find_included_guest: {
+        Args: { search_name: string }
+        Returns: {
+          invitee_name: string
+          attendance_status: string | null
+        }[]
+      }
       find_invitation_by_code: {
         Args: { invite_code: string }
         Returns: {

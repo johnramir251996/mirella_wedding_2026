@@ -141,3 +141,9 @@ export interface ActivityLog {
   details: Record<string, unknown>
   createdAt: string
 }
+
+/** Someone who is part of another person's invitation (included guest or approved request). */
+export interface IncludedGuestLookup {
+  inviteeName: string
+  attendanceStatus: AttendanceStatus | null
+}

@@ -7,7 +7,7 @@ import { useRsvpQuestions } from '../hooks/useRsvpQuestions'
 import { submitRSVP } from '../services/rsvpService'
 import type { AttendanceStatus, RSVPFormState } from '../types/rsvp'
 import type { PublicGift } from '../types/wedding'
-import { isRsvpOpen } from '../services/settingsService'
+import { isFinderOpen, isRsvpOpen } from '../services/settingsService'
 import { getInvitationGift } from '../services/giftService'
 import { getInvitationTable } from '../services/seatingService'
 import { GiftCard } from '../components/wedding/GiftCard'
@@ -17,6 +17,7 @@ import { RsvpClosedError, toFriendlyMessage } from '../utils/errors'
 import { formatDeadlineDate, formatWeddingDate } from '../utils/formatting'
 import { toSubmission } from '../utils/validation'
 import { SearchForm } from '../components/rsvp/SearchForm'
+import { IncludedNotice } from '../components/rsvp/IncludedNotice'
 import { InvitationFound } from '../components/rsvp/InvitationFound'
 import { EnvelopeAnimation } from '../components/rsvp/EnvelopeAnimation'
 import { RSVPForm } from '../components/rsvp/RSVPForm'
@@ -35,7 +36,7 @@ const FALLBACK = { coupleNames: 'Mir & Ella', weddingDate: '2026-12-19' }
 export default function RSVP() {
   const { settings, loading: settingsLoading } = useWeddingSettings()
   const { questions } = useRsvpQuestions()
-  const { status, invitation, error, searchByName, searchByCode } = useInvitation()
+  const { status, invitation, included, error, searchByName, searchByCode } = useInvitation()
   const [params] = useSearchParams()
   const reduce = useReducedMotion()
 
@@ -152,6 +153,9 @@ export default function RSVP() {
                 )}
               </div>
               <SearchForm onSearch={searchByName} searching={status === 'searching'} error={status === 'not_found' || status === 'error' ? error : null} />
+              {status === 'included' && included && (
+                <IncludedNotice included={included} showSeat={settings ? isFinderOpen(settings.seatingConfig) : false} />
+              )}
             </motion.section>
           )}
 
