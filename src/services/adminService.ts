@@ -59,6 +59,8 @@ const mapInvitation = (r: Tables<'invitations'>): Invitation => ({
   tableNumber: r.table_number,
   tableId: r.table_id ?? null,
   printedAt: r.printed_at ?? null,
+  positionMode: (['custom', 'none'].includes(r.position_mode) ? r.position_mode : 'auto') as Invitation['positionMode'],
+  positionLabel: r.position_label ?? '',
   maxAdditionalGuests: r.max_additional_guests,
   isActive: r.is_active,
   createdAt: r.created_at,
@@ -205,6 +207,8 @@ function toInvitationRow(input: InvitationInput) {
   return {
     invitee_name: normalizeSpaces(input.inviteeName),
     table_id: input.tableId,
+    position_mode: input.positionMode,
+    position_label: input.positionMode === 'custom' && input.positionLabel.trim() ? input.positionLabel.trim().slice(0, 80) : null,
     max_additional_guests: input.maxAdditionalGuests,
     is_active: input.isActive,
   }

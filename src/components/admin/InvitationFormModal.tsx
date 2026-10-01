@@ -27,11 +27,13 @@ interface Props {
   tables: SeatingTable[]
   invitations: InvitationWithRSVP[]
   onTableCreated: (table: SeatingTable) => void
+  /** Position taken from the entourage for this invitee, if linked. */
+  autoPosition?: string
 }
 
-const EMPTY: InvitationInput = { inviteeName: '', tableId: null, maxAdditionalGuests: 0, isActive: true }
+const EMPTY: InvitationInput = { inviteeName: '', tableId: null, positionMode: 'auto', positionLabel: '', maxAdditionalGuests: 0, isActive: true }
 
-export function InvitationFormModal({ open, invitation, saving, onClose, onSave, onCopyLink, tables, invitations, onTableCreated }: Props) {
+export function InvitationFormModal({ open, invitation, saving, onClose, onSave, onCopyLink, tables, invitations, onTableCreated, autoPosition = '' }: Props) {
   const [values, setValues] = useState<InvitationInput>(EMPTY)
   const [errors, setErrors] = useState<InvitationErrors>({})
   const [included, setIncluded] = useState<string[]>([])
@@ -55,6 +57,8 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
         ? {
             inviteeName: invitation.inviteeName,
             tableId: invitation.tableId,
+            positionMode: invitation.positionMode,
+            positionLabel: invitation.positionLabel,
             maxAdditionalGuests: invitation.maxAdditionalGuests,
             isActive: invitation.isActive,
           }
@@ -125,6 +129,50 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
           onChange={(tableId) => setValues((s) => ({ ...s, tableId }))}
           onTableCreated={onTableCreated}
         />
+        <fieldset>
+          <legend className="mb-2 text-[0.95rem] font-medium text-ink-soft">Position on the printed invitation (optional)</legend>
+          <div className="grid grid-cols-3 gap-1 rounded-lg bg-cream p-1">
+            {(
+              [
+                { v: 'auto', l: 'From entourage' },
+                { v: 'custom', l: 'Type it' },
+                { v: 'none', l: 'Don’t show' },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                aria-pressed={values.positionMode === o.v}
+                onClick={() => setValues((s) => ({ ...s, positionMode: o.v }))}
+                className={cn('rounded-md px-2 py-1.5 text-sm transition', values.positionMode === o.v ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
+              >
+                {o.l}
+              </button>
+            ))}
+          </div>
+          {values.positionMode === 'auto' && (
+            <p className="mt-1.5 text-sm text-muted">
+              {autoPosition ? (
+                <>
+                  Will show: <strong className="font-medium text-ink">{autoPosition}</strong>
+                </>
+              ) : (
+                'Not linked in the entourage yet — nothing will show. Link them in Entourage → “Pick from guest list”.'
+              )}
+            </p>
+          )}
+          {values.positionMode === 'custom' && (
+            <TextField
+              className="mt-2"
+              label={<span className="sr-only">Position</span>}
+              hideLabel
+              value={values.positionLabel}
+              onChange={(v) => setValues((s) => ({ ...s, positionLabel: v }))}
+              maxLength={80}
+              placeholder="e.g. Maid of Honor, Principal Sponsor, Ninang"
+            />
+          )}
+        </fieldset>
         <TextField
           label="Maximum Additional Guests"
           type="number"

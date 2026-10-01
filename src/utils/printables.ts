@@ -203,6 +203,8 @@ export const CARD_SIZES: Record<CardSize, { w: number; h: number; label: string;
 
 export interface InvitationCardOptions {
   guestName: string
+  /** e.g. "Maid of Honor" — shown under the name (optional). */
+  position?: string
   withNames: string[]
   coupleNames: string
   dateText: string
@@ -235,6 +237,7 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
     <div style="margin-top:5mm;width:22mm;border-top:0.3mm solid ${t.accent}"></div>
     <div style="margin-top:5mm;font-size:2.6mm;letter-spacing:0.6mm;color:${t.muted}">DEAR</div>
     <div style="margin-top:1.5mm;font-family:${t.serif};font-size:7.4mm;line-height:1.1">${esc(o.guestName)}</div>
+    ${o.position ? `<div style="margin-top:1.4mm;font-size:2.7mm;letter-spacing:0.7mm;color:${t.accent};font-weight:500">${esc(o.position.toUpperCase())}</div>` : ''}
     ${o.withNames.length ? `<div style="margin-top:1.5mm;font-family:${t.serif};font-style:italic;font-size:4mm;color:${t.soft};max-width:95mm">together with ${esc(joinNames(o.withNames))}</div>` : ''}
     <div style="margin-top:6mm;font-size:3.6mm;letter-spacing:0.9mm;font-weight:500">${esc(o.dateText.toUpperCase())}</div>
     ${o.ceremony ? `<div style="margin-top:3mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">CEREMONY</span><br/>${esc(o.ceremony)}</div>` : ''}

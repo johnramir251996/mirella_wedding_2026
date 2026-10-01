@@ -7,6 +7,12 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      entourage_links: {
+        Row: { member_id: string; invitation_id: string; guest_id: string | null; created_at: string }
+        Insert: { member_id: string; invitation_id: string; guest_id?: string | null; created_at?: string }
+        Update: { member_id?: string; invitation_id?: string; guest_id?: string | null; created_at?: string }
+        Relationships: []
+      }
       seating_tables: {
         Row: {
           id: string
@@ -296,6 +302,8 @@ export type Database = {
           search_name: string
           invitation_code: string
           printed_at: string | null
+          position_mode: string
+          position_label: string | null
           table_number: string | null
           table_id: string | null
           max_additional_guests: number
@@ -308,6 +316,8 @@ export type Database = {
           invitee_name: string
           invitation_code?: string
           printed_at?: string | null
+          position_mode?: string
+          position_label?: string | null
           table_number?: string | null
           table_id?: string | null
           max_additional_guests?: number
@@ -320,6 +330,8 @@ export type Database = {
           invitee_name?: string
           invitation_code?: string
           printed_at?: string | null
+          position_mode?: string
+          position_label?: string | null
           table_number?: string | null
           table_id?: string | null
           max_additional_guests?: number

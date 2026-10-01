@@ -14,6 +14,9 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { ResponsiveTable, type Column } from '../components/ui/ResponsiveTable'
 import { TableSkeleton } from '../components/ui/Skeleton'
 import type { SeatingTable } from '../types/seating'
+import { useWeddingSettings } from '../hooks/useWeddingSettings'
+import { useEntourageLinks } from '../hooks/useEntourageLinks'
+import { entouragePositions } from '../utils/positions'
 import { InvitationFormModal, type RecordChoice } from '../components/admin/InvitationFormModal'
 import { ResponseDetailModal } from '../components/admin/ResponseDetailModal'
 import { AttendanceBadge } from '../components/admin/StatusBadges'
@@ -31,6 +34,9 @@ export default function AdminInvitations() {
   const [deleting, setDeleting] = useState(false)
   const [viewing, setViewing] = useState<InvitationWithRSVP | null>(null)
   const [newTables, setNewTables] = useState<SeatingTable[]>([])
+  const { settings } = useWeddingSettings()
+  const { links } = useEntourageLinks()
+  const autoPositions = useMemo(() => entouragePositions(settings?.entourage ?? [], links), [settings, links])
   const tables = useMemo(() => {
     const base = data?.tables ?? []
     return [...base, ...newTables.filter((t) => !base.some((b) => b.id === t.id))]
@@ -200,6 +206,7 @@ export default function AdminInvitations() {
         tables={tables}
         invitations={data?.invitations ?? []}
         onTableCreated={(t) => setNewTables((l) => [...l, t])}
+        autoPosition={editing ? autoPositions.get(`${editing.id}:`) ?? '' : ''}
       />
 
       <ConfirmDialog

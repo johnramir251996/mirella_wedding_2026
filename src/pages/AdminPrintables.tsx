@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import QRCode from 'qrcode'
 import { CheckCircle2, Mail, Printer, Wallet } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
+import { useEntourageLinks } from '../hooks/useEntourageLinks'
+import { entouragePositions, invitationPosition } from '../utils/positions'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { getGiftSettings } from '../services/giftService'
@@ -193,6 +195,17 @@ function InvitationsTab({ paper }: { paper: Paper }) {
   const [printSide, setPrintSide] = useState<'front' | 'back' | 'both'>('front')
   const [sheetNo, setSheetNo] = useState(0) // 0 = all sheets
   const [rotateBacks, setRotateBacks] = useState(false)
+  const [showPositions, setShowPositions] = useState(true)
+  const { links: entLinks } = useEntourageLinks()
+  const autoPositions = useMemo(() => entouragePositions(settings?.entourage ?? [], entLinks), [settings, entLinks])
+  const positionOf = (inv: InvitationWithRSVP) => (showPositions ? invitationPosition(inv, autoPositions) : '')
+  const withNamesOf = (inv: InvitationWithRSVP) =>
+    inv.guests
+      .filter((g) => g.addedBy === 'admin')
+      .map((g) => {
+        const pos = showPositions ? autoPositions.get(`${inv.id}:${g.id}`) : undefined
+        return pos ? `${g.guestName} (${pos})` : g.guestName
+      })
   const box = useWidth()
   const [marking, setMarking] = useState(false)
   const theme = useMemo(readTheme, [settings?.theme])
@@ -247,7 +260,8 @@ function InvitationsTab({ paper }: { paper: Paper }) {
       .map((inv, k) => {
         const html = invitationCardHtml({
           guestName: inv.inviteeName,
-          withNames: inv.guests.filter((g) => g.addedBy === 'admin').map((g) => g.guestName),
+          position: positionOf(inv),
+          withNames: withNamesOf(inv),
           coupleNames: settings?.coupleNames ?? '',
           dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
           ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
@@ -392,6 +406,13 @@ function InvitationsTab({ paper }: { paper: Paper }) {
               </select>
             </label>
           )}
+          <label className="flex items-start justify-between gap-3 text-sm text-ink-soft">
+            <span>
+              Show positions under names
+              <span className="block text-xs text-muted">E.g. “Maid of Honor”. Set per invitation, or taken from the Entourage.</span>
+            </span>
+            <input type="checkbox" checked={showPositions} onChange={(e) => setShowPositions(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-ink" />
+          </label>
           {printSide !== 'front' && (
             <label className="flex items-start justify-between gap-3 text-sm text-ink-soft">
               <span>
@@ -451,7 +472,8 @@ function InvitationsTab({ paper }: { paper: Paper }) {
             heightMm={CARD_SIZES[size].h}
             frontHtml={invitationCardHtml({
               guestName: chosen[0]?.inviteeName ?? 'Your Guest’s Name',
-              withNames: chosen[0] ? chosen[0].guests.filter((g) => g.addedBy === 'admin').map((g) => g.guestName) : [],
+              position: chosen[0] ? positionOf(chosen[0]) : 'Maid of Honor',
+              withNames: chosen[0] ? withNamesOf(chosen[0]) : [],
               coupleNames: settings?.coupleNames ?? '',
               dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
               ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),

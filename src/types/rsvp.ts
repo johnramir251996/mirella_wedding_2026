@@ -1,5 +1,7 @@
 import type { CustomAnswers } from './questions'
 
+export type PositionMode = 'auto' | 'custom' | 'none'
+
 export type AttendanceStatus = 'attending' | 'declining'
 export type RSVPStatus = AttendanceStatus | 'pending'
 export type NeedsTransportation = 'yes' | 'no' | 'not_sure'
@@ -68,6 +70,9 @@ export interface Invitation {
   tableNumber: string | null
   tableId: string | null
   printedAt: string | null
+  /** Position on the printed invitation: from the entourage, typed in, or none. */
+  positionMode: PositionMode
+  positionLabel: string
   maxAdditionalGuests: number
   isActive: boolean
   createdAt: string
@@ -77,6 +82,8 @@ export interface Invitation {
 export interface InvitationInput {
   inviteeName: string
   tableId: string | null
+  positionMode: PositionMode
+  positionLabel: string
   maxAdditionalGuests: number
   isActive: boolean
 }

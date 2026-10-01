@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowUp, Plus, Save, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ArrowDown, ArrowUp, Link2, Plus, Save, Search, Trash2, UserSearch, X } from 'lucide-react'
 import { useToast } from '../hooks/useToast'
 import { setCachedWeddingSettings } from '../hooks/useWeddingSettings'
 import { getWeddingSettings, newSectionId, updateEntourage } from '../services/settingsService'
@@ -11,6 +11,11 @@ import { TextField } from '../components/ui/FormField'
 import { Skeleton } from '../components/ui/Skeleton'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
+import { Modal } from '../components/ui/Modal'
+import { useAdminData } from '../hooks/useAdminData'
+import { listEntourageLinks, saveEntourageLinks, type EntourageLink } from '../services/entourageService'
+import { partyMembers, type SeatPerson } from '../utils/seatingPeople'
+import { normalizeName } from '../utils/validation'
 
 const PRESET_GROUPS: { title: string; layout: EntourageGroup['layout'] }[] = [
   { title: 'Parents of the Groom', layout: 'pairs' },
@@ -44,6 +49,20 @@ export default function AdminEntourage() {
   const [error, setError] = useState<string | null>(null)
   const [preset, setPreset] = useState('')
   const [groupToDelete, setGroupToDelete] = useState<EntourageGroup | null>(null)
+  const { data } = useAdminData()
+  const [links, setLinks] = useState<Record<string, EntourageLink>>({})
+  const [savedLinks, setSavedLinks] = useState('{}')
+  const [picking, setPicking] = useState<{ groupId: string; memberId: string } | null>(null)
+  const people = useMemo(() => (data?.invitations ?? []).filter((i) => i.isActive).flatMap(partyMembers), [data])
+  const personName = (l: EntourageLink) => people.find((p) => p.invitationId === l.invitationId && p.guestId === l.guestId)
+
+  useEffect(() => {
+    listEntourageLinks().then((list) => {
+      const m = Object.fromEntries(list.map((l) => [l.memberId, l]))
+      setLinks(m)
+      setSavedLinks(JSON.stringify(m))
+    })
+  }, [])
 
   useEffect(() => {
     document.title = 'Entourage · Wedding admin'
@@ -62,7 +81,7 @@ export default function AdminEntourage() {
       .catch((e) => setError(toFriendlyMessage(e)))
   }, [])
 
-  const dirty = values ? JSON.stringify(values) !== savedJson : false
+  const dirty = values ? JSON.stringify(values) !== savedJson || JSON.stringify(links) !== savedLinks : false
 
   useEffect(() => {
     if (!dirty) return
@@ -116,6 +135,11 @@ export default function AdminEntourage() {
       }
       setValues(v)
       setSavedJson(JSON.stringify(v))
+      const present = new Set(s.entourage.flatMap((g) => g.members.map((m) => m.id)))
+      const kept = Object.fromEntries(Object.entries(links).filter(([memberId]) => present.has(memberId)))
+      await saveEntourageLinks(Object.values(kept))
+      setLinks(kept)
+      setSavedLinks(JSON.stringify(kept))
       toast.success('Entourage saved.')
     } catch (e) {
       toast.error(toFriendlyMessage(e))
@@ -227,6 +251,30 @@ export default function AdminEntourage() {
                     placeholder="Full name, e.g. Mr. & Mrs. Antonio Reyes"
                     onChange={(v) => updateGroup(g.id, { members: g.members.map((x) => (x.id === m.id ? { ...x, name: v } : x)) })}
                   />
+                  {links[m.id] ? (
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-soft">
+                      <Link2 aria-hidden="true" className="size-3.5 shrink-0 text-gold" />
+                      <span className="min-w-0 truncate">
+                        Guest: {personName(links[m.id])?.name ?? 'invitation'}
+                        {personName(links[m.id]) && !personName(links[m.id])!.isInvitee && ` (with ${personName(links[m.id])!.partyName})`}
+                      </span>
+                      <button
+                        type="button"
+                        className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-muted hover:bg-cream hover:text-rose"
+                        onClick={() => setLinks((l) => Object.fromEntries(Object.entries(l).filter(([k]) => k !== m.id)))}
+                      >
+                        Unlink
+                      </button>
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPicking({ groupId: g.id, memberId: m.id })}
+                      className="mt-1.5 inline-flex items-center gap-1 rounded text-xs text-gold underline-offset-4 hover:underline"
+                    >
+                      <UserSearch aria-hidden="true" className="size-3.5" /> Pick from guest list
+                    </button>
+                  )}
                   <label className="sr-only" htmlFor={`role-${m.id}`}>
                     Role for {m.name || `name ${mi + 1}`} (optional)
                   </label>
@@ -298,6 +346,22 @@ export default function AdminEntourage() {
         </div>
       )}
 
+      {picking && (
+        <GuestPicker
+          people={people}
+          linkedTo={(p) =>
+            Object.entries(links).find(([, l]) => l.invitationId === p.invitationId && l.guestId === p.guestId && true)?.[0] ?? null
+          }
+          onClose={() => setPicking(null)}
+          onPick={(p) => {
+            const g = values.entourage.find((x) => x.id === picking.groupId)
+            if (g) updateGroup(g.id, { members: g.members.map((x) => (x.id === picking.memberId ? { ...x, name: p.name } : x)) })
+            setLinks((l) => ({ ...l, [picking.memberId]: { memberId: picking.memberId, invitationId: p.invitationId, guestId: p.guestId } }))
+            setPicking(null)
+          }}
+        />
+      )}
+
       <ConfirmDialog
         open={Boolean(groupToDelete)}
         title="Delete this group?"
@@ -356,5 +420,50 @@ function AutoGrowText({ id, value, onChange, maxLength, placeholder }: { id: str
       }}
       className="input-base block min-h-11 w-full resize-none overflow-hidden py-2.5 leading-snug"
     />
+  )
+}
+
+function GuestPicker({
+  people,
+  linkedTo,
+  onPick,
+  onClose,
+}: {
+  people: SeatPerson[]
+  linkedTo: (p: SeatPerson) => string | null
+  onPick: (p: SeatPerson) => void
+  onClose: () => void
+}) {
+  const [q, setQ] = useState('')
+  const rows = people.filter((p) => !q || normalizeName(p.name).includes(normalizeName(q)) || normalizeName(p.partyName).includes(normalizeName(q)))
+  return (
+    <Modal open onClose={onClose} tone="admin" title="Pick from your guest list" description="The name is filled in for you and linked to their invitation, so their position can appear on their printed invitation.">
+      <div className="space-y-3">
+        <div className="relative">
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+          <input className="input-base pl-9" placeholder="Search names" value={q} onChange={(e) => setQ(e.target.value)} autoFocus aria-label="Search guests" />
+        </div>
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted">{people.length ? 'No matching guests.' : 'Add invitations first.'}</p>
+        ) : (
+          <ul className="max-h-[50vh] divide-y divide-line overflow-y-auto">
+            {rows.map((p) => (
+              <li key={p.key}>
+                <button type="button" onClick={() => onPick(p)} className="flex w-full items-center gap-3 px-2 py-2.5 text-left transition hover:bg-cream">
+                  <UserSearch aria-hidden="true" className="size-4 shrink-0 text-gold" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-ink">{p.name}</span>
+                    <span className="block truncate text-xs text-muted">
+                      {p.isInvitee ? 'Invitee' : `With ${p.partyName}`}
+                      {linkedTo(p) ? ' · already in the entourage' : ''}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Modal>
   )
 }

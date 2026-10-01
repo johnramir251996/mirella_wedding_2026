@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
-import { Copy, Download, ExternalLink, FileImage, Share2 } from 'lucide-react'
+import { Copy, Download, ExternalLink, FileImage, Printer, Share2 } from 'lucide-react'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { copyText, shareOrCopy, shareTargets, siteLinks } from '../utils/share'
@@ -37,6 +37,15 @@ export default function AdminShare() {
   const [target, setTarget] = useState<Target>('rsvp')
   const [qrSvg, setQrSvg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [sheet, setSheet] = useState<string[] | null>(null)
+  const [paper, setPaper] = useState<'a4' | 'legal'>('a4')
+
+  useEffect(() => {
+    const el = document.createElement('style')
+    el.textContent = paper === 'a4' ? '@page { size: 297mm 210mm; margin: 0; }' : '@page { size: 355.6mm 215.9mm; margin: 0; }'
+    document.head.appendChild(el)
+    return () => el.remove()
+  }, [paper])
   const url = links[target]
   const couple = settings?.coupleNames ?? 'Our wedding'
   const shareText = `${couple} are getting married! Kindly RSVP here:`
@@ -72,65 +81,85 @@ export default function AdminShare() {
   }
 
   /** A 4×5.5 inch printable card (1200×1650 px) with names, date and the QR. */
+  const renderCard = async (target: Target): Promise<string> => {
+    const url = links[target]
+    await Promise.all([
+      document.fonts.load('italic 96px "Cormorant Garamond"'),
+      document.fonts.load('500 30px "Jost"'),
+    ]).catch(() => undefined)
+    const W = 1200
+    const H = 1650
+    const canvas = document.createElement('canvas')
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('canvas')
+
+    ctx.fillStyle = IVORY
+    ctx.fillRect(0, 0, W, H)
+    ctx.strokeStyle = GOLD
+    ctx.globalAlpha = 0.6
+    ctx.lineWidth = 2
+    ctx.strokeRect(40, 40, W - 80, H - 80)
+    ctx.globalAlpha = 1
+    ctx.textAlign = 'center'
+
+    const spaced = (text: string, y: number, font: string, color: string, spacing: number) => {
+      ctx.font = font
+      ctx.fillStyle = color
+      ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${spacing}px`
+      ctx.fillText(text, W / 2, y)
+      ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '0px'
+    }
+
+    spaced(CARD_TITLE[target], 190, '500 30px "Jost", sans-serif', '#8A6E45', 10)
+    ctx.font = 'italic 104px "Cormorant Garamond", Georgia, serif'
+    ctx.fillStyle = INK
+    ctx.fillText(couple, W / 2, 330, W - 160)
+    if (settings?.weddingDate) spaced(formatWeddingDate(settings.weddingDate).toUpperCase(), 410, '500 30px "Jost", sans-serif', '#4A4640', 8)
+
+    const qr = await QRCode.toDataURL(url, { width: 680, margin: 1, errorCorrectionLevel: 'M', color: { dark: INK, light: '#FFFFFF' } })
+    const img = new Image()
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = reject
+      img.src = qr
+    })
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(W / 2 - 370, 500, 740, 740)
+    ctx.drawImage(img, W / 2 - 340, 530, 680, 680)
+
+    ctx.font = 'italic 44px "Cormorant Garamond", Georgia, serif'
+    ctx.fillStyle = '#4A4640'
+    ctx.fillText(CARD_TEXT[target], W / 2, 1340)
+    ctx.font = '26px "Jost", sans-serif'
+    ctx.fillStyle = '#6B655C'
+    ctx.fillText(url.replace(/^https?:\/\//, ''), W / 2, 1420, W - 160)
+
+    return canvas.toDataURL('image/png')
+  }
+
   const downloadCard = async () => {
     setBusy(true)
     try {
-      await Promise.all([
-        document.fonts.load('italic 96px "Cormorant Garamond"'),
-        document.fonts.load('500 30px "Jost"'),
-      ]).catch(() => undefined)
-      const W = 1200
-      const H = 1650
-      const canvas = document.createElement('canvas')
-      canvas.width = W
-      canvas.height = H
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('canvas')
-
-      ctx.fillStyle = IVORY
-      ctx.fillRect(0, 0, W, H)
-      ctx.strokeStyle = GOLD
-      ctx.globalAlpha = 0.6
-      ctx.lineWidth = 2
-      ctx.strokeRect(40, 40, W - 80, H - 80)
-      ctx.globalAlpha = 1
-      ctx.textAlign = 'center'
-
-      const spaced = (text: string, y: number, font: string, color: string, spacing: number) => {
-        ctx.font = font
-        ctx.fillStyle = color
-        ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${spacing}px`
-        ctx.fillText(text, W / 2, y)
-        ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = '0px'
-      }
-
-      spaced(CARD_TITLE[target], 190, '500 30px "Jost", sans-serif', '#8A6E45', 10)
-      ctx.font = 'italic 104px "Cormorant Garamond", Georgia, serif'
-      ctx.fillStyle = INK
-      ctx.fillText(couple, W / 2, 330, W - 160)
-      if (settings?.weddingDate) spaced(formatWeddingDate(settings.weddingDate).toUpperCase(), 410, '500 30px "Jost", sans-serif', '#4A4640', 8)
-
-      const qr = await QRCode.toDataURL(url, { width: 680, margin: 1, errorCorrectionLevel: 'M', color: { dark: INK, light: '#FFFFFF' } })
-      const img = new Image()
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve()
-        img.onerror = reject
-        img.src = qr
-      })
-      ctx.fillStyle = '#FFFFFF'
-      ctx.fillRect(W / 2 - 370, 500, 740, 740)
-      ctx.drawImage(img, W / 2 - 340, 530, 680, 680)
-
-      ctx.font = 'italic 44px "Cormorant Garamond", Georgia, serif'
-      ctx.fillStyle = '#4A4640'
-      ctx.fillText(CARD_TEXT[target], W / 2, 1340)
-      ctx.font = '26px "Jost", sans-serif'
-      ctx.fillStyle = '#6B655C'
-      ctx.fillText(url.replace(/^https?:\/\//, ''), W / 2, 1420, W - 160)
-
-      download(canvas.toDataURL('image/png'), `wedding-${target}-card.png`)
+      download(await renderCard(target), `wedding-${target}-card.png`)
     } catch {
       toast.error('The printable card could not be created. Please try the plain QR download.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** All three cards side by side on one landscape sheet, labelled, ready to cut. */
+  const printAll = async () => {
+    setBusy(true)
+    try {
+      const imgs = await Promise.all((['home', 'rsvp', 'seat'] as const).map((t) => renderCard(t)))
+      setSheet(imgs)
+      // let the images render before the print dialog opens
+      window.setTimeout(() => window.print(), 400)
+    } catch {
+      toast.error('The cards could not be created. Please try again.')
     } finally {
       setBusy(false)
     }
@@ -140,6 +169,7 @@ export default function AdminShare() {
 
   return (
     <>
+      <div className="print:hidden">
       <PageHeader title="Share & QR" description="Send your website link and print QR codes for paper invitations." />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -246,8 +276,70 @@ export default function AdminShare() {
             </Button>
           </div>
           <p className="mt-3 text-center text-xs text-muted">SVG stays sharp at any print size — best for your printer or layout artist.</p>
+
+          <div className="mt-6 rounded-lg border border-line bg-ivory/60 p-4">
+            <p className="text-sm font-medium text-ink">Print all three on one page</p>
+            <p className="mt-0.5 text-xs text-muted">Website, RSVP and Find My Seat cards side by side, each labelled, with cut marks.</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select className="input-base min-h-10 w-auto py-1.5 text-sm" value={paper} onChange={(e) => setPaper(e.target.value as 'a4' | 'legal')} aria-label="Paper size">
+                <option value="a4">A4</option>
+                <option value="legal">Legal (8.5 × 14 in)</option>
+              </select>
+              <Button onClick={() => void printAll()} loading={busy} loadingText="Preparing…" icon={<Printer aria-hidden="true" className="size-4" />}>
+                Print all three
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted">Print at 100% / Actual size. {paper === 'legal' ? 'Cards print at their full 4 × 5.5 in size.' : 'On A4 the cards are slightly smaller (about 3.5 × 4.8 in) so all three fit.'}</p>
+          </div>
         </section>
       </div>
+      </div>
+
+      {sheet && <PrintAllSheet images={sheet} paper={paper} />}
     </>
+  )
+}
+
+const SHEET_LABELS = ['1 · Wedding website', '2 · RSVP', '3 · Find My Seat']
+
+/** Print-only sheet: the three QR cards in a row, labelled, with cut marks. */
+function PrintAllSheet({ images, paper }: { images: string[]; paper: 'a4' | 'legal' }) {
+  const sheetW = paper === 'a4' ? 297 : 355.6
+  const sheetH = paper === 'a4' ? 210 : 215.9
+  const cardW = paper === 'a4' ? 88 : 101.6 // card is 4 × 5.5 in (ratio 1 : 1.375)
+  const cardH = cardW * 1.375
+  const gap = paper === 'a4' ? 8 : 12
+  const x0 = (sheetW - (3 * cardW + 2 * gap)) / 2
+  const y0 = (sheetH - cardH) / 2 + 3
+  return (
+    <div className="hidden print:block">
+      <div className="print-sheet" style={{ width: `${sheetW}mm`, height: `${sheetH - 1}mm` }}>
+        {images.map((src, i) => {
+          const x = x0 + i * (cardW + gap)
+          return (
+            <div key={i}>
+              <div
+                style={{ position: 'absolute', left: `${x}mm`, top: `${y0 - 9}mm`, width: `${cardW}mm`, textAlign: 'center', fontFamily: 'Jost, Arial, sans-serif', fontSize: '3mm', letterSpacing: '0.5mm', color: '#6b655c' }}
+              >
+                {SHEET_LABELS[i].toUpperCase()}
+              </div>
+              <img src={src} alt="" style={{ position: 'absolute', left: `${x}mm`, top: `${y0}mm`, width: `${cardW}mm`, height: `${cardH}mm` }} />
+              {/* corner cut marks */}
+              {[
+                [x, y0],
+                [x + cardW, y0],
+                [x, y0 + cardH],
+                [x + cardW, y0 + cardH],
+              ].map(([cx, cy], k) => (
+                <div key={k}>
+                  <div style={{ position: 'absolute', left: `${cx + (cx === x ? -6 : 1.5)}mm`, top: `${cy}mm`, width: '4.5mm', borderTop: '0.2mm solid #8a847b' }} />
+                  <div style={{ position: 'absolute', left: `${cx}mm`, top: `${cy + (cy === y0 ? -6 : 1.5)}mm`, height: '4.5mm', borderLeft: '0.2mm solid #8a847b' }} />
+                </div>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
