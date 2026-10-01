@@ -9,8 +9,8 @@ export function HeroDecor({ onPhoto, belowNav = false }: { onPhoto: boolean; bel
   const { style } = useResolvedTheme()
   const color = onPhoto ? 'text-white/55' : 'text-champagne/80'
 
-  // Over a photo the menu sits INSIDE the frame (its spacing is set per style in styles.css).
-  // Under the sticky menu bar of the arched-frame layout, the frame starts below the bar.
+  // Where there is a menu above (photo heroes, arched-frame layout), the frame starts just below it;
+  // over a photo the menu sits on a faint tinted band (styles.css).
   const frame = belowNav
     ? 'pointer-events-none absolute inset-x-3 bottom-3 top-[5.75rem] z-10 sm:inset-x-6 sm:bottom-6 sm:top-[6.25rem]'
     : 'pointer-events-none absolute inset-3 z-10 sm:inset-6'

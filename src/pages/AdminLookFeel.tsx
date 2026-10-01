@@ -47,6 +47,8 @@ export default function AdminLookFeel() {
   const previewBox = useRef<HTMLDivElement>(null)
   const [boxWidth, setBoxWidth] = useState(600)
   const [styleTab, setStyleTab] = useState<StyleId | null>(null)
+  // A fresh address each visit, so the preview never shows an older copy of the website from the browser cache.
+  const [stamp] = useState(() => Date.now().toString(36))
 
   useEffect(() => {
     document.title = 'Look & Feel · Wedding admin'
@@ -139,7 +141,7 @@ export default function AdminLookFeel() {
 
   const d = DEVICES[device]
   const scale = Math.min(1, boxWidth / d.w)
-  const previewUrl = `${siteLinks().home}#/?themePreview=1`
+  const previewUrl = `${siteLinks().home}?preview=${stamp}#/?themePreview=1`
 
   return (
     <>

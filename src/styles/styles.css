@@ -357,27 +357,32 @@ html[data-dark='true'] ::selection {
   animation: lux-fill var(--lux-story-ms, 5s) linear forwards;
 }
 
-/* ============================== menu inside the hero frame (photo heroes) */
-/* Frame: 12px from the edges on phones, 24px from 640px up (see HeroDecor). */
-html[data-style='maison'] .hero-photo .hero-nav-inner {
-  padding: max(1.75rem, calc(env(safe-area-inset-top) + 1rem)) 1.75rem 0;
+/* ============================== menu band above the hero frame (photo heroes) */
+/* Maison & Deco draw a frame over the photo; the menu sits above it on a faint tinted band. */
+html[data-style='maison'] .hero-photo > nav,
+html[data-style='deco'] .hero-photo > nav {
+  padding-bottom: 0.85rem;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-champagne) 26%, rgb(12 10 9 / 0.7)),
+    color-mix(in srgb, var(--color-champagne) 12%, rgb(12 10 9 / 0.38))
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--color-champagne) 45%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
-@media (min-width: 640px) {
-  html[data-style='maison'] .hero-photo .hero-nav-inner {
-    padding: 2.75rem 2.25rem 0;
+
+/* Arched hero flowers: a slow, gentle sway. */
+@keyframes lux-sway {
+  from {
+    transform: rotate(-2.5deg);
+  }
+  to {
+    transform: rotate(2.5deg);
   }
 }
-/* Deco: the menu sits just below the corner brackets on phones, and between them on larger screens. */
-html[data-style='deco'] .hero-photo .hero-nav-inner {
-  padding: max(3.6rem, calc(env(safe-area-inset-top) + 2.8rem)) 1.6rem 0;
-}
-@media (min-width: 640px) {
-  html[data-style='deco'] .hero-photo .hero-nav-inner {
-    padding: 5.6rem 2.75rem 0;
-  }
-}
-@media (min-width: 1024px) {
-  html[data-style='deco'] .hero-photo .hero-nav-inner {
-    padding: 2.6rem 6.25rem 0;
-  }
+.lux-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lux-sway 6.5s ease-in-out infinite alternate;
 }

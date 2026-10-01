@@ -38,7 +38,7 @@ export default function AdminMedia() {
   // Opens the website in preview mode with this layout (and the saved look), without saving anything.
   const previewLayout = (id: string) => {
     if (liveSettings) writePreviewTheme(liveSettings.theme)
-    window.open(`${siteLinks().home}#/?themePreview=1&gallery=${id}`, '_blank', 'noopener')
+    window.open(`${siteLinks().home}?preview=${Date.now().toString(36)}#/?themePreview=1&gallery=${id}`, '_blank', 'noopener')
   }
   const [settingsId, setSettingsId] = useState<string | null>(null)
   const [gallery, setGallery] = useState<GallerySettings | null>(null)

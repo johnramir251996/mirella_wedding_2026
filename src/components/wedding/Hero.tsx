@@ -8,6 +8,7 @@ import { Ornament } from '../ui/Ornament'
 import { cn } from '../ui/cn'
 import { CoupleNames } from './CoupleNames'
 import { HeroDecor } from './HeroDecor'
+import { ArchFlowers } from './ArchFlowers'
 import { isFinderOpen, isRsvpOpen } from '../../services/settingsService'
 import { useResolvedTheme } from '../../theme/themeContext'
 
@@ -83,12 +84,15 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
           <motion.p {...fade(0.1)} className="eyebrow">
             Together with their families
           </motion.p>
-          <motion.div
-            {...fade(0.25)}
-            className="relative mt-7 aspect-[3/4] w-[min(72vw,340px)] overflow-hidden rounded-t-full border border-champagne/50 p-2 shadow-card"
-          >
-            <div className="relative size-full overflow-hidden rounded-t-full">{photo('absolute inset-0 size-full object-cover')}</div>
-          </motion.div>
+          <div className="relative mt-7">
+            <motion.div
+              {...fade(0.25)}
+              className="relative aspect-[3/4] w-[min(72vw,340px)] overflow-hidden rounded-t-full border border-champagne/50 p-2 shadow-card"
+            >
+              <div className="relative size-full overflow-hidden rounded-t-full">{photo('absolute inset-0 size-full object-cover')}</div>
+            </motion.div>
+            <ArchFlowers />
+          </div>
           <motion.h1 {...fade(0.45)} className="hero-names mt-9 text-[clamp(3rem,10vw,5.8rem)] font-light leading-[0.95] tracking-tight text-ink">
             <CoupleNames names={names} />
           </motion.h1>
@@ -111,7 +115,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
   const left = heroLayout === 'left'
   return (
     <header className="hero hero-photo relative isolate flex min-h-[100svh] flex-col overflow-hidden bg-[#141211] text-white">
-      <HeroDecor onPhoto />
+      <HeroDecor onPhoto belowNav />
       {photo('absolute inset-0 -z-20 size-full object-cover')}
       {/* Soft veil for legibility — heavier toward the text on the "left" layout */}
       <div
@@ -166,7 +170,6 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
       <div
         className={cn(
           'mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 min-[400px]:px-5 sm:px-8',
-          onPhoto && 'hero-nav-inner',
           onPhoto ? 'pt-[max(1.25rem,env(safe-area-inset-top))]' : 'py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
         )}
       >
