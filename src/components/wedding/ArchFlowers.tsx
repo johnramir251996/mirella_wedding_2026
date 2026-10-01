@@ -39,7 +39,7 @@ export function ArchFlowers() {
 
 const LEAF = 'M0 0 C 9 -11, 27 -12, 40 0 C 27 11, 9 11, 0 0 Z'
 const leafStyle = { fill: 'color-mix(in srgb, var(--color-champagne) 30%, #6f8562)', opacity: 0.85 }
-const petal = (fill: string) => ({ fill, stroke: 'var(--color-champagne)', strokeWidth: 0.6 })
+const petal = (fill: string) => ({ fill, stroke: 'color-mix(in srgb, var(--color-champagne) 70%, transparent)', strokeWidth: 0.5 })
 
 function grow(reduce: boolean | null, delay: number, from = 0.2) {
   if (reduce) return {}
@@ -53,10 +53,13 @@ function grow(reduce: boolean | null, delay: number, from = 0.2) {
 
 /** A layered, peony-like bloom centred on (cx, cy). */
 function Bloom({ cx, cy, r, reduce, delay, className }: { cx: number; cy: number; r: number; reduce: boolean | null; delay: number; className?: string }) {
-  const ring = (n: number, rr: number, len: number, fill: string, rot = 0) =>
-    Array.from({ length: n }, (_, i) => (
-      <ellipse key={i} cx={cx} cy={cy - rr} rx={len * 0.62} ry={len} transform={`rotate(${(360 / n) * i + rot} ${cx} ${cy})`} style={petal(fill)} />
-    ))
+  // Soft teardrop petals, rooted at the centre and fanned around it.
+  const ring = (n: number, _rr: number, len: number, fill: string, rot = 0) =>
+    Array.from({ length: n }, (_, i) => {
+      const w = len * 0.5
+      const d = `M ${cx} ${cy} C ${cx - w} ${cy - len * 0.35}, ${cx - w * 0.75} ${cy - len}, ${cx} ${cy - len * 1.08} C ${cx + w * 0.75} ${cy - len}, ${cx + w} ${cy - len * 0.35}, ${cx} ${cy} Z`
+      return <path key={i} d={d} transform={`rotate(${(360 / n) * i + rot} ${cx} ${cy})`} style={petal(fill)} />
+    })
   return (
     <motion.g
       className={className}
@@ -71,10 +74,13 @@ function Bloom({ cx, cy, r, reduce, delay, className }: { cx: number; cy: number
     >
       {/* (the gentle sway lives on an inner group, so it never fights the grow-in animation) */}
       <g className={cn(!reduce && 'lux-sway')} style={{ animationDelay: `${(delay * 1.7) % 3}s` }}>
-        {ring(7, r * 0.55, r * 0.55, 'var(--color-paper)')}
-        {ring(6, r * 0.32, r * 0.42, 'var(--color-champagne-light)', 25)}
-        {ring(5, r * 0.14, r * 0.28, 'color-mix(in srgb, var(--color-champagne) 55%, var(--color-champagne-light))', 10)}
-        <circle cx={cx} cy={cy} r={r * 0.12} style={{ fill: 'var(--color-champagne)' }} />
+        {ring(8, 0, r, 'var(--color-paper)')}
+        {ring(7, 0, r * 0.72, 'var(--color-champagne-light)', 22)}
+        {ring(6, 0, r * 0.46, 'color-mix(in srgb, var(--color-champagne) 45%, var(--color-champagne-light))', 8)}
+        <circle cx={cx} cy={cy} r={r * 0.11} style={{ fill: 'var(--color-champagne)' }} />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <circle key={i} cx={cx + Math.cos(i * 1.257) * r * 0.2} cy={cy + Math.sin(i * 1.257) * r * 0.2} r={r * 0.035} style={{ fill: 'var(--color-gold)' }} />
+        ))}
       </g>
     </motion.g>
   )
@@ -107,7 +113,7 @@ function Cluster({ reduce, delay, variant = false }: { reduce: boolean | null; d
         <path d={LEAF} transform="translate(46 118) rotate(-100) scale(0.7)" style={leafStyle} />
       </motion.g>
       {/* blooms */}
-      <Bloom cx={variant ? 112 : 118} cy={variant ? 98 : 92} r={variant ? 34 : 40} reduce={reduce} delay={delay + 0.25} />
+      <Bloom cx={variant ? 112 : 118} cy={variant ? 98 : 92} r={variant ? 32 : 37} reduce={reduce} delay={delay + 0.25} />
       <Bloom cx={variant ? 166 : 176} cy={variant ? 136 : 130} r={variant ? 22 : 26} reduce={reduce} delay={delay + 0.45} />
       {/* buds and baby's breath */}
       <motion.g {...grow(reduce, delay + 0.6, 0.5)}>
