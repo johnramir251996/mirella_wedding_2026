@@ -102,7 +102,7 @@ function parseMotif(value: Json): MotifColor[] {
   })
 }
 
-const BUILTIN_KEYS: BuiltinKey[] = ['transportation', 'comingFrom', 'food', 'dietary', 'accessibility', 'message']
+const BUILTIN_KEYS: BuiltinKey[] = ['transportation', 'comingFrom', 'food', 'dietary', 'accessibility', 'additionalGuest', 'message']
 
 function parseRsvpConfig(value: Json): RsvpConfig {
   const o = obj(value)

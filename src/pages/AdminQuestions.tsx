@@ -347,7 +347,7 @@ function BuiltinCard() {
         const c = config.builtins[b.key]
         if (!c) continue
         clean.builtins[b.key] = {
-          enabled: c.enabled,
+          enabled: b.alwaysOn ? true : c.enabled,
           ...(c.label?.trim() ? { label: c.label.trim() } : {}),
           ...(b.canRequire && c.required === false ? { required: false } : {}),
         }
@@ -370,18 +370,22 @@ function BuiltinCard() {
         Standard questions
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Turn any of these off or reword them. Attendance, mobile number and additional-guest requests are always asked.
+        Turn any of these off or reword them. Attendance and mobile number are always asked.
       </p>
 
       <ul className="mt-5 divide-y divide-line">
         {BUILTIN_QUESTIONS.map((b) => {
-          const c = get(b.key)
+          const c = b.alwaysOn ? { ...get(b.key), enabled: true } : get(b.key)
           return (
             <li key={b.key} className="grid gap-3 py-4 md:grid-cols-[auto_1fr] md:items-start md:gap-5">
-              <label className="flex cursor-pointer items-center gap-3 md:w-28 md:pt-2">
-                <input type="checkbox" checked={c.enabled} onChange={(e) => set(b.key, { enabled: e.target.checked })} className="size-5 accent-ink" />
-                <span className={cn('text-sm font-medium', c.enabled ? 'text-ink' : 'text-muted')}>{c.enabled ? 'Asked' : 'Off'}</span>
-              </label>
+              {b.alwaysOn ? (
+                <span className="flex items-center gap-3 text-sm font-medium text-ink md:w-28 md:pt-2.5">Always</span>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-3 md:w-28 md:pt-2">
+                  <input type="checkbox" checked={c.enabled} onChange={(e) => set(b.key, { enabled: e.target.checked })} className="size-5 accent-ink" />
+                  <span className={cn('text-sm font-medium', c.enabled ? 'text-ink' : 'text-muted')}>{c.enabled ? 'Asked' : 'Off'}</span>
+                </label>
+              )}
               <div className={cn(!c.enabled && 'opacity-55')}>
                 <TextField
                   label={<span className="sr-only">Question wording</span>}

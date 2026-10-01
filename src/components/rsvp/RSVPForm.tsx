@@ -363,9 +363,13 @@ export function RSVPForm({ invitation, form, onChange, onRequestConfirm, submitt
             <Question>
               <OptionGroup
                 legend={
-                  <>
-                    Would you like to <strong className="font-semibold">bring an additional guest for ₱799</strong>?
-                  </>
+                  config?.builtins.additionalGuest?.label?.trim() ? (
+                    label('additionalGuest')
+                  ) : (
+                    <>
+                      Would you like to <strong className="font-semibold">bring an additional guest for ₱799</strong>?
+                    </>
+                  )
                 }
                 description={
                   <p className="-mt-1 mb-4 text-sm italic leading-relaxed text-muted">

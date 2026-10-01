@@ -29,7 +29,7 @@ export type RsvpQuestionInput = Omit<RsvpQuestion, 'id' | 'sortOrder'>
 export type CustomAnswer = string | string[]
 export type CustomAnswers = Record<string, CustomAnswer>
 
-export type BuiltinKey = 'transportation' | 'comingFrom' | 'food' | 'dietary' | 'accessibility' | 'message'
+export type BuiltinKey = 'transportation' | 'comingFrom' | 'food' | 'dietary' | 'accessibility' | 'additionalGuest' | 'message'
 
 export interface BuiltinConfig {
   enabled: boolean
@@ -41,12 +41,18 @@ export interface RsvpConfig {
   builtins: Partial<Record<BuiltinKey, BuiltinConfig>>
 }
 
-export const BUILTIN_QUESTIONS: { key: BuiltinKey; defaultLabel: string; description: string; canRequire?: boolean }[] = [
+export const BUILTIN_QUESTIONS: { key: BuiltinKey; defaultLabel: string; description: string; canRequire?: boolean; alwaysOn?: boolean }[] = [
   { key: 'transportation', defaultLabel: 'Do you have your own transportation vehicle?', description: 'Includes the follow-ups: vehicle type, or whether they need a ride.' },
   { key: 'comingFrom', defaultLabel: 'Where will you be coming from?', description: 'Short text, 120 characters.', canRequire: true },
   { key: 'food', defaultLabel: 'Which dishes would you like to see at our wedding? 🍽️', description: 'Up to 4 of: vegetable, pasta, fish, pork, beef, chicken.' },
   { key: 'dietary', defaultLabel: 'Do you have any food allergies or dietary restrictions?', description: 'Yes / No, with details when Yes.' },
   { key: 'accessibility', defaultLabel: 'Do you have any special accessibility or mobility needs we should be aware of?', description: 'Optional, 255 characters.' },
+  {
+    key: 'additionalGuest',
+    defaultLabel: 'Would you like to bring an additional guest for ₱799?',
+    description: 'Only shown to attending guests whose invitation allows additional guests (set per invitation). Always asked.',
+    alwaysOn: true,
+  },
   { key: 'message', defaultLabel: 'Leave a message for the couple 💌', description: 'Optional, 500 characters. Always the last question.' },
 ]
 
