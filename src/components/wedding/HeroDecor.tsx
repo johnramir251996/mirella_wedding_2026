@@ -5,15 +5,15 @@ import { cn } from '../ui/cn'
  * Decoration layered over the hero for each design style (purely visual).
  * `onPhoto` = drawn over the couple's photo (light lines) instead of paper.
  */
-export function HeroDecor({ onPhoto, inPanel = false }: { onPhoto: boolean; inPanel?: boolean }) {
+export function HeroDecor({ onPhoto, belowNav = false }: { onPhoto: boolean; belowNav?: boolean }) {
   const { style } = useResolvedTheme()
   const color = onPhoto ? 'text-white/55' : 'text-champagne/80'
 
-  // The frame starts below the menu row, so it never runs into the logo or the RSVP button.
-  // (Inside the split layout's paper panel there is no menu, so the frame uses the whole panel.)
-  const frame = inPanel
-    ? 'pointer-events-none absolute inset-3 z-10 sm:inset-6'
-    : 'pointer-events-none absolute inset-x-3 bottom-3 top-[5.75rem] z-10 sm:inset-x-6 sm:bottom-6 sm:top-[6.25rem]'
+  // Over a photo the menu sits INSIDE the frame (its spacing is set per style in styles.css).
+  // Under the sticky menu bar of the arched-frame layout, the frame starts below the bar.
+  const frame = belowNav
+    ? 'pointer-events-none absolute inset-x-3 bottom-3 top-[5.75rem] z-10 sm:inset-x-6 sm:bottom-6 sm:top-[6.25rem]'
+    : 'pointer-events-none absolute inset-3 z-10 sm:inset-6'
 
   if (style === 'maison') {
     return (
@@ -31,7 +31,7 @@ export function HeroDecor({ onPhoto, inPanel = false }: { onPhoto: boolean; inPa
 
   if (style === 'deco') {
     const corner = (cls: string) => (
-      <svg className={cn('absolute size-12 sm:size-20', cls)} viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="1">
+      <svg className={cn('absolute size-10 sm:size-14', cls)} viewBox="0 0 96 96" fill="none" stroke="currentColor" strokeWidth="1">
         <path d="M2 94V2h92" />
         <path d="M10 94V10h84" opacity="0.7" />
         <path d="M18 60V18h42" opacity="0.5" />

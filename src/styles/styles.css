@@ -356,3 +356,28 @@ html[data-dark='true'] ::selection {
   width: 0;
   animation: lux-fill var(--lux-story-ms, 5s) linear forwards;
 }
+
+/* ============================== menu inside the hero frame (photo heroes) */
+/* Frame: 12px from the edges on phones, 24px from 640px up (see HeroDecor). */
+html[data-style='maison'] .hero-photo .hero-nav-inner {
+  padding: max(1.75rem, calc(env(safe-area-inset-top) + 1rem)) 1.75rem 0;
+}
+@media (min-width: 640px) {
+  html[data-style='maison'] .hero-photo .hero-nav-inner {
+    padding: 2.75rem 2.25rem 0;
+  }
+}
+/* Deco: the menu sits just below the corner brackets on phones, and between them on larger screens. */
+html[data-style='deco'] .hero-photo .hero-nav-inner {
+  padding: max(3.6rem, calc(env(safe-area-inset-top) + 2.8rem)) 1.6rem 0;
+}
+@media (min-width: 640px) {
+  html[data-style='deco'] .hero-photo .hero-nav-inner {
+    padding: 5.6rem 2.75rem 0;
+  }
+}
+@media (min-width: 1024px) {
+  html[data-style='deco'] .hero-photo .hero-nav-inner {
+    padding: 2.6rem 6.25rem 0;
+  }
+}

@@ -51,7 +51,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
         <div className="grid flex-1 md:grid-cols-2">
           <div className="relative order-first h-[52svh] overflow-hidden md:order-last md:h-auto">{photo('absolute inset-0 size-full object-cover')}</div>
           <div className="hero-paper paper-texture relative flex flex-col items-center justify-center px-6 py-16 text-center md:px-12">
-            <HeroDecor onPhoto={false} inPanel />
+            <HeroDecor onPhoto={false} />
             <motion.p {...fade(0.2)} className="eyebrow">
               Together with their families
             </motion.p>
@@ -77,7 +77,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
   if (heroLayout === 'framed') {
     return (
       <header className="hero hero-paper paper-texture relative flex min-h-[100svh] flex-col text-ink">
-        <HeroDecor onPhoto={false} />
+        <HeroDecor onPhoto={false} belowNav />
         <Nav settings={settings} tone="onPaper" reduce={reduce} />
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 pb-20 pt-6 text-center">
           <motion.p {...fade(0.1)} className="eyebrow">
@@ -166,6 +166,7 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
       <div
         className={cn(
           'mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-4 min-[400px]:px-5 sm:px-8',
+          onPhoto && 'hero-nav-inner',
           onPhoto ? 'pt-[max(1.25rem,env(safe-area-inset-top))]' : 'py-3 pt-[max(0.75rem,env(safe-area-inset-top))]',
         )}
       >
