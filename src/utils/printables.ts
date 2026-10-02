@@ -323,7 +323,7 @@ export interface CardBackOptions {
   /** Small "Personal QR for …" line, so each back can be matched to its front. */
   guestName?: string
   /** Website Settings sections to print under "Good to know". */
-  sections?: { title: string; body: string }[]
+  sections?: { title: string; body: string; bold?: boolean }[]
   fit?: number
 }
 
@@ -383,7 +383,7 @@ export function invitationBackHtml(o: CardBackOptions): string {
     parts.push(divider(rsvp ? 4.5 : 4))
     parts.push(eyebrow('GOOD TO KNOW', 2.5))
     for (const sec of sections) {
-      parts.push(`<div style="margin-top:${z(2.8)}mm;font-family:${t.serif};font-size:${z(3.9)}mm;line-height:1.15;color:${t.ink}">${esc(sec.title)}</div>`)
+      parts.push(`<div style="margin-top:${z(2.8)}mm;font-family:${t.serif};font-size:${z(3.9)}mm;line-height:1.15;color:${t.ink}${sec.bold ? ';font-weight:700' : ''}">${esc(sec.title)}</div>`)
       const paras = sec.body.split(/\n+/).map((p) => p.trim()).filter(Boolean)
       for (const [i, para] of paras.entries()) {
         parts.push(`<div style="margin-top:${z(i ? 1 : 1.2)}mm;font-size:${z(2.6)}mm;line-height:1.4;color:${t.soft};max-width:${z(100)}mm">${esc(para)}</div>`)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { CheckCircle2, Mail, Printer, TriangleAlert, Wallet } from 'lucide-react'
+import { Bold, CheckCircle2, Mail, Printer, TriangleAlert, Wallet } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useEntourageLinks } from '../hooks/useEntourageLinks'
 import { entouragePositions, invitationPosition } from '../utils/positions'
@@ -236,7 +236,16 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
   const infoSections = useMemo(() => (settings?.sections ?? []).filter((x) => x.visible && (x.title.trim() || x.body.trim())), [settings])
   const [backPick, setBackPick] = useState<Set<string> | null>(null)
   const backIds = backPick ?? new Set(infoSections.slice(0, 3).map((x) => x.id))
-  const backSections = infoSections.filter((x) => backIds.has(x.id)).map((x) => ({ title: x.title, body: x.body }))
+  // Titles printed in bold (per section).
+  const [boldIds, setBoldIds] = useState<Set<string>>(() => new Set())
+  const toggleBold = (id: string) =>
+    setBoldIds((prev) => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+  const backSections = infoSections.filter((x) => backIds.has(x.id)).map((x) => ({ title: x.title, body: x.body, bold: boldIds.has(x.id) }))
   const measureHost = useRef<HTMLDivElement>(null)
   const [fits, setFits] = useState<Record<string, CardFit>>({})
   const [backFit, setBackFit] = useState<CardFit>({ fit: 1, overflow: false })
@@ -548,29 +557,50 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
             <fieldset>
               <legend className="mb-1.5 text-sm text-ink-soft">“Good to know” on the back</legend>
               <div className="space-y-1">
-                {infoSections.map((x) => (
-                  <label key={x.id} className="flex items-center gap-2 text-sm text-ink-soft">
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-ink"
-                      checked={backIds.has(x.id)}
-                      onChange={(e) => {
-                        const n = new Set(backIds)
-                        if (e.target.checked) n.add(x.id)
-                        else n.delete(x.id)
-                        setBackPick(n)
-                      }}
-                    />
-                    {x.title || 'Untitled'}
-                  </label>
-                ))}
+                {infoSections.map((x) => {
+                  const on = backIds.has(x.id)
+                  const bold = boldIds.has(x.id)
+                  return (
+                    <div key={x.id} className="flex items-center gap-2">
+                      <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-ink-soft">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-ink"
+                          checked={on}
+                          onChange={(e) => {
+                            const n = new Set(backIds)
+                            if (e.target.checked) n.add(x.id)
+                            else n.delete(x.id)
+                            setBackPick(n)
+                          }}
+                        />
+                        <span className={cn('truncate', on && bold && 'font-semibold text-ink')}>{x.title || 'Untitled'}</span>
+                      </label>
+                      {on && (
+                        <button
+                          type="button"
+                          aria-pressed={bold}
+                          aria-label={`Bold title: ${x.title || 'Untitled'}`}
+                          title={bold ? 'Title prints in bold — click for normal' : 'Print this title in bold'}
+                          onClick={() => toggleBold(x.id)}
+                          className={cn(
+                            'grid size-7 shrink-0 place-items-center rounded-md border transition',
+                            bold ? 'border-ink bg-ink text-paper' : 'border-line text-muted hover:border-ink-soft hover:text-ink',
+                          )}
+                        >
+                          <Bold aria-hidden="true" className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               <p className={cn('mt-1 text-xs', backFit.overflow ? 'text-rose' : 'text-muted')}>
                 {backFit.overflow
                   ? 'Too much for the back — untick a section.'
                   : backFit.fit < 1
                     ? 'Fits, with slightly smaller text.'
-                    : 'From Website Settings. Usually 2–3 sections fit nicely.'}
+                    : 'From Website Settings. Usually 2–3 sections fit nicely. B = bold title.'}
               </p>
             </fieldset>
           )}
