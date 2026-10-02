@@ -535,3 +535,106 @@ export function posterHtml(o: PosterOptions): string {
   if (k === 1) return inner
   return `<div style="width:${size.w}mm;height:${size.h}mm;overflow:hidden"><div style="transform:scale(${k});transform-origin:top left">${inner}</div></div>`
 }
+
+// ---------------------------------------------------------------- attire guide (insert cards)
+
+export interface AttirePhoto {
+  url: string
+  label: string
+}
+export type AttireItem = { kind: 'pair'; a: AttirePhoto; b: AttirePhoto } | { kind: 'single'; photo: AttirePhoto }
+
+export interface AttireCardOptions {
+  title: string
+  /** First card only: the motif colours and a short note. */
+  motifTitle?: string
+  swatches?: { name: string; hex: string }[]
+  note?: string
+  items: AttireItem[]
+  page: number
+  pages: number
+  theme: PrintTheme
+  size: CardSize
+}
+
+/**
+ * Splits outfits into cards: pairs (a gentleman's and a lady's look, by upload
+ * order) first, then any photo without a partner on its own. The first card
+ * also carries the motif, so it holds one look; the others hold two.
+ */
+export function attirePages(male: AttirePhoto[], female: AttirePhoto[], withMotif: boolean): AttireItem[][] {
+  const items: AttireItem[] = []
+  const n = Math.max(male.length, female.length)
+  const singles: AttireItem[] = []
+  for (let i = 0; i < n; i++) {
+    if (male[i] && female[i]) items.push({ kind: 'pair', a: male[i], b: female[i] })
+    else if (male[i]) singles.push({ kind: 'single', photo: male[i] })
+    else if (female[i]) singles.push({ kind: 'single', photo: female[i] })
+  }
+  items.push(...singles)
+  const pages: AttireItem[][] = []
+  let rest = items
+  const firstCap = withMotif ? 1 : 2
+  pages.push(rest.slice(0, firstCap))
+  rest = rest.slice(firstCap)
+  while (rest.length) {
+    pages.push(rest.slice(0, 2))
+    rest = rest.slice(2)
+  }
+  return pages
+}
+
+function photoHtml(p: AttirePhoto, w: number, h: number, t: PrintTheme, css: string): string {
+  return `<div style="position:absolute;${css};width:${r2(w)}mm;padding:1.6mm 1.6mm 0;background:#fff;box-shadow:0 0.5mm 1.6mm rgba(0,0,0,0.28);box-sizing:content-box">
+    <div style="width:${r2(w)}mm;height:${r2(h)}mm;overflow:hidden;background:#eee"><img src="${esc(p.url)}" alt="" style="display:block;width:100%;height:100%;object-fit:cover" /></div>
+    <div style="height:5.5mm;display:flex;align-items:center;justify-content:center;font-family:${t.serif};font-style:italic;font-size:2.6mm;color:${t.soft};white-space:nowrap;overflow:hidden">${esc(p.label)}</div>
+  </div>`
+}
+
+/** One attire-guide insert card, designed at 5×7 in and scaled for 4×6. */
+export function attireCardHtml(o: AttireCardOptions): string {
+  const t = safe(o.theme)
+  const base = CARD_SIZES['5x7']
+  const style = t.style ?? 'classic'
+  const ty = styleType(style)
+  const c = { ink: t.ink, accent: t.accent, accentLight: t.accentLight, paper: t.paper, line: t.line, serif: t.serif }
+  const area = cardSafeArea(style)
+  const motif = Boolean(o.swatches?.length || o.note)
+  const slotH = o.items.length === 1 ? (motif ? 74 : 104) : 62
+
+  const item = (it: AttireItem) => {
+    const ph = slotH - 9
+    const pw = ph * 0.74
+    const inner =
+      it.kind === 'pair'
+        ? photoHtml(it.a, pw, ph, t, `left:calc(50% - ${r2(pw * 0.95)}mm);top:1mm;transform:rotate(-4deg)`) +
+          photoHtml(it.b, pw, ph, t, `left:calc(50% - ${r2(pw * 0.12)}mm);top:3mm;transform:rotate(3.5deg)`)
+        : photoHtml(it.photo, pw, ph, t, `left:calc(50% - ${r2(pw / 2 + 1.6)}mm);top:1.5mm;transform:rotate(-2deg)`)
+    return `<div style="position:relative;width:100%;height:${slotH}mm;margin-top:3mm">${inner}</div>`
+  }
+
+  const swatches = o.swatches?.length
+    ? `<div style="margin-top:2.5mm;display:flex;flex-wrap:wrap;justify-content:center;gap:2.5mm 3.5mm">${o.swatches
+        .slice(0, 8)
+        .map(
+          (s) =>
+            `<div style="display:flex;flex-direction:column;align-items:center;width:13mm"><div style="width:9mm;height:9mm;border-radius:50%;background:${esc(s.hex)};box-shadow:inset 0 0 0 0.25mm rgba(0,0,0,0.15)"></div><div style="margin-top:1mm;font-size:2.1mm;line-height:1.15;color:${t.soft};text-align:center">${esc(s.name)}</div></div>`,
+        )
+        .join('')}</div>`
+    : ''
+
+  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative">
+    ${svgBox(base.w, base.h, frameSvg(style, 4.5, 4.5, base.w - 9, base.h - 9, c), 'position:absolute;left:0;top:0;pointer-events:none')}
+    <div style="position:absolute;left:${area.side}mm;right:${area.side}mm;top:${area.top}mm;bottom:${area.bottom}mm;display:flex;flex-direction:column;align-items:center;text-align:center;overflow:hidden">
+      <div style="margin-top:2mm;font-size:2.6mm;letter-spacing:${ty.eyebrowTracking}mm;color:${t.accent}">ATTIRE GUIDE</div>
+      <div style="margin-top:2mm;font-family:${t.serif};font-size:7mm;line-height:1.1">${esc(o.title)}</div>
+      ${svgBox(40, 7, ornamentSvg(style, 20, 3.5, 32, c), 'margin-top:1.5mm')}
+      ${o.motifTitle && o.swatches?.length ? `<div style="margin-top:1.5mm;font-family:${t.serif};font-style:italic;font-size:3.6mm;color:${t.soft}">${esc(o.motifTitle)}</div>` : ''}
+      ${swatches}
+      ${o.note ? `<div style="margin-top:2.5mm;font-size:2.6mm;color:${t.ink};font-weight:500">${esc(o.note)}</div>` : ''}
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;width:100%">${o.items.map(item).join('')}</div>
+      ${o.pages > 1 ? `<div style="margin-top:1mm;font-size:2.2mm;letter-spacing:0.4mm;color:${t.muted}">${o.page} / ${o.pages}</div>` : ''}
+    </div>
+  </div>`
+  return sized(inner, o.size)
+}

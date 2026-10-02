@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { Bold, CheckCircle2, Mail, Printer, RotateCcw, TriangleAlert, Wallet } from 'lucide-react'
+import { Bold, CheckCircle2, Mail, Printer, RotateCcw, Shirt, TriangleAlert, Wallet } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useEntourageLinks } from '../hooks/useEntourageLinks'
 import { entouragePositions, invitationPosition } from '../utils/positions'
@@ -23,6 +23,8 @@ import {
   calibrationHtml,
   cropMarksSvg,
   envelopeSvg,
+  attireCardHtml,
+  attirePages,
   invitationBackHtml,
   invitationCardHtml,
   layoutRow,
@@ -40,8 +42,10 @@ import { PageHeader } from '../components/admin/PageHeader'
 import { STYLES, resolveTheme, type StyleId } from '../theme/themes'
 import { Card3D, Envelope3D } from '../components/printables/Preview3D'
 import { readTheme } from '../utils/printTheme'
+import { listVisibleOutfits } from '../services/outfitService'
+import type { OutfitImage } from '../types/wedding'
 
-type Tab = 'invitations' | 'envelope'
+type Tab = 'invitations' | 'envelope' | 'attire'
 /** Same-size stand-in for a personal QR while measuring or before the real one is ready. */
 /** Shown in the 3D preview before any guest is ticked. */
 const SAMPLE_GUEST = { id: 'sample', inviteeName: 'Your Guest’s Name', positionMode: 'custom', positionLabel: 'Maid of Honor', guests: [] } as unknown as InvitationWithRSVP
@@ -82,6 +86,7 @@ export default function AdminPrintables() {
               [
                 { v: 'invitations', l: 'Paper invitations', i: Mail },
                 { v: 'envelope', l: 'Money envelope', i: Wallet },
+                { v: 'attire', l: 'Attire guide', i: Shirt },
               ] as const
             ).map((t) => (
               <button
@@ -121,6 +126,8 @@ export default function AdminPrintables() {
         <p className="py-10 text-center text-sm text-muted">Loading your saved setup…</p>
       ) : tab === 'invitations' ? (
         <InvitationsTab paper={paper} design={design} prefs={prefs} update={update} />
+      ) : tab === 'attire' ? (
+        <AttireTab paper={paper} design={design} prefs={prefs} update={update} />
       ) : (
         <EnvelopeTab paper={paper} design={design} prefs={prefs} update={update} />
       )}
@@ -862,6 +869,163 @@ function EnvelopeTab({ paper, design, prefs, update }: { paper: Paper; design: S
         ) : (
           <Sheets paper={paper} sheets={Array.from({ length: copies }, () => sheetHtml)} />
         )}
+      </section>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------- attire guide
+
+/**
+ * Attire guide inserts: the motif on the first card, then the outfit photos —
+ * a gentleman's and a lady's look side by side (paired by upload order), any
+ * look without a partner on its own — flowing onto as many cards as needed.
+ * Same card size and sheets as the invitations; printed on one side.
+ */
+function AttireTab({ paper, design, prefs, update }: { paper: Paper; design: StyleId } & PrefsProps) {
+  const { settings } = useWeddingSettings()
+  const [outfits, setOutfits] = useState<OutfitImage[] | null>(null)
+  const [sets, setSets] = useState(1)
+  const [withMotif, setWithMotif] = useState(true)
+  const [note, setNote] = useState('Kindly reserve white for the bride.')
+  const [lowRes, setLowRes] = useState<string[]>([])
+  const theme = useMemo(() => ({ ...readTheme(), style: design }), [settings?.theme, design])
+  const size = prefs.size
+  const card = CARD_SIZES[size]
+  const perSheet = card.perSheet[paper]
+  const s = SHEETS[paper]
+
+  useEffect(() => {
+    listVisibleOutfits()
+      .then(setOutfits)
+      .catch(() => setOutfits([]))
+  }, [])
+
+  // Photos smaller than about 450 px across print soft at this size.
+  useEffect(() => {
+    if (!outfits?.length) return
+    let alive = true
+    Promise.all(
+      outfits.map(
+        (o) =>
+          new Promise<string | null>((resolve) => {
+            const img = new Image()
+            img.onload = () => resolve(Math.min(img.naturalWidth, img.naturalHeight) < 450 ? o.caption || (o.gender === 'male' ? 'A gentleman’s look' : 'A lady’s look') : null)
+            img.onerror = () => resolve(null)
+            img.src = o.imageUrl
+          }),
+      ),
+    ).then((r) => alive && setLowRes(r.filter((x): x is string => Boolean(x))))
+    return () => {
+      alive = false
+    }
+  }, [outfits])
+
+  const photo = (o: OutfitImage) => ({ url: o.imageUrl, label: o.caption || (o.gender === 'male' ? 'For him' : 'For her') })
+  const male = (outfits ?? []).filter((o) => o.gender === 'male').map(photo)
+  const female = (outfits ?? []).filter((o) => o.gender === 'female').map(photo)
+  const swatches = (settings?.motifColors ?? []).filter((c) => c.hex).map((c) => ({ name: c.name, hex: c.hex }))
+  const motifOn = withMotif && (swatches.length > 0 || Boolean(note.trim()))
+  const pages = attirePages(male, female, motifOn)
+  const cards = pages.map((items, i) =>
+    attireCardHtml({
+      title: settings?.outfitTitle?.trim() || 'What to wear',
+      motifTitle: i === 0 && motifOn ? settings?.motifTitle?.trim() || 'Our motif' : undefined,
+      swatches: i === 0 && withMotif ? swatches : undefined,
+      note: i === 0 && withMotif ? note.trim() || undefined : undefined,
+      items,
+      page: i + 1,
+      pages: pages.length,
+      theme,
+      size,
+    }),
+  )
+  // Every set holds each card once; cards fill the sheets in order.
+  const all = Array.from({ length: sets }, () => cards).flat()
+  const groups = chunk(all, perSheet)
+  const sheets = groups.map((group, gi) => {
+    const pos = layoutRow(s.w, s.h, group.length === perSheet ? perSheet : group.length, card.w, card.h)
+    return (
+      group.map((html, k) => `<div style="position:absolute;left:${pos[k].x}mm;top:${pos[k].y}mm">${html}</div>`).join('') +
+      cropMarksSvg(s.w, s.h, pos, theme.muted) +
+      orientationMarkHtml('front', gi + 1, groups.length, theme) +
+      calibrationHtml(theme)
+    )
+  })
+
+  return (
+    <div className="grid gap-5 print:block xl:grid-cols-[360px_1fr]">
+      <aside className="space-y-4 print:hidden">
+        <section className="space-y-4 rounded-xl border border-line bg-paper p-4 shadow-soft">
+          <label className="flex items-center justify-between gap-2 text-sm text-ink-soft">
+            Card size
+            <select className="input-base min-h-10 w-auto py-1.5" value={size} onChange={(e) => update({ size: e.target.value as CardSize })}>
+              {(Object.keys(CARD_SIZES) as CardSize[]).map((k) => (
+                <option key={k} value={k}>
+                  {CARD_SIZES[k].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center justify-between gap-2 text-sm text-ink-soft">
+            <span>
+              Sets to print
+              <span className="block text-xs text-muted">One set = {cards.length} {cards.length === 1 ? 'card' : 'cards'}, for one invitation.</span>
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={200}
+              value={sets}
+              onChange={(e) => setSets(Math.max(1, Math.min(200, Math.trunc(Number(e.target.value) || 1))))}
+              className="input-base min-h-10 w-24 py-1.5"
+            />
+          </label>
+          <label className="flex items-start justify-between gap-3 text-sm text-ink-soft">
+            <span>
+              Motif colours on the first card
+              <span className="block text-xs text-muted">{swatches.length ? `${swatches.length} colours from your Outfit Gallery settings.` : 'Add motif colours in Outfit Gallery first.'}</span>
+            </span>
+            <input type="checkbox" checked={withMotif} onChange={(e) => setWithMotif(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-ink" />
+          </label>
+          {withMotif && (
+            <label className="block text-sm text-ink-soft">
+              Note under the colours
+              <input className="input-base mt-1.5" value={note} maxLength={90} onChange={(e) => setNote(e.target.value)} />
+            </label>
+          )}
+          <Button fullWidth disabled={!cards.length} onClick={() => window.print()} icon={<Printer aria-hidden="true" className="size-4" />}>
+            Print {groups.length} {groups.length === 1 ? 'sheet' : 'sheets'}
+          </Button>
+        </section>
+        {outfits && outfits.length === 0 && (
+          <p className="rounded-lg border border-line bg-paper p-3 text-sm text-muted">No outfit photos yet — add them in Outfit Gallery. The card shows just the motif until then.</p>
+        )}
+        {lowRes.length > 0 && (
+          <p className="flex items-start gap-2 rounded-lg border border-gold/40 bg-champagne-light/30 p-3 text-sm text-ink-soft">
+            <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-gold" />
+            <span>
+              {lowRes.length === 1 ? 'One photo is' : `${lowRes.length} photos are`} small and may print a little soft: {lowRes.slice(0, 3).join(', ')}
+              {lowRes.length > 3 ? '…' : ''}. Larger photos (at least 1000 px) print best.
+            </span>
+          </p>
+        )}
+        <Tips>
+          <p className="font-medium text-ink">Printing the attire guide</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            <li>
+              Landscape sheets, {perSheet} cards per {SHEETS[paper].label} sheet, printed on one side. Print at <strong>Actual size / 100%</strong>.
+            </li>
+            <li>Gentleman’s and lady’s looks are paired by their order in Outfit Gallery; a look without a partner gets its own space.</li>
+            <li>Photos look best on matte or photo card stock. Cut along the crop marks and tuck the cards in with the invitation.</li>
+          </ul>
+        </Tips>
+      </aside>
+      <section aria-label="Print preview" className="min-w-0">
+        <p className="mb-3 text-sm text-muted print:hidden">
+          {cards.length} {cards.length === 1 ? 'card' : 'cards'} per set · {CARD_SIZES[size].label}
+        </p>
+        {outfits === null ? <p className="py-10 text-center text-sm text-muted">Loading outfit photos…</p> : <Sheets paper={paper} sheets={sheets} />}
       </section>
     </div>
   )
