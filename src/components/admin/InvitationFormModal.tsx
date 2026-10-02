@@ -298,7 +298,7 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
               <label
                 key={o.v}
                 className={cn(
-                  'cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
+                  'relative cursor-pointer rounded-lg border px-3 py-2.5 text-sm transition has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
                   record === o.v ? 'border-ink bg-ink/[0.03]' : 'border-line hover:border-champagne',
                 )}
               >

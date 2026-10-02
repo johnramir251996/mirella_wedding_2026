@@ -105,9 +105,12 @@ function ogTags(m: { title: string; description: string; image: string; url?: st
  * names · date") for Messenger, which ignores everything after "#"; then it
  * forwards the guest to their invitation in the app.
  */
-function sharePage(meta: Meta, siteUrl?: string): string {
+function sharePage(meta: Meta): string {
   const title = meta.couple ? `You’re invited · ${meta.couple}${meta.date ? ` · ${meta.date}` : ''}` : 'You’re invited'
-  const go = "'../#/i/' + encodeURIComponent(new URLSearchParams(location.search).get('c') || '')"
+  // No og:url here: Messenger opens whatever og:url says when the preview card is
+  // tapped, so it must stay each guest's own link (…/i/?c=<code>). A visit without
+  // a code (e.g. an old preview card) goes to the wedding website instead.
+  const go = "(function (c) { return c ? '../#/i/' + encodeURIComponent(c) : '../' })(new URLSearchParams(location.search).get('c') || '')"
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -116,7 +119,7 @@ function sharePage(meta: Meta, siteUrl?: string): string {
     <meta name="robots" content="noindex" />
     <title>${esc(title)}</title>
     <meta name="description" content="Tap to open your personal wedding invitation." />
-    ${ogTags({ title, description: 'Tap to open your personal wedding invitation.', image: meta.image, url: siteUrl ? `${siteUrl.replace(/\/?$/, '/')}i/` : undefined })}
+    ${ogTags({ title, description: 'Tap to open your personal wedding invitation.', image: meta.image })}
     <script>location.replace(${go})</script>
   </head>
   <body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;background:#faf7f2;color:#2b2a28">
@@ -138,7 +141,7 @@ export function weddingMeta({ supabaseUrl, anonKey, siteUrl }: Options): Plugin 
       return html.replace('<!-- wedding-meta -->', tags)
     },
     async generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'i/index.html', source: sharePage(await get(), siteUrl) })
+      this.emitFile({ type: 'asset', fileName: 'i/index.html', source: sharePage(await get()) })
     },
   }
 }

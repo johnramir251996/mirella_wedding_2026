@@ -87,6 +87,7 @@ export default function App() {
               <Route path="/rsvp" element={<RSVP />} />
               <Route path="/seat" element={<FindSeat />} />
               <Route path="/i/:code" element={<VirtualInvitation />} />
+              <Route path="/i" element={<Navigate to="/" replace />} />
               <Route path="/raffle" element={<Raffle />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route

@@ -105,7 +105,7 @@ export function GiftSettingsCard() {
                 <label
                   key={o.v}
                   className={cn(
-                    'cursor-pointer rounded-lg border px-4 py-3 text-sm transition',
+                    'relative cursor-pointer rounded-lg border px-4 py-3 text-sm transition',
                     'has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-gold',
                     values.placement === o.v ? 'border-ink bg-ink/[0.03]' : 'border-line hover:border-champagne',
                   )}

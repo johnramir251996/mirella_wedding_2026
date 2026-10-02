@@ -92,7 +92,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             aria-labelledby={titleId}
             aria-describedby={description ? descId : undefined}
             className={cn(
-              'relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-paper shadow-lift sm:rounded-xl',
+              'relative flex max-h-[92dvh] w-full flex-col overflow-clip rounded-t-2xl bg-paper shadow-lift sm:rounded-xl',
               widths[size],
             )}
             initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.98 }}

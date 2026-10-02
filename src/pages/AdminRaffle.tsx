@@ -464,7 +464,7 @@ export default function AdminRaffle() {
                     <button
                       type="button"
                       onClick={() => setPresent(false)}
-                      className="absolute right-5 top-5 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm text-muted transition hover:bg-cream hover:text-ink"
+                      className="fixed right-5 top-5 z-[110] inline-flex min-h-11 items-center gap-2 rounded-full bg-paper/90 px-4 text-sm text-ink-soft shadow-soft transition hover:bg-cream hover:text-ink"
                     >
                       <X aria-hidden="true" className="size-4" /> Close
                     </button>
