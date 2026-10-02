@@ -20,6 +20,7 @@ create policy "Admins can read invitation opens" on public.invitation_opens for 
 drop policy if exists "Admins can clear invitation opens" on public.invitation_opens;
 create policy "Admins can clear invitation opens" on public.invitation_opens for delete to authenticated using (public.is_admin());
 
+revoke all on public.invitation_opens from anon;
 grant select, delete on public.invitation_opens to authenticated;
 
 -- Public: the virtual invitation for one personal code (nothing about other guests).
