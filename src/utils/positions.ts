@@ -36,3 +36,12 @@ export function invitationPosition(inv: Pick<InvitationWithRSVP, 'id' | 'positio
   if (inv.positionMode === 'custom') return inv.positionLabel.trim()
   return auto.get(`${inv.id}:`) ?? ''
 }
+
+/** The position for an on-screen card, from the invitation's setting and its entourage link. */
+export function cardPosition(
+  d: { positionMode: InvitationWithRSVP['positionMode']; positionLabel: string; positionMemberId: string | null },
+  groups: EntourageGroup[],
+): string {
+  const auto = d.positionMemberId ? entouragePositions(groups, [{ memberId: d.positionMemberId, invitationId: 'card', guestId: null }]) : new Map<string, string>()
+  return invitationPosition({ id: 'card', positionMode: d.positionMode, positionLabel: d.positionLabel }, auto)
+}

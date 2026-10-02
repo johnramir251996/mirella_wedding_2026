@@ -723,6 +723,22 @@ export type Database = {
           attendance_status: string | null
         }[]
       }
+      card_back_prefs: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      invitation_card_details: {
+        Args: { p_invitation_id: string }
+        Returns: {
+          position_mode: string
+          position_label: string | null
+          position_member_id: string | null
+        }[]
+      }
+      record_invitation_open: {
+        Args: { p_invitation_id: string }
+        Returns: undefined
+      }
       open_invitation: {
         Args: { invite_code: string }
         Returns: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useInvitation } from '../hooks/useInvitation'
@@ -12,14 +12,17 @@ import { getInvitationGift } from '../services/giftService'
 import { getInvitationTable } from '../services/seatingService'
 import { GiftCard } from '../components/wedding/GiftCard'
 import { PageLoader } from '../components/ui/Spinner'
-import { CalendarClock } from 'lucide-react'
+import { CalendarClock, MailOpen } from 'lucide-react'
 import { RsvpClosedError, toFriendlyMessage } from '../utils/errors'
 import { formatDeadlineDate, formatWeddingDate } from '../utils/formatting'
 import { toSubmission } from '../utils/validation'
 import { SearchForm } from '../components/rsvp/SearchForm'
 import { IncludedNotice } from '../components/rsvp/IncludedNotice'
-import { InvitationFound } from '../components/rsvp/InvitationFound'
-import { EnvelopeAnimation } from '../components/rsvp/EnvelopeAnimation'
+import { Envelope, FlipCard, useCardWidth } from '../components/invitation/InviteEnvelope'
+import { useInvitationCard, type CardGuest } from '../hooks/useInvitationCard'
+import { getInvitationCardDetails, recordInvitationOpen, type CardDetails } from '../services/virtualInviteService'
+import { cardPosition } from '../utils/positions'
+import { Button } from '../components/ui/Button'
 import { RSVPForm } from '../components/rsvp/RSVPForm'
 import { EMPTY_RSVP } from '../components/rsvp/rsvpDefaults'
 import { SuccessState } from '../components/rsvp/SuccessState'
@@ -29,7 +32,7 @@ import { PublicHeader } from '../components/wedding/PublicHeader'
 import { Footer } from '../components/wedding/Footer'
 import { CoupleNames } from '../components/wedding/CoupleNames'
 
-type Step = 'search' | 'found' | 'opening' | 'form' | 'success'
+type Step = 'search' | 'found' | 'card' | 'form' | 'success'
 
 const FALLBACK = { coupleNames: 'Mir & Ella', weddingDate: '2026-12-19' }
 
@@ -50,6 +53,10 @@ export default function RSVP() {
   const [gift, setGift] = useState<PublicGift | null>(null)
   const [tableName, setTableName] = useState<string | null>(null)
   const submittingRef = useRef(false)
+  // The envelope and card (same as the virtual invitation link).
+  const [opening, setOpening] = useState(false)
+  const [details, setDetails] = useState<{ id: string; d: CardDetails | null } | null>(null)
+  const cardW = useCardWidth(330)
 
   const coupleNames = settings?.coupleNames ?? FALLBACK.coupleNames
   const weddingDate = settings?.weddingDate ?? FALLBACK.weddingDate
@@ -76,6 +83,40 @@ export default function RSVP() {
   useEffect(() => {
     if (status === 'found' && invitation) setStep((s) => (s === 'search' ? (fromCard ? 'form' : 'found') : s))
   }, [status, invitation, fromCard])
+
+  // The invitee's position for the card ("Groom's Mother"), once their invitation is found.
+  useEffect(() => {
+    if (!invitation || details?.id === invitation.invitationId) return
+    let alive = true
+    const id = invitation.invitationId
+    getInvitationCardDetails(id).then((d) => alive && setDetails({ id, d }))
+    return () => {
+      alive = false
+    }
+  }, [invitation, details])
+
+  const respondBy =
+    settings && isRsvpOpen(settings) && settings.rsvpShowDeadline && settings.rsvpDeadline && !invitation?.hasExistingResponse ? formatDeadlineDate(settings.rsvpDeadline) : null
+  const guest = useMemo<CardGuest | null>(() => {
+    if (!invitation || !settings || details?.id !== invitation.invitationId) return null
+    return {
+      inviteeName: invitation.inviteeName,
+      includedGuests: invitation.includedGuests,
+      position: details.d ? cardPosition(details.d, settings.entourage) : '',
+      respondBy,
+    }
+  }, [invitation, settings, details, respondBy])
+  const card = useInvitationCard(step === 'found' || step === 'card' ? guest : null)
+
+  const openEnvelope = () => {
+    if (invitation) void recordInvitationOpen(invitation.invitationId)
+    if (reduce) setStep('card')
+    else setOpening(true)
+  }
+
+  useEffect(() => {
+    if (step !== 'found') setOpening(false)
+  }, [step])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
@@ -163,20 +204,30 @@ export default function RSVP() {
           )}
 
           {step === 'found' && invitation && (
-            <motion.section key="found" {...pageMotion} className="flex flex-1 items-center justify-center">
-              <InvitationFound invitation={invitation} onOpen={() => setStep('opening')} />
+            <motion.section key="found" {...pageMotion} aria-label={`Your invitation, ${invitation.inviteeName}`} className="flex flex-1 flex-col items-center justify-center">
+              {card.ready && card.theme ? (
+                <Envelope
+                  name={invitation.inviteeName}
+                  theme={card.theme}
+                  monogramText={card.monogramText}
+                  cardW={cardW}
+                  frontHtml={card.frontHtml}
+                  opening={opening}
+                  onOpen={openEnvelope}
+                  onOpened={() => setStep('card')}
+                />
+              ) : (
+                <PageLoader label="Opening your invitation" />
+              )}
             </motion.section>
           )}
 
-          {step === 'opening' && invitation && (
-            <motion.section key="opening" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-              <EnvelopeAnimation
-                guestName={invitation.inviteeName}
-                includedGuests={invitation.includedGuests}
-                coupleNames={coupleNames}
-                weddingDate={weddingDate}
-                onComplete={() => setStep('form')}
-              />
+          {step === 'card' && invitation && (
+            <motion.section key="card" {...pageMotion} className="flex flex-1 flex-col items-center">
+              <FlipCard frontHtml={card.frontHtml} backHtml={card.backHtml} width={cardW} />
+              <Button size="lg" className="mt-6" onClick={() => setStep('form')} icon={<MailOpen aria-hidden="true" className="size-5" strokeWidth={1.5} />} autoFocus>
+                Continue to RSVP
+              </Button>
             </motion.section>
           )}
 
@@ -215,7 +266,7 @@ export default function RSVP() {
         )}
       </main>
 
-      {step !== 'opening' && <Footer coupleNames={coupleNames} weddingDate={weddingDate} closingMessage={settings?.closingMessage} />}
+      {!(step === 'found' && opening) && <Footer coupleNames={coupleNames} weddingDate={weddingDate} closingMessage={settings?.closingMessage} />}
 
       <ConfirmDialog
         open={confirmOpen}
