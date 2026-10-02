@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
+import { SharePreviewCard } from '../components/admin/SharePreviewCard'
 
 type Target = 'home' | 'rsvp' | 'seat'
 const CARD_TITLE: Record<Target, string> = { rsvp: 'KINDLY RSVP', home: 'OUR WEDDING', seat: 'FIND YOUR SEAT' }
@@ -152,6 +153,7 @@ export default function AdminShare() {
       <PageHeader title="Share & QR" description="Send your website link and print QR codes for paper invitations." />
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <SharePreviewCard />
         <section className="rounded-xl border border-line bg-paper p-5 shadow-soft sm:p-6" aria-labelledby="links-heading">
           <h2 id="links-heading" className="text-2xl text-ink">
             Your links

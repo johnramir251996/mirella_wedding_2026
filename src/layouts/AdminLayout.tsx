@@ -9,6 +9,7 @@ import type { AdminOutletContext } from '../hooks/useAdminData'
 import { loadAdminData, type AdminData } from '../services/adminService'
 import { toFriendlyMessage } from '../utils/errors'
 import { cn } from '../components/ui/cn'
+import { syncSharePreview } from '../utils/sharePreview'
 
 const NAV_GROUPS: { title: string | null; items: { to: string; label: string; icon: typeof Mail; end?: boolean }[] }[] = [
   { title: null, items: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true }] },
@@ -67,6 +68,11 @@ export default function AdminLayout() {
   useEffect(() => {
     void reload()
   }, [reload])
+
+  // Keep the Messenger link-preview image in step with the website (names, date, hero, design).
+  useEffect(() => {
+    if (settings && session) void syncSharePreview(settings)
+  }, [settings, session])
 
   useEffect(() => {
     setMenuOpen(false)

@@ -18,9 +18,13 @@ Here's your invitation — just tap to open it:
 With love,
 {couple}`
 
-/** The guest's personal virtual invitation, e.g. https://…/#/i/ab12cd34ef */
+/**
+ * The guest's personal virtual invitation, e.g. https://…/i/?c=ab12cd34ef —
+ * a small share page with its own Messenger preview that opens /#/i/<code>.
+ * (Links in the older /#/i/<code> form keep working.)
+ */
 export function virtualInviteUrl(code: string): string {
-  return `${siteBaseUrl()}#/i/${encodeURIComponent(code)}`
+  return `${siteBaseUrl().replace(/index\.html$/, '')}i/?c=${encodeURIComponent(code)}`
 }
 
 /** Fills in the message template. The link is always included, even if {link} was removed. */
