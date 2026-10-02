@@ -13,11 +13,17 @@ export function SharePreviewCard() {
   const [url, setUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // Shows the stored image; if it's missing or out of date, waits for it to be (re)made.
   useEffect(() => {
+    let alive = true
     getAdminPreference<{ url?: string }>('share_preview')
-      .then((v) => setUrl(v?.url ?? null))
+      .then((v) => alive && v?.url && setUrl(v.url))
       .catch(() => undefined)
-  }, [])
+    if (settings) syncSharePreview(settings).then((u) => alive && u && setUrl(u))
+    return () => {
+      alive = false
+    }
+  }, [settings])
 
   const remake = async () => {
     if (!settings) return
