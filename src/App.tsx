@@ -30,6 +30,8 @@ const AdminSeating = lazy(() => import('./pages/AdminSeating'))
 const AdminPrintables = lazy(() => import('./pages/AdminPrintables'))
 const FindSeat = lazy(() => import('./pages/FindSeat'))
 const VirtualInvitation = lazy(() => import('./pages/VirtualInvitation'))
+const Raffle = lazy(() => import('./pages/Raffle'))
+const AdminRaffle = lazy(() => import('./pages/AdminRaffle'))
 
 /*
  * HashRouter is used on purpose: GitHub Pages is static hosting with no
@@ -51,6 +53,7 @@ export default function App() {
               <Route path="/rsvp" element={<RSVP />} />
               <Route path="/seat" element={<FindSeat />} />
               <Route path="/i/:code" element={<VirtualInvitation />} />
+              <Route path="/raffle" element={<Raffle />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route
                 path="/admin"
@@ -71,6 +74,7 @@ export default function App() {
                 <Route path="share" element={<AdminShare />} />
                 <Route path="questions" element={<AdminQuestions />} />
                 <Route path="seating" element={<AdminSeating />} />
+                <Route path="raffle" element={<AdminRaffle />} />
                 <Route path="printables" element={<AdminPrintables />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />

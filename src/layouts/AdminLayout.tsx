@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Armchair, ExternalLink, Heart, ListChecks, Images, LayoutDashboard, Palette, LogOut, Mail, Menu, MessageSquareHeart, Printer, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
+import { Armchair, ExternalLink, Gift, Heart, ListChecks, Images, LayoutDashboard, Palette, LogOut, Mail, Menu, MessageSquareHeart, Printer, QrCode, Settings, Shirt, UserPlus, Users, X } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
@@ -22,6 +22,7 @@ const NAV_GROUPS: { title: string | null; items: { to: string; label: string; ic
       { to: '/admin/guests', label: 'Additional Guests', icon: UserPlus },
       { to: '/admin/questions', label: 'RSVP Questions', icon: ListChecks },
       { to: '/admin/seating', label: 'Seating', icon: Armchair },
+      { to: '/admin/raffle', label: 'Raffle', icon: Gift },
     ],
   },
   {

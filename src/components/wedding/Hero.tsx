@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Armchair, ChevronDown } from 'lucide-react'
+import { Armchair, ChevronDown, Gift } from 'lucide-react'
 import type { WeddingSettings } from '../../types/wedding'
 import { formatWeddingDate, monogram } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
@@ -11,6 +11,7 @@ import { HeroDecor } from './HeroDecor'
 import { ArchFlowers } from './ArchFlowers'
 import { isFinderOpen, isRsvpOpen } from '../../services/settingsService'
 import { useResolvedTheme } from '../../theme/themeContext'
+import { useDisplayPrefs } from '../../hooks/useDisplayPrefs'
 
 type Tone = 'onPhoto' | 'onPaper'
 
@@ -18,6 +19,7 @@ type Tone = 'onPhoto' | 'onPaper'
 export function Hero({ settings }: { settings: WeddingSettings }) {
   const { heroLayout } = useResolvedTheme()
   const reduce = useReducedMotion()
+  const display = useDisplayPrefs()
   const [imageFailed, setImageFailed] = useState(false)
   const hasImage = Boolean(settings.heroImageUrl) && !imageFailed
 
@@ -188,6 +190,15 @@ function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone
           >
             Details
           </button>
+          {display?.raffleVisible && (
+            <Link
+              to="/raffle"
+              className={cn('flex shrink-0 items-center rounded px-2 py-2 uppercase tracking-[0.28em] transition', onPhoto ? 'text-white/85 hover:text-white' : 'text-ink-soft hover:text-ink')}
+            >
+              <Gift aria-hidden="true" className="size-5 min-[400px]:hidden" strokeWidth={1.5} />
+              <span className="sr-only min-[400px]:not-sr-only min-[400px]:whitespace-nowrap">Raffle</span>
+            </Link>
+          )}
           {isFinderOpen(settings.seatingConfig) && (
             <Link
               to="/seat"
