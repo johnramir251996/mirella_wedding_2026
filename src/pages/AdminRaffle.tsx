@@ -231,7 +231,7 @@ export default function AdminRaffle() {
         title="Raffle"
         description="A prize wheel the host spins at the reception. Winners are saved here."
         actions={
-          <Button variant="outline" onClick={() => setPresent(true)} disabled={!names.length} icon={<Maximize2 aria-hidden="true" className="size-4" />}>
+          <Button variant="outline" onClick={() => setPresent(true)} disabled={!allNames.length} icon={<Maximize2 aria-hidden="true" className="size-4" />}>
             Present
           </Button>
         }
@@ -428,7 +428,13 @@ export default function AdminRaffle() {
                 {lastMode && (
                   <div className="flex flex-wrap items-center gap-3 text-sm text-ink-soft">
                     <span>
-                      <span className="font-medium text-ink">{names.length}</span> left{names.length > finalsAt ? ` · full spins from ${finalsAt}` : ' · finals'}
+                      {roundDone ? (
+                        'Round complete'
+                      ) : (
+                        <>
+                          <span className="font-medium text-ink">{names.length}</span> left{names.length > finalsAt ? ` · full spins from ${finalsAt}` : ' · finals'}
+                        </>
+                      )}
                     </span>
                     <label className="inline-flex cursor-pointer items-center gap-2">
                       <input type="checkbox" className="size-4 accent-ink" checked={autoPlay} onChange={(e) => setAutoPlay(e.target.checked)} />
