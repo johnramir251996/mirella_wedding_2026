@@ -4,6 +4,8 @@ import type { AttendanceStatus } from '../../types/rsvp'
 import { formatTable, formatWeddingDate } from '../../utils/formatting'
 import { Ornament } from '../ui/Ornament'
 import { CoupleNames } from '../wedding/CoupleNames'
+import { WhereToGo } from './WhereToGo'
+import type { WeddingSettings } from '../../types/wedding'
 
 interface Props {
   status: AttendanceStatus
@@ -12,9 +14,11 @@ interface Props {
   coupleNames: string
   weddingDate: string
   requestedGuests: number
+  /** Ceremony and reception, shown to guests who are attending. */
+  venues?: Pick<WeddingSettings, 'weddingDate' | 'coupleNames' | 'churchName' | 'ceremonyTime' | 'churchMapUrl' | 'receptionName' | 'receptionTime' | 'receptionMapUrl'>
 }
 
-export function SuccessState({ status, guestName, tableNumber, coupleNames, weddingDate, requestedGuests }: Props) {
+export function SuccessState({ status, guestName, tableNumber, coupleNames, weddingDate, requestedGuests, venues }: Props) {
   const reduce = useReducedMotion()
   const attending = status === 'attending'
 
@@ -76,6 +80,12 @@ export function SuccessState({ status, guestName, tableNumber, coupleNames, wedd
             <p className="text-[0.7rem] font-medium uppercase tracking-[0.32em] text-gold">Your seat</p>
             <p className="mt-2 font-serif text-[2.4rem] leading-none text-ink">{formatTable(tableNumber)}</p>
             <p className="mt-2 text-xs text-muted">Please take note of this for the reception.</p>
+          </motion.div>
+        )}
+
+        {attending && venues && (
+          <motion.div {...item(0.75)}>
+            <WhereToGo venues={venues} />
           </motion.div>
         )}
 

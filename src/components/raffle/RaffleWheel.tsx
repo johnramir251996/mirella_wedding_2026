@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '../ui/cn'
+import { getVolume, isMuted, playChime, playFanfare, playOut, playTick, setMuted, setVolume, unlockSound } from '../../utils/raffleSounds'
 
 const FILLS = ['var(--color-paper)', 'var(--color-champagne-light)', 'var(--color-cream)', 'var(--color-linen)']
-const SPIN_MS = 6500
+export const SLOW_SPIN_MS = 6500
+export const QUICK_SPIN_MS = 1700
 
 function segmentPath(a0: number, a1: number, r: number): string {
   const rad = (d: number) => (d * Math.PI) / 180
@@ -22,19 +24,30 @@ function randomIndex(n: number): number {
   return buf[0] % n
 }
 
+/** The wheel's current angle (degrees) read from its transform, during a CSS transition too. */
+function currentAngle(el: Element): number {
+  const m = getComputedStyle(el).transform
+  if (!m || m === 'none') return 0
+  const v = /matrix\(([^)]+)\)/.exec(m)?.[1].split(',').map(Number)
+  if (!v || v.length < 2) return 0
+  return (Math.atan2(v[1], v[0]) * 180) / Math.PI
+}
+
 interface WheelProps {
   names: string[]
   rotation: number
   spinning: boolean
+  durationMs?: number
   /** Slow idle turn (public page). */
   idle?: boolean
   centre?: string
   className?: string
+  groupRef?: RefObject<SVGGElement | null>
   onSpinEnd?: () => void
 }
 
 /** The raffle wheel (SVG): names around the edge, pointer at the top. */
-export function RaffleWheel({ names, rotation, spinning, idle, centre, className, onSpinEnd }: WheelProps) {
+export function RaffleWheel({ names, rotation, spinning, durationMs = SLOW_SPIN_MS, idle, centre, className, groupRef, onSpinEnd }: WheelProps) {
   const n = Math.max(names.length, 1)
   const a = 360 / n
   const chord = (2 * Math.PI * 80 * a) / 360
@@ -44,8 +57,9 @@ export function RaffleWheel({ names, rotation, spinning, idle, centre, className
     <svg viewBox="-106 -112 212 218" className={cn('block h-auto w-full', className)} role="img" aria-label={`Raffle wheel with ${names.length} names`}>
       <circle r="103" fill="var(--color-champagne)" opacity="0.35" />
       <g
+        ref={groupRef}
         className={idle ? 'motion-safe:animate-[spin_90s_linear_infinite]' : undefined}
-        style={idle ? undefined : { transform: `rotate(${rotation}deg)`, transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(0.12, 0.8, 0.12, 1)` : 'none' }}
+        style={idle ? undefined : { transform: `rotate(${rotation}deg)`, transition: spinning ? `transform ${durationMs}ms cubic-bezier(0.12, 0.8, 0.12, 1)` : 'none' }}
         onTransitionEnd={(e) => e.target === e.currentTarget && onSpinEnd?.()}
       >
         {names.length === 0 ? (
@@ -87,62 +101,129 @@ export function RaffleWheel({ names, rotation, spinning, idle, centre, className
   )
 }
 
+/** What a spin led to, as shown under the wheel. */
+export interface Outcome {
+  tone: 'out' | 'place' | 'winner'
+  /** e.g. "Out", "3rd place", "Winner". */
+  title: string
+  name: string
+  detail?: string
+  /** Shown a moment later (last one standing: the winner after 2nd place). */
+  then?: Outcome
+}
+
 interface StageProps {
   /** Names as shown (masked or full). */
   shown: string[]
-  /** The real names, same order (what's saved as the winner). */
+  /** The real names, same order (what's saved). */
   real: string[]
   centre?: string
   disabled?: boolean
   large?: boolean
-  onWinner: (realName: string, shownName: string) => void
+  durationMs?: number
+  /** After an "out", spin again automatically while this says so. */
+  autoPlay?: () => boolean
+  spinLabel?: string
+  onLanded: (realName: string, shownName: string) => Promise<Outcome | null> | Outcome | null
 }
 
-/** Wheel + Spin button + the winner reveal. The host spins; the winner is saved by the caller. */
-export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, large, onWinner }: StageProps) {
+function playFor(o: Outcome) {
+  if (o.tone === 'winner') playFanfare()
+  else if (o.tone === 'place') playChime()
+  else playOut()
+}
+
+/** Wheel + Spin button + the result. The host spins; the caller decides what a landing means and saves it. */
+export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, large, durationMs = SLOW_SPIN_MS, autoPlay, spinLabel = 'Spin', onLanded }: StageProps) {
   const reduce = useReducedMotion()
   // The wheel keeps the names it was spun with until the next spin, so it doesn't
-  // redraw (and move the pointer) when the winner is taken off the list.
+  // redraw (and move the pointer) when the result changes the list.
   const [frozen, setFrozen] = useState<{ shown: string[]; real: string[] } | null>(null)
   const shown = frozen?.shown ?? liveShown
   const real = frozen?.real ?? liveReal
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
-  const [winner, setWinner] = useState<string | null>(null)
+  const [duration, setDuration] = useState(durationMs)
+  const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [confetti, setConfetti] = useState(0)
   const target = useRef<number | null>(null)
-  const done = useRef(onWinner)
+  const group = useRef<SVGGElement | null>(null)
+  const landed = useRef(onLanded)
+  const auto = useRef(autoPlay)
+  const spinRef = useRef<() => void>(() => undefined)
   useEffect(() => {
-    done.current = onWinner
-  }, [onWinner])
+    landed.current = onLanded
+    auto.current = autoPlay
+  }, [onLanded, autoPlay])
 
-  const finish = () => {
+  // Tick each time a name passes the pointer.
+  useEffect(() => {
+    if (!spinning || !group.current) return
+    const el = group.current
+    const n = Math.max(real.length, 1)
+    let last = -1
+    let raf = 0
+    const loop = () => {
+      const angle = ((currentAngle(el) % 360) + 360) % 360
+      const idx = Math.floor(angle / (360 / n))
+      if (idx !== last) {
+        if (last !== -1) playTick()
+        last = idx
+      }
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [spinning, real.length])
+
+  const show = (o: Outcome) => {
+    setOutcome(o)
+    playFor(o)
+    if (o.tone === 'winner') setConfetti((c) => c + 1)
+    if (o.then) {
+      const next = o.then
+      window.setTimeout(() => show(next), 1800)
+    }
+  }
+
+  const finish = async () => {
     const i = target.current
     target.current = null
     setSpinning(false)
     if (i == null || !real[i]) return
-    setWinner(shown[i] ?? real[i])
-    done.current(real[i], shown[i] ?? real[i])
+    const o = await landed.current(real[i], shown[i] ?? real[i])
+    if (!o) return
+    show(o)
+    if (o.tone === 'out' && !o.then && auto.current?.()) window.setTimeout(() => spinRef.current(), 900)
   }
 
   const spin = () => {
     if (spinning || liveReal.length === 0) return
+    unlockSound()
     setFrozen({ shown: liveShown, real: liveReal })
     const n = liveReal.length
     const a = 360 / n
     const i = randomIndex(n)
     const jitter = (Math.random() - 0.5) * a * 0.6
-    const base = Math.ceil(rotation / 360) * 360 + 360 * (reduce ? 1 : 7)
+    const quick = durationMs < SLOW_SPIN_MS
+    const turns = reduce ? 1 : quick ? 3 : 7
+    const base = Math.ceil(rotation / 360) * 360 + 360 * turns
     target.current = i
-    setWinner(null)
+    setOutcome(null)
+    setDuration(durationMs)
     setSpinning(!reduce)
     setRotation(base + 360 - (i + 0.5) * a + jitter)
-    if (reduce) window.setTimeout(finish, 50)
+    if (reduce) window.setTimeout(() => void finish(), 50)
   }
+  useEffect(() => {
+    spinRef.current = spin
+  })
 
   return (
-    <div className="flex w-full flex-col items-center">
-      <div className={cn('w-full', large ? 'max-w-[min(78vh,92vw)]' : 'max-w-md')}>
-        <RaffleWheel names={shown} rotation={rotation} spinning={spinning} centre={centre} onSpinEnd={finish} />
+    <div className="relative flex w-full flex-col items-center">
+      <Confetti burst={confetti} />
+      <div className={cn('w-full', large ? 'max-w-[min(72vh,92vw)]' : 'max-w-md')}>
+        <RaffleWheel names={shown} rotation={rotation} spinning={spinning} durationMs={duration} centre={centre} groupRef={group} onSpinEnd={() => void finish()} />
       </div>
       <button
         type="button"
@@ -154,18 +235,84 @@ export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, 
         )}
       >
         <Sparkles aria-hidden="true" className={large ? 'size-5' : 'size-4'} strokeWidth={1.6} />
-        {spinning ? 'Spinning…' : 'Spin'}
+        {spinning ? 'Spinning…' : spinLabel}
       </button>
-      <div aria-live="polite" className="mt-6 min-h-20 text-center">
-        <AnimatePresence>
-          {winner && (
-            <motion.div key={winner + rotation} initial={{ opacity: 0, y: 10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}>
-              <p className="text-sm uppercase tracking-[0.3em] text-gold">Winner</p>
-              <p className={cn('mt-1 font-serif text-ink', large ? 'text-6xl' : 'text-4xl')}>{winner}</p>
+      <div aria-live="polite" className="mt-6 min-h-24 text-center">
+        <AnimatePresence mode="wait">
+          {outcome && (
+            <motion.div key={outcome.title + outcome.name + rotation} initial={{ opacity: 0, y: 10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
+              <p className={cn('text-sm uppercase tracking-[0.3em]', outcome.tone === 'out' ? 'text-muted' : 'text-gold')}>{outcome.title}</p>
+              <p className={cn('mt-1 font-serif', outcome.tone === 'out' ? 'text-ink-soft line-through decoration-1' : 'text-ink', large ? (outcome.tone === 'out' ? 'text-4xl' : 'text-6xl') : outcome.tone === 'out' ? 'text-2xl' : 'text-4xl')}>
+                {outcome.name}
+              </p>
+              {outcome.detail && <p className="mt-1 text-sm text-ink-soft">{outcome.detail}</p>}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+    </div>
+  )
+}
+
+/** A short burst of confetti in the theme's colours. */
+function Confetti({ burst }: { burst: number }) {
+  const reduce = useReducedMotion()
+  if (!burst || reduce) return null
+  const colors = ['var(--color-champagne)', 'var(--color-gold)', 'var(--color-champagne-light)', 'var(--color-rose)', 'var(--color-sage)']
+  return (
+    <div key={burst} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10 overflow-visible">
+      {Array.from({ length: 70 }, (_, i) => {
+        const x = (Math.random() - 0.5) * 900
+        const y = -Math.random() * 420 - 80
+        const r = Math.random() * 720 - 360
+        return (
+          <motion.span
+            key={i}
+            className="absolute left-1/2 top-1/3 block"
+            style={{ width: 7, height: 12, background: colors[i % colors.length], borderRadius: 2 }}
+            initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+            animate={{ x, y: [y, y + 700], opacity: [1, 1, 0], rotate: r }}
+            transition={{ duration: 2.6 + Math.random(), ease: 'easeOut' }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+/** Mute + volume for the raffle sounds (remembered on this device). */
+export function SoundControls({ className }: { className?: string }) {
+  const [muted, setM] = useState(isMuted)
+  const [vol, setV] = useState(getVolume)
+  return (
+    <div className={cn('inline-flex items-center gap-2 text-sm text-muted', className)}>
+      <button
+        type="button"
+        onClick={() => {
+          setMuted(!muted)
+          setM(!muted)
+        }}
+        aria-pressed={muted}
+        aria-label={muted ? 'Turn sound on' : 'Mute sound'}
+        className="rounded-full p-2 transition hover:bg-cream hover:text-ink"
+      >
+        {muted ? <VolumeX aria-hidden="true" className="size-4" /> : <Volume2 aria-hidden="true" className="size-4" />}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.05}
+        value={vol}
+        disabled={muted}
+        aria-label="Volume"
+        onChange={(e) => {
+          const v = Number(e.target.value)
+          setVolume(v)
+          setV(v)
+        }}
+        className="w-24 accent-ink"
+      />
     </div>
   )
 }

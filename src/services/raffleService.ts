@@ -16,6 +16,14 @@ export interface RaffleSettings {
   removeWinners: boolean
   extraNames: string[]
   excluded: string[]
+  /** first = the first name the wheel lands on wins; last = each spin knocks a name out, the last one left wins. */
+  drawMode: 'first' | 'last'
+  /** Last one standing: how many consolation prizes (2nd, 3rd …) before the winner. */
+  consolations: number
+  /** Prizes by place: [winner, 2nd, 3rd, …]. */
+  prizes: string[]
+  /** Last one standing: quick spins until this many names are left, then full spins. */
+  finalsAt: number
 }
 
 export const DEFAULT_RAFFLE: RaffleSettings = {
@@ -27,6 +35,10 @@ export const DEFAULT_RAFFLE: RaffleSettings = {
   removeWinners: true,
   extraNames: [],
   excluded: [],
+  drawMode: 'first',
+  consolations: 2,
+  prizes: [],
+  finalsAt: 5,
 }
 
 const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
@@ -43,6 +55,10 @@ export async function getRaffleSettings(): Promise<RaffleSettings> {
     removeWinners: v.removeWinners !== false,
     extraNames: strings(v.extraNames),
     excluded: strings(v.excluded),
+    drawMode: pick(v.drawMode, ['first', 'last'] as const, 'first'),
+    consolations: Math.min(10, Math.max(0, Math.round(Number(v.consolations ?? 2)) || 0)),
+    prizes: Array.isArray(v.prizes) ? v.prizes.map((x) => (typeof x === 'string' ? x : '')) : [],
+    finalsAt: Math.min(20, Math.max(2, Math.round(Number(v.finalsAt ?? 5)) || 5)),
   }
 }
 
@@ -72,29 +88,31 @@ export interface RaffleDraw {
   id: string
   name: string
   prize: string | null
+  /** 1 = winner, 2 / 3 … = consolation (last one standing); null = first-spin-wins. */
+  place: number | null
   drawnAt: string
 }
 
 export async function getRaffleDraws(): Promise<RaffleDraw[]> {
-  const { data, error } = await supabase.from('raffle_draws').select('id, name, prize, drawn_at').order('drawn_at', { ascending: false })
+  const { data, error } = await supabase.from('raffle_draws').select('id, name, prize, place, drawn_at').order('drawn_at', { ascending: false })
   if (error) {
     logError('getRaffleDraws', error)
     throw new FriendlyError('We couldn’t load the winners.')
   }
-  return (data ?? []).map((r) => ({ id: r.id, name: r.name, prize: r.prize, drawnAt: r.drawn_at }))
+  return (data ?? []).map((r) => ({ id: r.id, name: r.name, prize: r.prize, place: r.place ?? null, drawnAt: r.drawn_at }))
 }
 
-export async function addRaffleDraw(name: string, prize: string): Promise<RaffleDraw> {
+export async function addRaffleDraw(name: string, prize: string, place: number | null = null): Promise<RaffleDraw> {
   const { data, error } = await supabase
     .from('raffle_draws')
-    .insert({ name: name.slice(0, 150), prize: prize.trim() ? prize.trim().slice(0, 150) : null })
-    .select('id, name, prize, drawn_at')
+    .insert({ name: name.slice(0, 150), prize: prize.trim() ? prize.trim().slice(0, 150) : null, place })
+    .select('id, name, prize, place, drawn_at')
     .single()
   if (error || !data) {
     logError('addRaffleDraw', error)
     throw new FriendlyError('The winner couldn’t be saved. Please write it down and try again.')
   }
-  return { id: data.id, name: data.name, prize: data.prize, drawnAt: data.drawn_at }
+  return { id: data.id, name: data.name, prize: data.prize, place: data.place ?? null, drawnAt: data.drawn_at }
 }
 
 export async function deleteRaffleDraw(id: string): Promise<void> {
@@ -152,4 +170,21 @@ export function namesMasked(mask: RaffleSettings['mask'], weddingDate: string | 
   if (!weddingDate) return true
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
   return today < weddingDate
+}
+
+/** Last one standing: names knocked out in the current round (saved, so a refresh keeps the round). */
+export async function getRaffleRound(): Promise<string[]> {
+  const v = await getAdminPreference<{ eliminated?: unknown }>('raffle_round')
+  return strings(v?.eliminated)
+}
+
+export async function saveRaffleRound(eliminated: string[]): Promise<void> {
+  await saveAdminPreference('raffle_round', { eliminated })
+}
+
+/** "1st", "2nd", "3rd", "4th" … */
+export function ordinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
 }

@@ -259,6 +259,7 @@ export default function RSVP() {
                 coupleNames={coupleNames}
                 weddingDate={weddingDate}
                 requestedGuests={result.guests}
+                venues={settings ?? undefined}
               />
               {gift && <GiftCard gift={gift} />}
             </motion.section>

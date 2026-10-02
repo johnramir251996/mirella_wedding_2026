@@ -555,18 +555,21 @@ export type Database = {
           id: string
           name: string
           prize: string | null
+          place: number | null
           drawn_at: string
         }
         Insert: {
           id?: string
           name: string
           prize?: string | null
+          place?: number | null
           drawn_at?: string
         }
         Update: {
           id?: string
           name?: string
           prize?: string | null
+          place?: number | null
           drawn_at?: string
         }
         Relationships: []
