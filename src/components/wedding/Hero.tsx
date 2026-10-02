@@ -19,7 +19,6 @@ type Tone = 'onPhoto' | 'onPaper'
 export function Hero({ settings }: { settings: WeddingSettings }) {
   const { heroLayout } = useResolvedTheme()
   const reduce = useReducedMotion()
-  const display = useDisplayPrefs()
   const [imageFailed, setImageFailed] = useState(false)
   const hasImage = Boolean(settings.heroImageUrl) && !imageFailed
 
@@ -160,6 +159,7 @@ export function Hero({ settings }: { settings: WeddingSettings }) {
 }
 
 function Nav({ settings, tone, reduce }: { settings: WeddingSettings; tone: Tone; reduce: boolean | null }) {
+  const display = useDisplayPrefs()
   const onPhoto = tone === 'onPhoto'
   return (
     <nav
