@@ -231,6 +231,8 @@ export interface InvitationCardOptions {
   size: CardSize
   /** Print the RSVP QR on the back instead (front then says "Please turn over to RSVP"). */
   qrOnBack?: boolean
+  /** On-screen (virtual) card: no QR or web address — just a gentle "respond by" line. */
+  virtual?: boolean
   fit?: number
 }
 
@@ -275,7 +277,13 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
   const z = (v: number) => r2(v * f)
   const area = cardSafeArea(style)
   const couple = ty.namesCase === 'uppercase' ? coupleHtml(o.coupleNames.toUpperCase(), t) : coupleHtml(o.coupleNames, t)
-  const bottom = o.qrOnBack
+  const centred = o.qrOnBack || o.virtual
+  const bottom = o.virtual
+    ? `<div style="padding-top:${z(4)}mm;display:flex;flex-direction:column;align-items:center">
+        ${svgBox(z(40), z(7), ornamentSvg(style, 20 * f, 4 * f, 32 * f, c))}
+        ${o.respondBy ? `<div style="margin-top:${z(2.5)}mm;font-size:${z(2.7)}mm;color:${t.soft}">Kindly respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
+      </div>`
+    : o.qrOnBack
     ? `<div style="padding-top:${z(4)}mm;display:flex;flex-direction:column;align-items:center">
         ${svgBox(z(40), z(7), ornamentSvg(style, 20 * f, 4 * f, 32 * f, c))}
         <div style="margin-top:${z(2.5)}mm;font-size:${z(2.5)}mm;letter-spacing:${z(0.6)}mm;color:${t.muted}">PLEASE TURN OVER TO RSVP</div>
@@ -295,8 +303,8 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
     <div style="margin-top:${z(4.5)}mm;font-family:${t.serif};font-size:${z(13 * ty.namesScale)}mm;line-height:1.02;font-weight:${ty.namesWeight};letter-spacing:${ty.namesTracking}">${couple}</div>
     <div style="margin-top:${z(3.5)}mm;font-family:${t.serif};font-style:italic;font-size:${z(4.2)}mm;color:${t.soft}">request the pleasure of your company</div>
     <div style="margin-top:${z(3.5)}mm">${svgBox(z(40), z(8), ornamentSvg(style, 20 * f, 4.5 * f, 38 * f, c))}</div>
-    <div style="${o.qrOnBack ? 'margin:auto 0;padding-top:' + z(4) + 'mm;' : ''}display:flex;flex-direction:column;align-items:center">
-    <div style="margin-top:${z(o.qrOnBack ? 0 : 4.5)}mm;font-size:${z(2.6)}mm;letter-spacing:${z(0.6)}mm;color:${t.muted}">DEAR</div>
+    <div style="${centred ? 'margin:auto 0;padding-top:' + z(4) + 'mm;' : ''}display:flex;flex-direction:column;align-items:center">
+    <div style="margin-top:${z(centred ? 0 : 4.5)}mm;font-size:${z(2.6)}mm;letter-spacing:${z(0.6)}mm;color:${t.muted}">DEAR</div>
     <div style="margin-top:${z(1.5)}mm;font-family:${t.serif};font-size:${z(7.4)}mm;line-height:1.1">${esc(o.guestName)}</div>
     ${o.position ? `<div style="margin-top:${z(1.4)}mm;font-size:${z(2.7)}mm;letter-spacing:${z(0.7)}mm;color:${t.accent};font-weight:500">${esc(o.position.toUpperCase())}</div>` : ''}
     ${o.withNames.length ? `<div style="margin-top:${z(1.5)}mm;font-family:${t.serif};font-style:italic;font-size:${z(4)}mm;line-height:1.3;color:${t.soft}">together with ${esc(joinNames(o.withNames))}</div>` : ''}

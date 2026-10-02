@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, Pencil, Plus, Printer, Trash2 } from 'lucide-react'
+import { Eye, MessageSquareText, Pencil, Plus, Printer, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
 import { createInvitation, deleteInvitation, recordRsvpForGuest, setIncludedGuests, updateInvitation } from '../services/adminService'
 import type { InvitationInput, InvitationWithRSVP } from '../types/rsvp'
 import { toFriendlyMessage } from '../utils/errors'
-import { formatShortDate } from '../utils/formatting'
+import { formatDateTime, formatShortDate, formatWeddingDate } from '../utils/formatting'
 import { normalizeName } from '../utils/validation'
 import { includedGuestNames } from '../utils/guests'
 import { Button } from '../components/ui/Button'
@@ -26,6 +26,13 @@ import { FilterTabs, SearchInput } from '../components/admin/FilterTabs'
 import { HeadcountSummary } from '../components/admin/HeadcountSummary'
 import { SIDE_LABEL, bySide, type SideFilter } from '../utils/headcount'
 import type { PrintablesHandoff } from './AdminPrintables'
+import { InviteMessageModal } from '../components/admin/InviteMessageModal'
+import { clearInvitationOpen, getInvitationOpens, type InvitationOpen } from '../services/virtualInviteService'
+import { getAdminPreference, saveAdminPreference } from '../services/preferencesService'
+import { DEFAULT_INVITE_MESSAGE, buildInviteMessage, virtualInviteUrl } from '../utils/inviteMessage'
+import { copyText } from '../utils/share'
+
+const MESSAGE_KEY = 'invite_message'
 
 export default function AdminInvitations() {
   const { data, loading, error, reload } = useAdminData()
@@ -52,6 +59,71 @@ export default function AdminInvitations() {
   useEffect(() => {
     document.title = 'Invitations · Wedding admin'
   }, [])
+
+  // Virtual invitations: who has opened theirs, and the message copied with each link.
+  const [opens, setOpens] = useState<Map<string, InvitationOpen>>(new Map())
+  const [template, setTemplate] = useState(DEFAULT_INVITE_MESSAGE)
+  const [messageOpen, setMessageOpen] = useState(false)
+  const [savingMessage, setSavingMessage] = useState(false)
+  const [toReset, setToReset] = useState<InvitationWithRSVP | null>(null)
+  const [resetting, setResetting] = useState(false)
+  const loadOpens = () =>
+    getInvitationOpens()
+      .then(setOpens)
+      .catch((e) => toast.error(toFriendlyMessage(e)))
+  useEffect(() => {
+    void loadOpens()
+    getAdminPreference<{ text?: unknown }>(MESSAGE_KEY)
+      .then((v) => {
+        const text = v && typeof v.text === 'string' ? v.text : ''
+        if (text.trim()) setTemplate(text)
+      })
+      .catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const messageFor = (inv: Pick<InvitationWithRSVP, 'inviteeName' | 'invitationCode'>, text = template) =>
+    buildInviteMessage(text, {
+      name: inv.inviteeName,
+      date: settings ? formatWeddingDate(settings.weddingDate) : '',
+      couple: settings?.coupleNames ?? '',
+      link: virtualInviteUrl(inv.invitationCode),
+    })
+
+  const copyInvite = async (inv: InvitationWithRSVP) => {
+    const text = messageFor(inv)
+    if (await copyText(text)) toast.success(`Invitation for ${inv.inviteeName} copied — paste it into Messenger, Viber or a text.`)
+    else toast.show(text)
+  }
+
+  const saveMessage = async (text: string) => {
+    setSavingMessage(true)
+    try {
+      await saveAdminPreference(MESSAGE_KEY, { text })
+      setTemplate(text.trim() ? text : DEFAULT_INVITE_MESSAGE)
+      setMessageOpen(false)
+      toast.success('Invitation message saved.')
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+    } finally {
+      setSavingMessage(false)
+    }
+  }
+
+  const confirmReset = async () => {
+    if (!toReset) return
+    setResetting(true)
+    try {
+      await clearInvitationOpen(toReset.id)
+      toast.success(`Reset — ${toReset.inviteeName} shows as not opened.`)
+      setToReset(null)
+      await loadOpens()
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const sideList = useMemo(() => bySide(data?.invitations ?? [], side), [data, side])
   const rows = useMemo(() => {
@@ -118,19 +190,17 @@ export default function AdminInvitations() {
     }
   }
 
-  const copyLink = async (code: string) => {
-    const base = `${window.location.origin}${window.location.pathname}`
-    const url = `${base}#/rsvp?invite=${encodeURIComponent(code)}`
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Personal RSVP link copied.')
-    } catch {
-      toast.show(url)
-    }
+  const copyLink = (code: string) => {
+    const inv = data?.invitations.find((i) => i.invitationCode === code)
+    if (inv) void copyInvite(inv)
   }
+
 
   const actions = (inv: InvitationWithRSVP) => (
     <div className="flex flex-wrap gap-1.5">
+      <Button size="sm" variant="subtle" onClick={() => copyInvite(inv)} icon={<Send aria-hidden="true" className="size-3.5" />} aria-label={`Copy the invitation for ${inv.inviteeName}`}>
+        Copy invitation
+      </Button>
       <Button size="sm" variant="subtle" onClick={() => openEdit(inv)} icon={<Pencil aria-hidden="true" className="size-3.5" />} aria-label={`Edit ${inv.inviteeName}`}>
         Edit
       </Button>
@@ -173,6 +243,32 @@ export default function AdminInvitations() {
     },
     { key: 'max', header: 'Allowed Additional Guests', cell: (r) => r.maxAdditionalGuests, className: 'text-center md:w-28' },
     { key: 'rsvp', header: 'RSVP', cell: (r) => <AttendanceBadge status={r.status} /> },
+    {
+      key: 'opened',
+      header: 'Opened',
+      className: 'whitespace-nowrap',
+      cell: (r) => {
+        const o = opens.get(r.id)
+        if (!o) return <span className="text-muted">Not yet</span>
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <span title={`First opened ${formatDateTime(o.firstOpenedAt)} · last opened ${formatDateTime(o.lastOpenedAt)} · ${o.count} ${o.count === 1 ? 'time' : 'times'}`}>
+              <Badge tone="green">Opened {formatShortDate(o.firstOpenedAt)}</Badge>
+              {o.count > 1 && <span className="ml-1.5 text-xs text-muted">{o.count}×</span>}
+            </span>
+            <button
+              type="button"
+              onClick={() => setToReset(r)}
+              className="rounded p-1 text-muted transition hover:bg-cream hover:text-ink"
+              aria-label={`Reset “opened” for ${r.inviteeName}`}
+              title="Reset (e.g. after testing the link)"
+            >
+              <RotateCcw aria-hidden="true" className="size-3.5" />
+            </button>
+          </span>
+        )
+      },
+    },
     { key: 'active', header: 'Active', cell: (r) => (r.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>) },
     { key: 'created', header: 'Created', cell: (r) => formatShortDate(r.createdAt), className: 'whitespace-nowrap' },
     { key: 'actions', header: 'Actions', cell: actions, hideOnMobile: true },
@@ -185,6 +281,9 @@ export default function AdminInvitations() {
         description={data ? `${data.invitations.length} invitations` : 'Manage who can RSVP.'}
         actions={
           <>
+            <Button variant="outline" onClick={() => setMessageOpen(true)} icon={<MessageSquareText aria-hidden="true" className="size-4" />}>
+              Invitation message
+            </Button>
             <Button variant="outline" onClick={() => toPrint({ side })} icon={<Printer aria-hidden="true" className="size-4" />}>
               Print invitations
             </Button>
@@ -260,6 +359,31 @@ export default function AdminInvitations() {
       />
 
       <ResponseDetailModal invitation={viewing} onClose={() => setViewing(null)} />
+
+      <InviteMessageModal
+        open={messageOpen}
+        template={template}
+        saving={savingMessage}
+        sample={{
+          name: rows[0]?.inviteeName ?? 'Tita Lorna',
+          date: settings ? formatWeddingDate(settings.weddingDate) : '',
+          couple: settings?.coupleNames ?? '',
+          link: virtualInviteUrl(rows[0]?.invitationCode ?? 'abc123'),
+        }}
+        onClose={() => !savingMessage && setMessageOpen(false)}
+        onSave={saveMessage}
+      />
+
+      <ConfirmDialog
+        open={Boolean(toReset)}
+        title="Reset “opened”?"
+        message={`${toReset?.inviteeName ?? 'This guest'} will show as not opened until they open their link again. Use this after testing a link yourself.`}
+        confirmLabel="Reset"
+        loading={resetting}
+        loadingText="Resetting…"
+        onCancel={() => !resetting && setToReset(null)}
+        onConfirm={confirmReset}
+      />
     </>
   )
 }

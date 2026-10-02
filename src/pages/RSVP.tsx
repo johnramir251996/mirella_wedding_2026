@@ -69,10 +69,13 @@ export default function RSVP() {
     void searchByCode(inviteCode)
   }, [inviteCode, searchByCode])
 
-  // Move to the "found" state whenever a lookup succeeds.
+  // Move to the "found" state whenever a lookup succeeds. Guests arriving from
+  // their virtual invitation (/#/i/<code>) have just opened an envelope, so they
+  // go straight to the form.
+  const fromCard = params.get('from') === 'card'
   useEffect(() => {
-    if (status === 'found' && invitation) setStep((s) => (s === 'search' ? 'found' : s))
-  }, [status, invitation])
+    if (status === 'found' && invitation) setStep((s) => (s === 'search' ? (fromCard ? 'form' : 'found') : s))
+  }, [status, invitation, fromCard])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })

@@ -550,6 +550,27 @@ export type Database = {
         }
         Relationships: []
       }
+      invitation_opens: {
+        Row: {
+          invitation_id: string
+          first_opened_at: string
+          last_opened_at: string
+          open_count: number
+        }
+        Insert: {
+          invitation_id: string
+          first_opened_at?: string
+          last_opened_at?: string
+          open_count?: number
+        }
+        Update: {
+          invitation_id?: string
+          first_opened_at?: string
+          last_opened_at?: string
+          open_count?: number
+        }
+        Relationships: []
+      }
       admin_preferences: {
         Row: {
           key: string
@@ -700,6 +721,17 @@ export type Database = {
         Returns: {
           invitee_name: string
           attendance_status: string | null
+        }[]
+      }
+      open_invitation: {
+        Args: { invite_code: string }
+        Returns: {
+          invitee_name: string
+          included_guests: string[]
+          attendance_status: string | null
+          position_mode: string
+          position_label: string | null
+          position_member_id: string | null
         }[]
       }
       find_invitation_by_code: {

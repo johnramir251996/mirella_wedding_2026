@@ -345,7 +345,7 @@ export function InvitationFormModal({ open, invitation, saving, onClose, onSave,
               onClick={() => onCopyLink(invitation.invitationCode)}
               className="mt-2 inline-flex items-center gap-1.5 rounded text-gold underline-offset-4 hover:underline"
             >
-              <Copy aria-hidden="true" className="size-3.5" /> Copy personal RSVP link (optional)
+              <Copy aria-hidden="true" className="size-3.5" /> Copy invitation (message and link)
             </button>
           </div>
         )}

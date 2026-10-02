@@ -29,7 +29,6 @@ import {
   orientationMarkHtml,
   type CardSize,
   type Paper,
-  type PrintTheme,
 } from '../utils/printables'
 import { siteLinks } from '../utils/share'
 import { measureCardFit, type CardFit } from '../utils/cardFit'
@@ -40,6 +39,7 @@ import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
 import { STYLES, resolveTheme, type StyleId } from '../theme/themes'
 import { Card3D, Envelope3D } from '../components/printables/Preview3D'
+import { readTheme } from '../utils/printTheme'
 
 type Tab = 'invitations' | 'envelope'
 /** Same-size stand-in for a personal QR while measuring or before the real one is ready. */
@@ -47,22 +47,6 @@ type Tab = 'invitations' | 'envelope'
 const SAMPLE_GUEST = { id: 'sample', inviteeName: 'Your Guest’s Name', positionMode: 'custom', positionLabel: 'Maid of Honor', guests: [] } as unknown as InvitationWithRSVP
 const QR_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="100%" height="100%"><rect width="10" height="10" fill="none"/></svg>'
 const PX_PER_MM = 96 / 25.4
-
-function readTheme(): PrintTheme {
-  const cs = getComputedStyle(document.documentElement)
-  const v = (name: string, d: string) => cs.getPropertyValue(name).trim() || d
-  return {
-    ink: v('--color-ink', '#2b2a28'),
-    soft: v('--color-ink-soft', '#55504a'),
-    muted: v('--color-muted', '#8a847b'),
-    accent: v('--color-gold', '#b89b6a'),
-    accentLight: v('--color-champagne-light', '#efe4cf'),
-    paper: v('--color-paper', '#fffdf9'),
-    line: v('--color-line', '#d9d0c1'),
-    serif: v('--font-serif', 'Georgia, serif'),
-    sans: v('--font-sans', 'Arial, sans-serif'),
-  }
-}
 
 const chunk = <T,>(list: T[], n: number) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, i * n + n))
 
