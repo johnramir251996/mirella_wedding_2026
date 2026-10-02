@@ -39,13 +39,12 @@ export function useInvitationCard(guest: CardGuest | null) {
     }
   }, [])
 
-  // Read the colours after the site theme has been applied to the page.
+  // Read the colours after the site theme has been applied to the page (the theme
+  // is applied in an effect, so wait one tick; a timer also runs in background tabs).
   useEffect(() => {
     if (!settings) return
-    let raf = requestAnimationFrame(() => {
-      raf = requestAnimationFrame(() => setTheme({ ...readTheme(), style: resolved.style }))
-    })
-    return () => cancelAnimationFrame(raf)
+    const t = window.setTimeout(() => setTheme({ ...readTheme(), style: resolved.style }), 0)
+    return () => window.clearTimeout(t)
   }, [settings, resolved])
 
   const sections = useMemo(() => {
