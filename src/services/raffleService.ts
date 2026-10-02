@@ -64,7 +64,8 @@ export async function getRafflePool(): Promise<PoolName[]> {
     logError('getRafflePool', error)
     throw new FriendlyError('We couldn’t load the guest names.')
   }
-  return (data ?? []).map((r) => ({ name: r.name, side: r.side === 'bride' ? 'bride' : 'groom', attending: Boolean(r.attending) }))
+  const rows = (Array.isArray(data) ? data : []) as { name: string; side: string; attending: boolean }[]
+  return rows.map((r) => ({ name: r.name, side: r.side === 'bride' ? 'bride' : 'groom', attending: Boolean(r.attending) }))
 }
 
 export interface RaffleDraw {
