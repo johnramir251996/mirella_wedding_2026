@@ -15,6 +15,7 @@ import { SectionIcon } from '../components/wedding/SectionIcon'
 import { PageHeader } from '../components/admin/PageHeader'
 import { RsvpSettingsCard } from '../components/admin/RsvpSettingsCard'
 import { GiftSettingsCard } from '../components/admin/GiftSettingsCard'
+import { WebsitePrivacyCard } from '../components/admin/WebsitePrivacyCard'
 
 type FieldErrors = Partial<Record<'coupleNames' | 'weddingDate' | 'heroImageUrl' | 'churchMapUrl' | 'receptionMapUrl' | 'sections', string>>
 
@@ -266,6 +267,8 @@ export default function AdminSettings() {
             </div>
           </Card>
         </div>
+
+        <WebsitePrivacyCard />
 
         <Card
           title="Information sections"

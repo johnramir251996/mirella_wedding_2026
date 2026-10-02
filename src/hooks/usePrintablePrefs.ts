@@ -18,6 +18,11 @@ export interface PrintablePrefs {
   showPositions: boolean
   rotateBacks: boolean
   envelopeQr: boolean
+  /** Details printed on the front (the rest re-centres when some are off). */
+  showCeremony: boolean
+  showReception: boolean
+  showRespondBy: boolean
+  showWithNames: boolean
 }
 
 export const DEFAULT_PRINTABLE_PREFS: PrintablePrefs = {
@@ -31,6 +36,10 @@ export const DEFAULT_PRINTABLE_PREFS: PrintablePrefs = {
   showPositions: true,
   rotateBacks: false,
   envelopeQr: true,
+  showCeremony: true,
+  showReception: true,
+  showRespondBy: true,
+  showWithNames: true,
 }
 
 const KEY = 'printables'

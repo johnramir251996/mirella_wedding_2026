@@ -87,7 +87,13 @@ export default function VirtualInvitationPage() {
   const guest = useMemo<CardGuest | null>(
     () =>
       inv && settings
-        ? { inviteeName: inv.inviteeName, includedGuests: inv.includedGuests, position: cardPosition(inv, settings.entourage), respondBy }
+        ? {
+            inviteeName: inv.inviteeName,
+            includedGuests: inv.includedGuests,
+            position: cardPosition(inv, settings.entourage),
+            respondBy,
+            confirmed: inv.attendanceStatus === 'attending',
+          }
         : null,
     [inv, settings, respondBy],
   )
@@ -149,7 +155,7 @@ export default function VirtualInvitationPage() {
                   transition={{ duration: 0.6, ease: EASE }}
                 >
                   <FlipCard frontHtml={card.frontHtml} backHtml={card.backHtml} width={cardW} />
-                  {settings && <Actions inv={inv} settings={settings} code={code} rsvpOpen={rsvpOpen} respondBy={respondBy} />}
+                  {settings && <Actions inv={inv} settings={settings} code={code} rsvpOpen={rsvpOpen} respondBy={respondBy} hideLinks={card.hideLinks} />}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -164,7 +170,21 @@ export default function VirtualInvitationPage() {
 
 // ---------------------------------------------------------------- what to do next
 
-function Actions({ inv, settings, code, rsvpOpen, respondBy }: { inv: VirtualInvitation; settings: WeddingSettings; code: string; rsvpOpen: boolean; respondBy: string | null }) {
+function Actions({
+  inv,
+  settings,
+  code,
+  rsvpOpen,
+  respondBy,
+  hideLinks,
+}: {
+  inv: VirtualInvitation
+  settings: WeddingSettings
+  code: string
+  rsvpOpen: boolean
+  respondBy: string | null
+  hideLinks: boolean
+}) {
   const replied = inv.attendanceStatus
   const seatOpen = replied === 'attending' && isFinderOpen(settings.seatingConfig)
   const primary = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-ink px-8 text-[0.95rem] font-medium text-ivory shadow-soft transition hover:bg-ink-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2'
@@ -203,17 +223,19 @@ function Actions({ inv, settings, code, rsvpOpen, respondBy }: { inv: VirtualInv
           <Globe aria-hidden="true" className="size-3.5" strokeWidth={1.6} />
           Our wedding website
         </Link>
+        {!hideLinks && (
         <a href={calendarUrl(settings)} target="_blank" rel="noopener noreferrer" className={link}>
           <CalendarPlus aria-hidden="true" className="size-3.5" strokeWidth={1.6} />
           Add to calendar
         </a>
-        {settings.churchMapUrl && (
+        )}
+        {!hideLinks && settings.churchMapUrl && (
           <a href={settings.churchMapUrl} target="_blank" rel="noopener noreferrer" className={link}>
             <MapPin aria-hidden="true" className="size-3.5" strokeWidth={1.6} />
             Ceremony map
           </a>
         )}
-        {settings.receptionMapUrl && (
+        {!hideLinks && settings.receptionMapUrl && (
           <a href={settings.receptionMapUrl} target="_blank" rel="noopener noreferrer" className={link}>
             <MapPin aria-hidden="true" className="size-3.5" strokeWidth={1.6} />
             Reception map

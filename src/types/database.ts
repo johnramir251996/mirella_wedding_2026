@@ -550,6 +550,27 @@ export type Database = {
         }
         Relationships: []
       }
+      raffle_draws: {
+        Row: {
+          id: string
+          name: string
+          prize: string | null
+          drawn_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          prize?: string | null
+          drawn_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          prize?: string | null
+          drawn_at?: string
+        }
+        Relationships: []
+      }
       invitation_opens: {
         Row: {
           invitation_id: string
@@ -722,6 +743,27 @@ export type Database = {
           invitee_name: string
           attendance_status: string | null
         }[]
+      }
+      public_display_prefs: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      invitation_card: {
+        Args: { p_invitation_id: string }
+        Returns: {
+          position_mode: string
+          position_label: string | null
+          position_member_id: string | null
+          attendance_status: string | null
+        }[]
+      }
+      raffle_pool: {
+        Args: Record<string, never>
+        Returns: { name: string; side: string; attending: boolean }[]
+      }
+      raffle_wheel: {
+        Args: Record<string, never>
+        Returns: Json
       }
       card_back_prefs: {
         Args: Record<string, never>

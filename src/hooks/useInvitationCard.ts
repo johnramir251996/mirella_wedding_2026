@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useWeddingSettings } from './useWeddingSettings'
 import { useResolvedTheme } from '../theme/themeContext'
-import { getCardBackPrefs, type CardBackPrefs } from '../services/virtualInviteService'
+import { getDisplayPrefs, type DisplayPrefs } from '../services/displayPrefsService'
 import { invitationBackHtml, invitationCardHtml, type PrintTheme } from '../utils/printables'
 import { readTheme } from '../utils/printTheme'
 import { measureCardFit } from '../utils/cardFit'
@@ -15,7 +15,12 @@ export interface CardGuest {
   position: string
   /** Shown on the front while they still need to reply. */
   respondBy: string | null
+  /** Has told us they're attending — private details are shown only then. */
+  confirmed: boolean
 }
+
+export const PRIVATE_DETAILS_NOTE = 'Ceremony and reception details will be shared once you confirm your attendance.'
+
 
 /**
  * The invitation card (front and back) for the screen: the same layout as the
@@ -23,17 +28,19 @@ export interface CardGuest {
  * the "Good to know" sections ticked in Printables (bold titles included).
  * Text shrinks a little when a card is very full; the back always shows the
  * ticked sections, at the smallest size if needed — it's never left blank.
+ * Details the couple keeps private stay hidden until the guest confirms they're
+ * attending (guests who declined keep the private version).
  */
 export function useInvitationCard(guest: CardGuest | null) {
   const { settings } = useWeddingSettings()
   const resolved = useResolvedTheme()
   const [theme, setTheme] = useState<PrintTheme | null>(null)
-  const [prefs, setPrefs] = useState<CardBackPrefs | null>(null)
+  const [prefs, setPrefs] = useState<DisplayPrefs['card'] | null>(null)
   const [fits, setFits] = useState({ front: 1, back: 1 })
 
   useEffect(() => {
     let alive = true
-    getCardBackPrefs().then((p) => alive && setPrefs(p))
+    getDisplayPrefs().then((p) => alive && setPrefs(p.card))
     return () => {
       alive = false
     }
@@ -47,12 +54,16 @@ export function useInvitationCard(guest: CardGuest | null) {
     return () => window.clearTimeout(t)
   }, [settings, resolved])
 
+  const confirmed = Boolean(guest?.confirmed)
+  const hideVenues = Boolean(prefs?.hideVenues) && !confirmed
+  const hideInfo = Boolean(prefs?.hideInfo) && !confirmed
   const sections = useMemo(() => {
+    if (hideInfo) return []
     const visible = (settings?.sections ?? []).filter((x) => x.visible && (x.title.trim() || x.body.trim()))
     const ids = new Set(prefs?.backIds ?? visible.slice(0, 3).map((x) => x.id))
     const bold = new Set(prefs?.boldIds ?? [])
     return visible.filter((x) => ids.has(x.id)).map((x) => ({ title: x.title, body: x.body, bold: bold.has(x.id) }))
-  }, [settings, prefs])
+  }, [settings, prefs, hideInfo])
 
   const makeFront = (fit: number) =>
     guest && settings && theme
@@ -62,8 +73,9 @@ export function useInvitationCard(guest: CardGuest | null) {
           withNames: guest.includedGuests,
           coupleNames: settings.coupleNames,
           dateText: formatWeddingDate(settings.weddingDate, 'full'),
-          ceremony: [settings.churchName, settings.ceremonyTime].filter(Boolean).join(' · '),
-          reception: [settings.receptionName, settings.receptionTime].filter(Boolean).join(' · '),
+          ceremony: hideVenues ? '' : [settings.churchName, settings.ceremonyTime].filter(Boolean).join(' · '),
+          reception: hideVenues ? '' : [settings.receptionName, settings.receptionTime].filter(Boolean).join(' · '),
+          detailsNote: hideVenues ? PRIVATE_DETAILS_NOTE : undefined,
           respondBy: guest.respondBy,
           qrSvg: '',
           shortLink: '',
@@ -86,7 +98,7 @@ export function useInvitationCard(guest: CardGuest | null) {
         })
       : ''
 
-  const key = JSON.stringify([guest, theme, sections, settings?.coupleNames, settings?.weddingDate, settings?.churchName, settings?.ceremonyTime, settings?.receptionName, settings?.receptionTime])
+  const key = JSON.stringify([guest, theme, sections, hideVenues, settings?.coupleNames, settings?.weddingDate, settings?.churchName, settings?.ceremonyTime, settings?.receptionName, settings?.receptionTime])
 
   useEffect(() => {
     if (!makeFront(1)) return
@@ -118,5 +130,7 @@ export function useInvitationCard(guest: CardGuest | null) {
     frontHtml: ready ? makeFront(fits.front) : '',
     backHtml: ready ? makeBack(fits.back) : '',
     monogramText: settings ? monogram(settings.coupleNames, '&') : '',
+    /** Hide the map and calendar links under the card. */
+    hideLinks: Boolean(prefs?.hideLinks) && !confirmed,
   }
 }

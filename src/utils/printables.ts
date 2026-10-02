@@ -233,6 +233,10 @@ export interface InvitationCardOptions {
   qrOnBack?: boolean
   /** On-screen (virtual) card: no QR or web address — just a gentle "respond by" line. */
   virtual?: boolean
+  /** Shown instead of the ceremony / reception lines when those are kept private. */
+  detailsNote?: string
+  /** Some details were switched off: centre what's left so the card stays balanced. */
+  sparse?: boolean
   fit?: number
 }
 
@@ -277,7 +281,7 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
   const z = (v: number) => r2(v * f)
   const area = cardSafeArea(style)
   const couple = ty.namesCase === 'uppercase' ? coupleHtml(o.coupleNames.toUpperCase(), t) : coupleHtml(o.coupleNames, t)
-  const centred = o.qrOnBack || o.virtual
+  const centred = o.qrOnBack || o.virtual || o.sparse || !o.ceremony || !o.reception
   const bottom = o.virtual
     ? `<div style="padding-top:${z(4)}mm;display:flex;flex-direction:column;align-items:center">
         ${svgBox(z(40), z(7), ornamentSvg(style, 20 * f, 4 * f, 32 * f, c))}
@@ -311,6 +315,7 @@ export function invitationCardHtml(o: InvitationCardOptions): string {
     <div style="margin-top:${z(5.5)}mm;font-size:${z(3.6)}mm;letter-spacing:${z(0.9)}mm;font-weight:500">${esc(o.dateText.toUpperCase())}</div>
     ${o.ceremony ? `<div style="margin-top:${z(3)}mm;font-size:${z(3.1)}mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:${z(0.4)}mm;color:${t.accent}">CEREMONY</span><br/>${esc(o.ceremony)}</div>` : ''}
     ${o.reception ? `<div style="margin-top:${z(2.5)}mm;font-size:${z(3.1)}mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:${z(0.4)}mm;color:${t.accent}">RECEPTION</span><br/>${esc(o.reception)}</div>` : ''}
+    ${o.detailsNote && !o.ceremony && !o.reception ? `<div style="margin-top:${z(3.5)}mm;max-width:${z(80)}mm;font-family:${t.serif};font-style:italic;font-size:${z(3.6)}mm;line-height:1.4;color:${t.soft}">${esc(o.detailsNote)}</div>` : ''}
     </div>
     ${bottom}
     </div></div>

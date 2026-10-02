@@ -20,7 +20,7 @@ import { SearchForm } from '../components/rsvp/SearchForm'
 import { IncludedNotice } from '../components/rsvp/IncludedNotice'
 import { Envelope, FlipCard, useCardWidth } from '../components/invitation/InviteEnvelope'
 import { useInvitationCard, type CardGuest } from '../hooks/useInvitationCard'
-import { getInvitationCardDetails, recordInvitationOpen, type CardDetails } from '../services/virtualInviteService'
+import { getInvitationCard, recordInvitationOpen, type CardDetails } from '../services/virtualInviteService'
 import { cardPosition } from '../utils/positions'
 import { Button } from '../components/ui/Button'
 import { RSVPForm } from '../components/rsvp/RSVPForm'
@@ -89,7 +89,7 @@ export default function RSVP() {
     if (!invitation || details?.id === invitation.invitationId) return
     let alive = true
     const id = invitation.invitationId
-    getInvitationCardDetails(id).then((d) => alive && setDetails({ id, d }))
+    getInvitationCard(id).then((d) => alive && setDetails({ id, d }))
     return () => {
       alive = false
     }
@@ -104,6 +104,7 @@ export default function RSVP() {
       includedGuests: invitation.includedGuests,
       position: details.d ? cardPosition(details.d, settings.entourage) : '',
       respondBy,
+      confirmed: details.d?.attendanceStatus === 'attending',
     }
   }, [invitation, settings, details, respondBy])
   const card = useInvitationCard(step === 'found' || step === 'card' ? guest : null)

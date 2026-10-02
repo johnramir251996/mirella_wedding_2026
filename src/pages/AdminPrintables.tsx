@@ -264,6 +264,8 @@ function InvitationsTab({ paper, design, prefs, update }: { paper: Paper; design
   const rotateBacks = prefs.rotateBacks
   const setRotateBacks = (v: boolean) => update({ rotateBacks: v })
   const showPositions = prefs.showPositions
+  const { showCeremony, showReception, showRespondBy, showWithNames } = prefs
+  const sparse = !showCeremony || !showReception || !showRespondBy || !showWithNames
   const setShowPositions = (v: boolean) => update({ showPositions: v })
   const qrPlace = prefs.qrPlace
   const setQrPlace = (v: PrintablePrefs['qrPlace']) => update({ qrPlace: v })
@@ -356,12 +358,13 @@ function InvitationsTab({ paper, design, prefs, update }: { paper: Paper; design
     invitationCardHtml({
       guestName: inv.inviteeName,
       position: positionOf(inv),
-      withNames: withNamesOf(inv),
+      withNames: showWithNames ? withNamesOf(inv) : [],
       coupleNames: settings?.coupleNames ?? '',
       dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
-      ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
-      reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
-      respondBy,
+      ceremony: showCeremony ? [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · ') : '',
+      reception: showReception ? [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · ') : '',
+      respondBy: showRespondBy ? respondBy : null,
+      sparse,
       qrSvg,
       shortLink,
       theme,
@@ -376,14 +379,14 @@ function InvitationsTab({ paper, design, prefs, update }: { paper: Paper; design
       monogram: settings ? monogram(settings.coupleNames, '&') : '',
       theme,
       size: sz,
-      ...(qrOnBack ? { qrSvg: qrSvg || QR_PLACEHOLDER, respondBy, shortLink, guestName: inv?.inviteeName } : {}),
+      ...(qrOnBack ? { qrSvg: qrSvg || QR_PLACEHOLDER, respondBy: showRespondBy ? respondBy : null, shortLink, guestName: inv?.inviteeName } : {}),
       sections: backSections,
       fit,
     })
 
   // Measure every listed card with the real fonts: shrink text a little when a card is very
   // full, and flag the ones that still don't fit inside the frame.
-  const measureKey = JSON.stringify([list.map((i) => [i.id, positionOf(i), withNamesOf(i)]), design, qrPlace, backSections, settings?.theme, settings?.coupleNames, respondBy])
+  const measureKey = JSON.stringify([list.map((i) => [i.id, positionOf(i), withNamesOf(i)]), design, qrPlace, backSections, settings?.theme, settings?.coupleNames, respondBy, showCeremony, showReception, showRespondBy, showWithNames])
   useEffect(() => {
     const host = measureHost.current
     if (!host || !settings) return
@@ -683,6 +686,25 @@ function InvitationsTab({ paper, design, prefs, update }: { paper: Paper; design
             </span>
             <input type="checkbox" checked={showPositions} onChange={(e) => setShowPositions(e.target.checked)} className="mt-0.5 size-5 shrink-0 accent-ink" />
           </label>
+          <fieldset className="space-y-2 text-sm text-ink-soft">
+            <legend className="mb-2">
+              On the front of the card
+              <span className="block text-xs text-muted">Untick to leave a detail off; the rest moves to the middle so the card stays balanced.</span>
+            </legend>
+            {(
+              [
+                ['showCeremony', 'Ceremony'],
+                ['showReception', 'Reception'],
+                ['showRespondBy', '“Please respond by” date'],
+                ['showWithNames', '“Together with” (included guests)'],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="flex items-center justify-between gap-3">
+                {label}
+                <input type="checkbox" checked={prefs[key]} onChange={(e) => update({ [key]: e.target.checked } as Partial<PrintablePrefs>)} className="size-5 shrink-0 accent-ink" />
+              </label>
+            ))}
+          </fieldset>
           {printSide !== 'front' && (
             <label className="flex items-start justify-between gap-3 text-sm text-ink-soft">
               <span>

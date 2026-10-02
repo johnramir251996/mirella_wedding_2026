@@ -8,6 +8,8 @@ import { Hero } from '../components/wedding/Hero'
 import { Introduction } from '../components/wedding/Introduction'
 import { Venues } from '../components/wedding/Venues'
 import { InfoSections } from '../components/wedding/InfoSections'
+import { PrivateDetails } from '../components/wedding/PrivateDetails'
+import { useDisplayPrefs } from '../hooks/useDisplayPrefs'
 import { OutfitGallery } from '../components/wedding/OutfitGallery'
 import { MotifSection } from '../components/wedding/MotifSwatches'
 import { Entourage } from '../components/wedding/Entourage'
@@ -28,6 +30,7 @@ export default function Home() {
   const { settings, loading, error, refresh } = useWeddingSettings()
   const outfits = useOutfits()
   const gallery = useGallery()
+  const display = useDisplayPrefs()
   const [gift, setGift] = useState<PublicGift | null>(null)
 
   useEffect(() => {
@@ -61,8 +64,19 @@ export default function Home() {
         {settings.videoVisible && settings.videoUrl && (
           <VideoHighlight title={settings.videoTitle} caption={settings.videoCaption} url={settings.videoUrl} posterUrl={settings.videoPosterUrl} />
         )}
-        <Venues settings={settings} />
-        <InfoSections sections={settings.sections} />
+        {(() => {
+          // Details the couple shares only with confirmed guests (Website Settings → Privacy).
+          // While the choice is loading, nothing is shown, so private details never flash up.
+          if (!display) return null
+          const { hideVenues, hideInfo } = display.website
+          return (
+            <>
+              {!hideVenues && <Venues settings={settings} />}
+              {!hideInfo && <InfoSections sections={settings.sections} />}
+              {(hideVenues || hideInfo) && <PrivateDetails venues={hideVenues} info={hideInfo} rsvpOpen={isRsvpOpen(settings)} />}
+            </>
+          )
+        })()}
         {showOutfits ? (
           <OutfitGallery
             title={settings.outfitTitle}

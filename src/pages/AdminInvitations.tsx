@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, MessageSquareText, Pencil, Plus, Printer, RotateCcw, Send, Trash2 } from 'lucide-react'
+import { Eye, Pencil, Settings2, Plus, Printer, RotateCcw, Send, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAdminData } from '../hooks/useAdminData'
 import { useToast } from '../hooks/useToast'
@@ -26,7 +26,18 @@ import { FilterTabs, SearchInput } from '../components/admin/FilterTabs'
 import { HeadcountSummary } from '../components/admin/HeadcountSummary'
 import { SIDE_LABEL, bySide, type SideFilter } from '../utils/headcount'
 import type { PrintablesHandoff } from './AdminPrintables'
-import { InviteMessageModal } from '../components/admin/InviteMessageModal'
+import { VirtualInviteSettingsModal } from '../components/admin/VirtualInviteSettingsModal'
+import {
+  DEFAULT_VIRTUAL_INVITE,
+  DEFAULT_WEBSITE_PRIVACY,
+  getPrintablesBackIds,
+  getVirtualInviteSettings,
+  getWebsitePrivacy,
+  saveVirtualInviteSettings,
+  saveWebsitePrivacy,
+  type VirtualInviteSettings,
+  type WebsitePrivacy,
+} from '../services/adminDisplayService'
 import { clearInvitationOpen, getInvitationOpens, type InvitationOpen } from '../services/virtualInviteService'
 import { getAdminPreference, saveAdminPreference } from '../services/preferencesService'
 import { DEFAULT_INVITE_MESSAGE, buildInviteMessage, virtualInviteUrl } from '../utils/inviteMessage'
@@ -65,6 +76,22 @@ export default function AdminInvitations() {
   const [template, setTemplate] = useState(DEFAULT_INVITE_MESSAGE)
   const [messageOpen, setMessageOpen] = useState(false)
   const [savingMessage, setSavingMessage] = useState(false)
+  const [viSettings, setViSettings] = useState<VirtualInviteSettings>(DEFAULT_VIRTUAL_INVITE)
+  const [webPrivacy, setWebPrivacy] = useState<WebsitePrivacy>(DEFAULT_WEBSITE_PRIVACY)
+  const [printablesIds, setPrintablesIds] = useState<string[] | null>(null)
+  const [hidingOnWebsite, setHidingOnWebsite] = useState(false)
+  const openSettings = () => {
+    // Fresh copies each time, in case they were changed in Printables or Website Settings.
+    Promise.all([getVirtualInviteSettings(), getWebsitePrivacy(), getPrintablesBackIds()])
+      .then(([v, w, ids]) => {
+        setViSettings(v)
+        setWebPrivacy(w)
+        setPrintablesIds(ids)
+      })
+      .catch((e) => toast.error(toFriendlyMessage(e)))
+    setMessageOpen(true)
+  }
+  const infoSections = useMemo(() => (settings?.sections ?? []).filter((x) => x.visible && (x.title.trim() || x.body.trim())), [settings])
   const [toReset, setToReset] = useState<InvitationWithRSVP | null>(null)
   const [resetting, setResetting] = useState(false)
   const loadOpens = () =>
@@ -96,17 +123,32 @@ export default function AdminInvitations() {
     else toast.show(text)
   }
 
-  const saveMessage = async (text: string) => {
+  const saveMessage = async (text: string, vi: VirtualInviteSettings) => {
     setSavingMessage(true)
     try {
-      await saveAdminPreference(MESSAGE_KEY, { text })
+      await Promise.all([saveAdminPreference(MESSAGE_KEY, { text }), saveVirtualInviteSettings(vi)])
       setTemplate(text.trim() ? text : DEFAULT_INVITE_MESSAGE)
+      setViSettings(vi)
       setMessageOpen(false)
-      toast.success('Invitation message saved.')
+      toast.success('Virtual invitation settings saved.')
     } catch (e) {
       toast.error(toFriendlyMessage(e))
     } finally {
       setSavingMessage(false)
+    }
+  }
+
+  const hideOnWebsite = async (patch: Partial<WebsitePrivacy>) => {
+    setHidingOnWebsite(true)
+    try {
+      const next = { ...webPrivacy, ...patch }
+      await saveWebsitePrivacy(next)
+      setWebPrivacy(next)
+      toast.success('Hidden on your wedding website. Confirmed guests still see them on their invitation.')
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+    } finally {
+      setHidingOnWebsite(false)
     }
   }
 
@@ -281,8 +323,8 @@ export default function AdminInvitations() {
         description={data ? `${data.invitations.length} invitations` : 'Manage who can RSVP.'}
         actions={
           <>
-            <Button variant="outline" onClick={() => setMessageOpen(true)} icon={<MessageSquareText aria-hidden="true" className="size-4" />}>
-              Invitation message
+            <Button variant="outline" onClick={openSettings} icon={<Settings2 aria-hidden="true" className="size-4" />}>
+              Virtual invitation settings
             </Button>
             <Button variant="outline" onClick={() => toPrint({ side })} icon={<Printer aria-hidden="true" className="size-4" />}>
               Print invitations
@@ -360,9 +402,15 @@ export default function AdminInvitations() {
 
       <ResponseDetailModal invitation={viewing} onClose={() => setViewing(null)} />
 
-      <InviteMessageModal
+      <VirtualInviteSettingsModal
         open={messageOpen}
         template={template}
+        settings={viSettings}
+        website={webPrivacy}
+        sections={infoSections}
+        printablesIds={printablesIds}
+        hidingOnWebsite={hidingOnWebsite}
+        onHideOnWebsite={hideOnWebsite}
         saving={savingMessage}
         sample={{
           name: rows[0]?.inviteeName ?? 'Tita Lorna',

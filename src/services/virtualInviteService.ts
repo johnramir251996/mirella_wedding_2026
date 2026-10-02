@@ -66,51 +66,29 @@ export async function clearInvitationOpen(invitationId: string): Promise<void> {
   }
 }
 
-/** Which "Good to know" sections are ticked in Printables (null = the first three) and which titles are bold. */
-export interface CardBackPrefs {
-  backIds: string[] | null
-  boldIds: string[]
-}
-
-let backPrefsCache: Promise<CardBackPrefs> | null = null
-
-/** Public: the Printables "Good to know" selection, so on-screen card backs match the printed ones. */
-export function getCardBackPrefs(): Promise<CardBackPrefs> {
-  if (!backPrefsCache) {
-    backPrefsCache = Promise.resolve(supabase.rpc('card_back_prefs')).then(({ data, error }) => {
-      if (error) {
-        logError('getCardBackPrefs', error)
-        backPrefsCache = null
-        return { backIds: null, boldIds: [] }
-      }
-      const o = data && typeof data === 'object' && !Array.isArray(data) ? (data as Record<string, unknown>) : {}
-      const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : null)
-      return { backIds: list(o.backIds), boldIds: list(o.boldIds) ?? [] }
-    })
-  }
-  return backPrefsCache
-}
-
 export interface CardDetails {
   positionMode: PositionMode
   positionLabel: string
   positionMemberId: string | null
+  attendanceStatus: AttendanceStatus | null
 }
 
-/** Public: the invitee's position for the card (for invitations found by name or code). */
-export async function getInvitationCardDetails(invitationId: string): Promise<CardDetails | null> {
-  const { data, error } = await supabase.rpc('invitation_card_details', { p_invitation_id: invitationId })
+/** Public: the invitee's position and reply for the card (invitations found by name or code). */
+export async function getInvitationCard(invitationId: string): Promise<CardDetails | null> {
+  const { data, error } = await supabase.rpc('invitation_card', { p_invitation_id: invitationId })
   if (error) {
-    logError('getInvitationCardDetails', error)
+    logError('getInvitationCard', error)
     return null
   }
   const row = Array.isArray(data) ? data[0] : undefined
   if (!row) return null
   const mode = row.position_mode
+  const st = row.attendance_status
   return {
     positionMode: mode === 'custom' || mode === 'none' ? mode : 'auto',
     positionLabel: row.position_label ?? '',
     positionMemberId: row.position_member_id ?? null,
+    attendanceStatus: st === 'attending' || st === 'declining' ? st : null,
   }
 }
 
