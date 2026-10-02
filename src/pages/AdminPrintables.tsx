@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { Bold, CheckCircle2, Mail, Printer, TriangleAlert, Wallet } from 'lucide-react'
+import { Bold, CheckCircle2, Mail, Printer, RotateCcw, TriangleAlert, Wallet } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useEntourageLinks } from '../hooks/useEntourageLinks'
 import { entouragePositions, invitationPosition } from '../utils/positions'
 import { useToast } from '../hooks/useToast'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
+import { usePrintablePrefs, type PrintablePrefs, type SaveState } from '../hooks/usePrintablePrefs'
 import { getGiftSettings } from '../services/giftService'
 import { markInvitationsPrinted, updateInvitationPosition } from '../services/adminService'
 import { isRsvpOpen } from '../services/settingsService'
@@ -33,6 +34,7 @@ import {
 import { siteLinks } from '../utils/share'
 import { measureCardFit, type CardFit } from '../utils/cardFit'
 import { Button } from '../components/ui/Button'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../components/ui/cn'
 import { PageHeader } from '../components/admin/PageHeader'
@@ -66,12 +68,12 @@ const chunk = <T,>(list: T[], n: number) => Array.from({ length: Math.ceil(list.
 
 export default function AdminPrintables() {
   const [tab, setTab] = useState<Tab>('invitations')
-  const [paper, setPaper] = useState<Paper>('a4')
+  const { prefs, update, reset, state } = usePrintablePrefs()
+  const paper = prefs.paper
   const { settings } = useWeddingSettings()
   // Printables follow the website's design style; another can be tried here without changing the website.
   const savedStyle = resolveTheme(settings?.theme).style
-  const [designPick, setDesignPick] = useState<StyleId | null>(null)
-  const design = designPick ?? savedStyle
+  const design = prefs.design ?? savedStyle
   const sheet = SHEETS[paper]
 
   useEffect(() => {
@@ -112,14 +114,14 @@ export default function AdminPrintables() {
           </div>
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             Paper
-            <select className="input-base min-h-10 w-auto py-1.5" value={paper} onChange={(e) => setPaper(e.target.value as Paper)}>
+            <select className="input-base min-h-10 w-auto py-1.5" value={paper} onChange={(e) => update({ paper: e.target.value as Paper })}>
               <option value="a4">A4</option>
               <option value="legal">Legal (8.5 × 14 in)</option>
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm text-ink-soft">
             Design
-            <select className="input-base min-h-10 w-auto py-1.5" value={design} onChange={(e) => setDesignPick(e.target.value as StyleId)}>
+            <select className="input-base min-h-10 w-auto py-1.5" value={design} onChange={(e) => update({ design: e.target.value === savedStyle ? null : (e.target.value as StyleId) })}>
               {STYLES.map((st) => (
                 <option key={st.id} value={st.id}>
                   {st.name}
@@ -128,12 +130,56 @@ export default function AdminPrintables() {
               ))}
             </select>
           </label>
+          <SavedNote state={state} onReset={reset} />
         </div>
       </div>
-      {tab === 'invitations' ? <InvitationsTab paper={paper} design={design} /> : <EnvelopeTab paper={paper} design={design} />}
+      {state === 'loading' ? (
+        <p className="py-10 text-center text-sm text-muted">Loading your saved setup…</p>
+      ) : tab === 'invitations' ? (
+        <InvitationsTab paper={paper} design={design} prefs={prefs} update={update} />
+      ) : (
+        <EnvelopeTab paper={paper} design={design} prefs={prefs} update={update} />
+      )}
     </>
   )
 }
+
+/** "Your setup is saved" status, with a way back to the defaults. */
+function SavedNote({ state, onReset }: { state: SaveState; onReset: () => void }) {
+  const [asking, setAsking] = useState(false)
+  if (state === 'loading') return null
+  const text = state === 'saving' ? 'Saving your setup…' : state === 'saved' ? 'Setup saved — it’ll be here next time' : state === 'error' ? 'Couldn’t save your setup' : 'Your choices are saved as you go'
+  return (
+    <div className="flex items-center gap-2 text-xs sm:ml-auto">
+      <span className={cn('inline-flex items-center gap-1', state === 'error' ? 'text-rose' : 'text-muted')}>
+        {state === 'saved' && <CheckCircle2 aria-hidden="true" className="size-3.5 text-sage" />}
+        <span aria-live="polite">{text}</span>
+      </span>
+      {state === 'saved' && (
+        <button
+          type="button"
+          onClick={() => setAsking(true)}
+          className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-muted underline-offset-2 hover:text-ink hover:underline"
+        >
+          <RotateCcw aria-hidden="true" className="size-3" /> Reset to defaults
+        </button>
+      )}
+      <ConfirmDialog
+        open={asking}
+        title="Reset Printables?"
+        message="Card size, design, QR placement, “Good to know” picks, bold titles and the other options go back to the defaults. Your guests and invitations aren’t affected."
+        confirmLabel="Reset"
+        onCancel={() => setAsking(false)}
+        onConfirm={() => {
+          setAsking(false)
+          onReset()
+        }}
+      />
+    </div>
+  )
+}
+
+type PrefsProps = { prefs: PrintablePrefs; update: (patch: Partial<PrintablePrefs>) => void }
 
 // ---------------------------------------------------------------- shared preview
 
@@ -212,13 +258,14 @@ export interface PrintablesHandoff {
   side?: SideFilter
 }
 
-function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
+function InvitationsTab({ paper, design, prefs, update }: { paper: Paper; design: StyleId } & PrefsProps) {
   const toast = useToast()
   const { data, reload } = useAdminData()
   const { settings } = useWeddingSettings()
   const location = useLocation()
   const [handoff] = useState<PrintablesHandoff>(() => (location.state as PrintablesHandoff | null) ?? {})
-  const [size, setSize] = useState<CardSize>('5x7')
+  const size = prefs.size
+  const setSize = (v: CardSize) => update({ size: v })
   const [showAll, setShowAll] = useState(false)
   const [side, setSide] = useState<SideFilter>(handoff.side ?? 'all')
   const [selected, setSelected] = useState<Set<string>>(() => new Set(handoff.select ?? []))
@@ -227,24 +274,26 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
   const [qr, setQr] = useState<Record<string, string>>({})
   const [askMark, setAskMark] = useState(false)
   const [view, setView] = useState<View>('sheets')
-  const [printSide, setPrintSide] = useState<'front' | 'back' | 'both'>('front')
+  const printSide = prefs.printSide
+  const setPrintSide = (v: PrintablePrefs['printSide']) => update({ printSide: v })
   const [sheetNo, setSheetNo] = useState(0) // 0 = all sheets
-  const [rotateBacks, setRotateBacks] = useState(false)
-  const [showPositions, setShowPositions] = useState(true)
-  const [qrPlace, setQrPlace] = useState<'back' | 'front'>('back')
+  const rotateBacks = prefs.rotateBacks
+  const setRotateBacks = (v: boolean) => update({ rotateBacks: v })
+  const showPositions = prefs.showPositions
+  const setShowPositions = (v: boolean) => update({ showPositions: v })
+  const qrPlace = prefs.qrPlace
+  const setQrPlace = (v: PrintablePrefs['qrPlace']) => update({ qrPlace: v })
   // Website Settings sections printed under "Good to know" on the back (default: the first three).
   const infoSections = useMemo(() => (settings?.sections ?? []).filter((x) => x.visible && (x.title.trim() || x.body.trim())), [settings])
-  const [backPick, setBackPick] = useState<Set<string> | null>(null)
-  const backIds = backPick ?? new Set(infoSections.slice(0, 3).map((x) => x.id))
-  // Titles printed in bold (per section).
-  const [boldIds, setBoldIds] = useState<Set<string>>(() => new Set())
-  const toggleBold = (id: string) =>
-    setBoldIds((prev) => {
-      const n = new Set(prev)
-      if (n.has(id)) n.delete(id)
-      else n.add(id)
-      return n
-    })
+  const backIds = new Set(prefs.backIds ?? infoSections.slice(0, 3).map((x) => x.id))
+  const setBackPick = (n: Set<string>) => update({ backIds: [...n] })
+  const boldIds = new Set(prefs.boldIds)
+  const toggleBold = (id: string) => {
+    const n = new Set(boldIds)
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
+    update({ boldIds: [...n] })
+  }
   const backSections = infoSections.filter((x) => backIds.has(x.id)).map((x) => ({ title: x.title, body: x.body, bold: boldIds.has(x.id) }))
   const measureHost = useRef<HTMLDivElement>(null)
   const [fits, setFits] = useState<Record<string, CardFit>>({})
@@ -730,10 +779,11 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
 
 // ---------------------------------------------------------------- envelope
 
-function EnvelopeTab({ paper, design }: { paper: Paper; design: StyleId }) {
+function EnvelopeTab({ paper, design, prefs, update }: { paper: Paper; design: StyleId } & PrefsProps) {
   const { settings } = useWeddingSettings()
   const [copies, setCopies] = useState(1)
-  const [withQr, setWithQr] = useState(true)
+  const withQr = prefs.envelopeQr
+  const setWithQr = (v: boolean) => update({ envelopeQr: v })
   const [giftQr, setGiftQr] = useState<string | null>(null)
   const theme = useMemo(() => ({ ...readTheme(), style: design }), [settings?.theme, design])
   const [view, setView] = useState<View>('sheets')

@@ -550,6 +550,24 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_preferences: {
+        Row: {
+          key: string
+          value: Json
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          value?: Json
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gift_settings: {
         Row: {
           singleton: boolean
