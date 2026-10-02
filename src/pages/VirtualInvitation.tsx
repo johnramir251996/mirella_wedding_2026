@@ -94,6 +94,7 @@ export default function VirtualInvitationPage() {
   const [stage, setStage] = useState<Stage>(() => (wasOpened(code) ? 'card' : 'sealed'))
   const [theme, setTheme] = useState<PrintTheme | null>(null)
   const [fit, setFit] = useState(1)
+  const [backFit, setBackFit] = useState({ count: 3, fit: 1 })
   const loadedFor = useRef<string | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
 
@@ -153,14 +154,42 @@ export default function VirtualInvitationPage() {
           fit: f,
         })
       : ''
-  const frontKey = JSON.stringify([inv, position, respondBy, theme, settings?.coupleNames, settings?.weddingDate, settings?.churchName, settings?.receptionName])
+  // The back carries "Good to know" like the printed cards: the first three sections.
+  const infoSections = useMemo(
+    () => (settings?.sections ?? []).filter((x) => x.visible && (x.title.trim() || x.body.trim())).slice(0, 3).map((x) => ({ title: x.title, body: x.body })),
+    [settings],
+  )
+  const makeBack = (count: number, f: number) =>
+    settings && theme
+      ? invitationBackHtml({
+          coupleNames: settings.coupleNames,
+          dateText: formatWeddingDate(settings.weddingDate),
+          monogram: monogram(settings.coupleNames, '&'),
+          theme,
+          size: '5x7',
+          sections: infoSections.slice(0, count),
+          fit: f,
+        })
+      : ''
+  const frontKey = JSON.stringify([inv, position, respondBy, theme, infoSections, settings?.coupleNames, settings?.weddingDate, settings?.churchName, settings?.receptionName])
 
-  // Shrink the text slightly when a card is very full (same check as the printed cards).
+  // Shrink the text slightly when a card is very full (same check as the printed cards);
+  // on the back, show fewer sections rather than let the text run past the edge.
   useEffect(() => {
     const host = hostRef.current
     if (!host || !makeFront(1)) return
     let alive = true
-    const run = () => alive && setFit(measureCardFit(makeFront, host).fit)
+    const run = () => {
+      if (!alive) return
+      setFit(measureCardFit(makeFront, host).fit)
+      for (let count = infoSections.length; count >= 0; count--) {
+        const r = measureCardFit((f) => makeBack(count, f), host)
+        if (!r.overflow || count === 0) {
+          setBackFit({ count, fit: r.fit })
+          break
+        }
+      }
+    }
     document.fonts.ready.then(run, run)
     return () => {
       alive = false
@@ -169,10 +198,7 @@ export default function VirtualInvitationPage() {
   }, [frontKey])
 
   const frontHtml = makeFront(fit)
-  const backHtml =
-    settings && theme
-      ? invitationBackHtml({ coupleNames: settings.coupleNames, dateText: formatWeddingDate(settings.weddingDate), monogram: monogram(settings.coupleNames, '&'), theme, size: '5x7' })
-      : ''
+  const backHtml = makeBack(Math.min(backFit.count, infoSections.length), backFit.fit)
 
   const cardW = Math.round(Math.max(232, Math.min(360, w - 48, (h - 250) / RATIO)))
 
@@ -329,10 +355,9 @@ function Envelope({ name, theme, monogramText, cardW, frontHtml, opening, onOpen
           <span aria-hidden="true" className="absolute inset-0" style={{ zIndex: 3, clipPath: 'polygon(0 0, 50% 36%, 100% 0, 100% 100%, 0 100%)' }}>
             <span className="absolute inset-0 rounded-[3px]" style={{ background: paper, boxShadow: `inset 0 0 0 1px ${theme.line}` }} />
             <svg className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path d="M0 0 L50 36 L100 0 M0 100 L50 56 L100 100" fill="none" stroke={theme.line} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              <path d="M0 100 L50 56 L100 100 Z" fill={shade} opacity="0.55" />
+              <path d="M0 0 L50 36 L100 0" fill="none" stroke={theme.line} strokeWidth="1" vectorEffect="non-scaling-stroke" />
             </svg>
-            <span className="absolute inset-x-0 px-6 text-center" style={{ top: '64%' }}>
+            <span className="absolute inset-x-0 px-6 text-center" style={{ top: '62%' }}>
               <span className="block font-serif italic leading-tight" style={{ color: theme.ink, fontSize: Math.max(20, Math.min(30, cardW * 0.085)) }}>
                 {name}
               </span>
