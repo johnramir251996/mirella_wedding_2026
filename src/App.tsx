@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, type ComponentType } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { isSupabaseConfigured } from './lib/supabase'
 import { AuthProvider } from './components/admin/AuthProvider'
@@ -12,26 +12,60 @@ import Home from './pages/Home'
 import RSVP from './pages/RSVP'
 import NotFound from './pages/NotFound'
 
+/*
+ * After a new version is published, a tab that was already open may ask for a
+ * page file that no longer exists. Reload once to pick up the new version
+ * instead of showing a blank page.
+ */
+const RELOAD_KEY = 'wedding-chunk-reload'
+function page<T extends ComponentType>(load: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    load()
+      .then((m) => {
+        try {
+          sessionStorage.removeItem(RELOAD_KEY)
+        } catch {
+          /* ignore */
+        }
+        return m
+      })
+      .catch((e: unknown) => {
+        let reloaded = false
+        try {
+          reloaded = sessionStorage.getItem(RELOAD_KEY) === '1'
+          if (!reloaded) sessionStorage.setItem(RELOAD_KEY, '1')
+        } catch {
+          reloaded = true
+        }
+        if (!reloaded) {
+          window.location.reload()
+          return new Promise<{ default: T }>(() => undefined)
+        }
+        throw e
+      }),
+  )
+}
+
 // Admin code (and the charting library) is only downloaded by administrators.
-const AdminLogin = lazy(() => import('./pages/AdminLogin'))
-const AdminLayout = lazy(() => import('./layouts/AdminLayout'))
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
-const AdminInvitations = lazy(() => import('./pages/AdminInvitations'))
-const AdminResponses = lazy(() => import('./pages/AdminResponses'))
-const AdminGuests = lazy(() => import('./pages/AdminGuests'))
-const AdminSettings = lazy(() => import('./pages/AdminSettings'))
-const AdminOutfits = lazy(() => import('./pages/AdminOutfits'))
-const AdminEntourage = lazy(() => import('./pages/AdminEntourage'))
-const AdminMedia = lazy(() => import('./pages/AdminMedia'))
-const AdminLookFeel = lazy(() => import('./pages/AdminLookFeel'))
-const AdminShare = lazy(() => import('./pages/AdminShare'))
-const AdminQuestions = lazy(() => import('./pages/AdminQuestions'))
-const AdminSeating = lazy(() => import('./pages/AdminSeating'))
-const AdminPrintables = lazy(() => import('./pages/AdminPrintables'))
-const FindSeat = lazy(() => import('./pages/FindSeat'))
-const VirtualInvitation = lazy(() => import('./pages/VirtualInvitation'))
-const Raffle = lazy(() => import('./pages/Raffle'))
-const AdminRaffle = lazy(() => import('./pages/AdminRaffle'))
+const AdminLogin = page(() => import('./pages/AdminLogin'))
+const AdminLayout = page(() => import('./layouts/AdminLayout'))
+const AdminDashboard = page(() => import('./pages/AdminDashboard'))
+const AdminInvitations = page(() => import('./pages/AdminInvitations'))
+const AdminResponses = page(() => import('./pages/AdminResponses'))
+const AdminGuests = page(() => import('./pages/AdminGuests'))
+const AdminSettings = page(() => import('./pages/AdminSettings'))
+const AdminOutfits = page(() => import('./pages/AdminOutfits'))
+const AdminEntourage = page(() => import('./pages/AdminEntourage'))
+const AdminMedia = page(() => import('./pages/AdminMedia'))
+const AdminLookFeel = page(() => import('./pages/AdminLookFeel'))
+const AdminShare = page(() => import('./pages/AdminShare'))
+const AdminQuestions = page(() => import('./pages/AdminQuestions'))
+const AdminSeating = page(() => import('./pages/AdminSeating'))
+const AdminPrintables = page(() => import('./pages/AdminPrintables'))
+const FindSeat = page(() => import('./pages/FindSeat'))
+const VirtualInvitation = page(() => import('./pages/VirtualInvitation'))
+const Raffle = page(() => import('./pages/Raffle'))
+const AdminRaffle = page(() => import('./pages/AdminRaffle'))
 
 /*
  * HashRouter is used on purpose: GitHub Pages is static hosting with no
