@@ -888,6 +888,7 @@ function AttireTab({ paper, design, prefs, update }: { paper: Paper; design: Sty
   const [sets, setSets] = useState(1)
   const [withMotif, setWithMotif] = useState(true)
   const [note, setNote] = useState('Kindly reserve white for the bride.')
+  const [side, setSide] = useState<'front' | 'back' | 'both'>('front')
   const [lowRes, setLowRes] = useState<string[]>([])
   const theme = useMemo(() => ({ ...readTheme(), style: design }), [settings?.theme, design])
   const size = prefs.size
@@ -943,7 +944,11 @@ function AttireTab({ paper, design, prefs, update }: { paper: Paper; design: Sty
   // Every set holds each card once; cards fill the sheets in order.
   const all = Array.from({ length: sets }, () => cards).flat()
   const groups = chunk(all, perSheet)
-  const sheets = groups.map((group, gi) => {
+  // The back: your monogram crest (as in the website's header), names and date — the same on every card.
+  const backHtml = settings
+    ? invitationBackHtml({ coupleNames: settings.coupleNames, dateText: formatWeddingDate(settings.weddingDate), monogram: monogram(settings.coupleNames, '&'), theme, size })
+    : ''
+  const fronts = groups.map((group, gi) => {
     const pos = layoutRow(s.w, s.h, group.length === perSheet ? perSheet : group.length, card.w, card.h)
     return (
       group.map((html, k) => `<div style="position:absolute;left:${pos[k].x}mm;top:${pos[k].y}mm">${html}</div>`).join('') +
@@ -952,6 +957,15 @@ function AttireTab({ paper, design, prefs, update }: { paper: Paper; design: Sty
       calibrationHtml(theme)
     )
   })
+  const backs = groups.map((group, gi) => {
+    const pos = layoutRow(s.w, s.h, group.length === perSheet ? perSheet : group.length, card.w, card.h)
+    return (
+      pos.map((p) => `<div style="position:absolute;left:${p.x}mm;top:${p.y}mm">${backHtml}</div>`).join('') +
+      cropMarksSvg(s.w, s.h, pos, theme.muted) +
+      orientationMarkHtml('back', gi + 1, groups.length, theme)
+    )
+  })
+  const sheets = side === 'front' ? fronts : side === 'back' ? backs : fronts.flatMap((f, i) => [f, backs[i]])
 
   return (
     <div className="grid gap-5 print:block xl:grid-cols-[360px_1fr]">
@@ -994,8 +1008,19 @@ function AttireTab({ paper, design, prefs, update }: { paper: Paper; design: Sty
               <input className="input-base mt-1.5" value={note} maxLength={90} onChange={(e) => setNote(e.target.value)} />
             </label>
           )}
+          <label className="flex items-center justify-between gap-2 text-sm text-ink-soft">
+            <span>
+              Print
+              <span className="block text-xs text-muted">The back has your monogram, names and date.</span>
+            </span>
+            <select className="input-base min-h-10 w-auto py-1.5" value={side} onChange={(e) => setSide(e.target.value as typeof side)}>
+              <option value="front">Fronts</option>
+              <option value="back">Backs</option>
+              <option value="both">Both sides</option>
+            </select>
+          </label>
           <Button fullWidth disabled={!cards.length} onClick={() => window.print()} icon={<Printer aria-hidden="true" className="size-4" />}>
-            Print {groups.length} {groups.length === 1 ? 'sheet' : 'sheets'}
+            Print {sheets.length} {sheets.length === 1 ? 'sheet' : 'sheets'}
           </Button>
         </section>
         {outfits && outfits.length === 0 && (
@@ -1014,7 +1039,11 @@ function AttireTab({ paper, design, prefs, update }: { paper: Paper; design: Sty
           <p className="font-medium text-ink">Printing the attire guide</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             <li>
-              Landscape sheets, {perSheet} cards per {SHEETS[paper].label} sheet, printed on one side. Print at <strong>Actual size / 100%</strong>.
+              Landscape sheets, {perSheet} cards per {SHEETS[paper].label} sheet. Print at <strong>Actual size / 100%</strong>.
+            </li>
+            <li>
+              For a printed back: print <strong>Fronts</strong>, put the sheets back in the printer turned over (flip on the long edge), then print <strong>Backs</strong> — or choose
+              <strong> Both sides</strong> on a two-sided printer.
             </li>
             <li>Gentleman’s and lady’s looks are paired by their order in Outfit Gallery; a look without a partner gets its own space.</li>
             <li>Photos look best on matte or photo card stock. Cut along the crop marks and tuck the cards in with the invitation.</li>

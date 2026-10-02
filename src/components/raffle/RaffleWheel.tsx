@@ -42,62 +42,77 @@ interface WheelProps {
   idle?: boolean
   centre?: string
   className?: string
-  groupRef?: RefObject<SVGGElement | null>
+  groupRef?: RefObject<HTMLDivElement | null>
   onSpinEnd?: () => void
 }
 
-/** The raffle wheel (SVG): names around the edge, pointer at the top. */
+/**
+ * The raffle wheel: names around the edge, pointer at the top. The turning part
+ * is its own layer (an HTML element rotated with CSS), so the browser moves it
+ * as one picture instead of redrawing every name on every frame.
+ */
 export function RaffleWheel({ names, rotation, spinning, durationMs = SLOW_SPIN_MS, idle, centre, className, groupRef, onSpinEnd }: WheelProps) {
   const n = Math.max(names.length, 1)
   const a = 360 / n
   const chord = (2 * Math.PI * 80 * a) / 360
   const font = Math.min(7, Math.max(2.3, chord * 0.6))
   const maxChars = font < 3.2 ? 26 : 20
+  const VB = '-106 -112 212 218'
   return (
-    <svg viewBox="-106 -112 212 218" className={cn('block h-auto w-full', className)} role="img" aria-label={`Raffle wheel with ${names.length} names`}>
-      <circle r="103" fill="var(--color-champagne)" opacity="0.35" />
-      <g
+    <div className={cn('relative w-full', className)} style={{ aspectRatio: '212 / 218' }} role="img" aria-label={`Raffle wheel with ${names.length} names`}>
+      <svg viewBox={VB} className="absolute inset-0 block size-full" aria-hidden="true">
+        <circle r="103" fill="var(--color-champagne)" opacity="0.35" />
+      </svg>
+      <div
         ref={groupRef}
-        className={idle ? 'motion-safe:animate-[spin_90s_linear_infinite]' : undefined}
-        style={idle ? undefined : { transform: `rotate(${rotation}deg)`, transition: spinning ? `transform ${durationMs}ms cubic-bezier(0.12, 0.8, 0.12, 1)` : 'none' }}
+        className={cn('absolute inset-0', idle && 'motion-safe:animate-[spin_90s_linear_infinite]')}
+        style={{
+          transformOrigin: '50% 51.376%',
+          willChange: 'transform',
+          ...(idle ? {} : { transform: `rotate(${rotation}deg)`, transition: spinning ? `transform ${durationMs}ms cubic-bezier(0.12, 0.8, 0.12, 1)` : 'none' }),
+        }}
         onTransitionEnd={(e) => e.target === e.currentTarget && onSpinEnd?.()}
       >
-        {names.length === 0 ? (
-          <circle r="100" fill="var(--color-cream)" stroke="var(--color-line)" strokeWidth="0.6" />
-        ) : (
-          names.map((name, i) => {
-            const a0 = -90 + i * a
-            const mid = a0 + a / 2
-            const label = name.length > maxChars ? `${name.slice(0, maxChars - 1)}…` : name
-            return (
-              <g key={`${name}-${i}`}>
-                {n === 1 ? (
-                  <circle r="100" fill={FILLS[0]} stroke="var(--color-line)" strokeWidth="0.5" />
-                ) : (
-                  <path d={segmentPath(a0, a0 + a, 100)} fill={FILLS[i % (n % 4 === 1 ? 3 : 4)]} stroke="var(--color-line)" strokeWidth="0.35" />
-                )}
-                <text
-                  transform={`rotate(${mid}) translate(94 0)`}
-                  textAnchor="end"
-                  dominantBaseline="middle"
-                  fontSize={font}
-                  fill="var(--color-ink)"
-                  style={{ fontFamily: 'var(--font-sans)' }}
-                >
-                  {label}
-                </text>
-              </g>
-            )
-          })
-        )}
-      </g>
-      <circle r="17" fill="var(--color-paper)" stroke="var(--color-champagne)" strokeWidth="1.2" />
-      <text textAnchor="middle" dominantBaseline="middle" fontSize="9" fill="var(--color-gold)" style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>
-        {centre ?? ''}
-      </text>
-      {/* pointer */}
-      <path d="M0 -94 L-7 -110 L7 -110 Z" fill="var(--color-ink)" stroke="var(--color-paper)" strokeWidth="1.2" strokeLinejoin="round" />
-    </svg>
+        <svg viewBox={VB} className="block size-full" aria-hidden="true">
+          {names.length === 0 ? (
+            <circle r="100" fill="var(--color-cream)" stroke="var(--color-line)" strokeWidth="0.6" />
+          ) : (
+            names.map((name, i) => {
+              const a0 = -90 + i * a
+              const mid = a0 + a / 2
+              const label = name.length > maxChars ? `${name.slice(0, maxChars - 1)}…` : name
+              return (
+                <g key={`${name}-${i}`}>
+                  {n === 1 ? (
+                    <circle r="100" fill={FILLS[0]} stroke="var(--color-line)" strokeWidth="0.5" />
+                  ) : (
+                    <path d={segmentPath(a0, a0 + a, 100)} fill={FILLS[i % (n % 4 === 1 ? 3 : 4)]} stroke="var(--color-line)" strokeWidth="0.35" />
+                  )}
+                  <text
+                    transform={`rotate(${mid}) translate(94 0)`}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                    fontSize={font}
+                    fill="var(--color-ink)"
+                    style={{ fontFamily: 'var(--font-sans)' }}
+                  >
+                    {label}
+                  </text>
+                </g>
+              )
+            })
+          )}
+        </svg>
+      </div>
+      <svg viewBox={VB} className="pointer-events-none absolute inset-0 block size-full" aria-hidden="true">
+        <circle r="17" fill="var(--color-paper)" stroke="var(--color-champagne)" strokeWidth="1.2" />
+        <text textAnchor="middle" dominantBaseline="middle" fontSize="9" fill="var(--color-gold)" style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>
+          {centre ?? ''}
+        </text>
+        {/* pointer */}
+        <path d="M0 -94 L-7 -110 L7 -110 Z" fill="var(--color-ink)" stroke="var(--color-paper)" strokeWidth="1.2" strokeLinejoin="round" />
+      </svg>
+    </div>
   )
 }
 
@@ -147,7 +162,7 @@ export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, 
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [confetti, setConfetti] = useState(0)
   const target = useRef<number | null>(null)
-  const group = useRef<SVGGElement | null>(null)
+  const group = useRef<HTMLDivElement | null>(null)
   const landed = useRef(onLanded)
   const auto = useRef(autoPlay)
   const spinRef = useRef<() => void>(() => undefined)

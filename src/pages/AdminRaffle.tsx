@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { ExternalLink, Maximize2, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { useToast } from '../hooks/useToast'
@@ -195,6 +194,17 @@ export default function AdminRaffle() {
       toast.error(toFriendlyMessage(e))
     }
   }
+  useEffect(() => {
+    if (!present) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPresent(false)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [present])
   const keepAutoPlaying = useCallback(() => autoRef.current && remainingRef.current > (latest.current.finalsAt ?? 5), [])
 
   const confirmRemove = async () => {
@@ -436,17 +446,41 @@ export default function AdminRaffle() {
                   <input className="input-base mt-2" value={prize} maxLength={150} onChange={(e) => setPrize(e.target.value)} placeholder="e.g. Coffee maker" />
                 </label>
               )}
-              {roundDone && <p className="mb-4 text-center text-sm text-muted">This round is complete. Start a new round to spin again.</p>}
-              <SpinStage
-                shown={names}
-                real={names}
-                centre={centre}
-                durationMs={spinMs}
-                disabled={roundDone}
-                autoPlay={keepAutoPlaying}
-                spinLabel={lastMode ? (names.length <= finalsAt ? 'Spin' : 'Quick spin') : 'Spin'}
-                onLanded={onLanded}
-              />
+              {/* The same wheel expands to full screen for Present — a spin carries on smoothly. */}
+              <div
+                className={present ? 'fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-y-auto bg-ivory px-6 py-10' : undefined}
+                role={present ? 'dialog' : undefined}
+                aria-modal={present || undefined}
+                aria-label={present ? 'Raffle' : undefined}
+              >
+                {present && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setPresent(false)}
+                      className="absolute right-5 top-5 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm text-muted transition hover:bg-cream hover:text-ink"
+                    >
+                      <X aria-hidden="true" className="size-4" /> Close
+                    </button>
+                    {settings && <p className="mb-4 font-serif text-3xl text-ink-soft">{settings.coupleNames}</p>}
+                    {!lastMode && prize.trim() && <p className="mb-4 text-lg uppercase tracking-[0.3em] text-gold">{prize.trim()}</p>}
+                    {lastMode && <p className="mb-4 text-lg uppercase tracking-[0.3em] text-gold">{roundDone ? 'We have a winner' : `${names.length} left`}</p>}
+                  </>
+                )}
+                {roundDone && !present && <p className="mb-4 text-center text-sm text-muted">This round is complete. Start a new round to spin again.</p>}
+                <SpinStage
+                  shown={present ? shown : names}
+                  real={names}
+                  centre={centre}
+                  large={present}
+                  durationMs={spinMs}
+                  disabled={roundDone}
+                  autoPlay={keepAutoPlaying}
+                  spinLabel={lastMode && names.length > finalsAt ? 'Quick spin' : 'Spin'}
+                  onLanded={onLanded}
+                />
+                {present && <SoundControls className="mt-2" />}
+              </div>
             </section>
 
             <section className="rounded-xl border border-line bg-paper p-5 shadow-soft sm:p-6">
@@ -484,34 +518,6 @@ export default function AdminRaffle() {
         </div>
       )}
 
-      {present &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-y-auto bg-ivory px-6 py-10" role="dialog" aria-modal="true" aria-label="Raffle">
-            <button
-              type="button"
-              onClick={() => setPresent(false)}
-              className="absolute right-5 top-5 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm text-muted transition hover:bg-cream hover:text-ink"
-            >
-              <X aria-hidden="true" className="size-4" /> Close
-            </button>
-            {settings && <p className="mb-6 font-serif text-3xl text-ink-soft">{settings.coupleNames}</p>}
-            {!lastMode && prize.trim() && <p className="mb-4 text-lg uppercase tracking-[0.3em] text-gold">{prize.trim()}</p>}
-            {lastMode && <p className="mb-4 text-lg uppercase tracking-[0.3em] text-gold">{roundDone ? 'We have a winner' : `${names.length} left`}</p>}
-            <SpinStage
-              shown={shown}
-              real={names}
-              centre={centre}
-              large
-              durationMs={spinMs}
-              disabled={roundDone}
-              autoPlay={keepAutoPlaying}
-              spinLabel={lastMode && names.length > finalsAt ? 'Quick spin' : 'Spin'}
-              onLanded={onLanded}
-            />
-            <SoundControls className="mt-2" />
-          </div>,
-          document.body,
-        )}
 
       <ConfirmDialog
         open={askNewRound}
