@@ -99,8 +99,13 @@ interface StageProps {
 }
 
 /** Wheel + Spin button + the winner reveal. The host spins; the winner is saved by the caller. */
-export function SpinStage({ shown, real, centre, disabled, large, onWinner }: StageProps) {
+export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, large, onWinner }: StageProps) {
   const reduce = useReducedMotion()
+  // The wheel keeps the names it was spun with until the next spin, so it doesn't
+  // redraw (and move the pointer) when the winner is taken off the list.
+  const [frozen, setFrozen] = useState<{ shown: string[]; real: string[] } | null>(null)
+  const shown = frozen?.shown ?? liveShown
+  const real = frozen?.real ?? liveReal
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
   const [winner, setWinner] = useState<string | null>(null)
@@ -120,8 +125,9 @@ export function SpinStage({ shown, real, centre, disabled, large, onWinner }: St
   }
 
   const spin = () => {
-    if (spinning || real.length === 0) return
-    const n = real.length
+    if (spinning || liveReal.length === 0) return
+    setFrozen({ shown: liveShown, real: liveReal })
+    const n = liveReal.length
     const a = 360 / n
     const i = randomIndex(n)
     const jitter = (Math.random() - 0.5) * a * 0.6
@@ -141,7 +147,7 @@ export function SpinStage({ shown, real, centre, disabled, large, onWinner }: St
       <button
         type="button"
         onClick={spin}
-        disabled={disabled || spinning || real.length === 0}
+        disabled={disabled || spinning || liveReal.length === 0}
         className={cn(
           'mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-ink font-medium uppercase tracking-[0.2em] text-ivory shadow-soft transition hover:bg-ink-soft disabled:cursor-not-allowed disabled:opacity-50',
           large ? 'min-h-16 px-14 text-lg' : 'min-h-12 px-10 text-sm',
