@@ -166,3 +166,10 @@
     break-before: page;
   }
 }
+
+/* Screen-only helpers inside print previews (e.g. "doesn't fit" outlines). */
+@media print {
+  .screen-only {
+    display: none !important;
+  }
+}

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { CheckCircle2, Mail, Printer, Wallet } from 'lucide-react'
+import { CheckCircle2, Mail, Printer, TriangleAlert, Wallet } from 'lucide-react'
 import { useAdminData } from '../hooks/useAdminData'
 import { useEntourageLinks } from '../hooks/useEntourageLinks'
 import { entouragePositions, invitationPosition } from '../utils/positions'
@@ -31,6 +31,7 @@ import {
   type PrintTheme,
 } from '../utils/printables'
 import { siteLinks } from '../utils/share'
+import { measureCardFit, type CardFit } from '../utils/cardFit'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { cn } from '../components/ui/cn'
@@ -39,6 +40,10 @@ import { STYLES, resolveTheme, type StyleId } from '../theme/themes'
 import { Card3D, Envelope3D } from '../components/printables/Preview3D'
 
 type Tab = 'invitations' | 'envelope'
+/** Same-size stand-in for a personal QR while measuring or before the real one is ready. */
+/** Shown in the 3D preview before any guest is ticked. */
+const SAMPLE_GUEST = { id: 'sample', inviteeName: 'Your Guest’s Name', positionMode: 'custom', positionLabel: 'Maid of Honor', guests: [] } as unknown as InvitationWithRSVP
+const QR_PLACEHOLDER = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="100%" height="100%"><rect width="10" height="10" fill="none"/></svg>'
 const PX_PER_MM = 96 / 25.4
 
 function readTheme(): PrintTheme {
@@ -226,6 +231,15 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
   const [sheetNo, setSheetNo] = useState(0) // 0 = all sheets
   const [rotateBacks, setRotateBacks] = useState(false)
   const [showPositions, setShowPositions] = useState(true)
+  const [qrPlace, setQrPlace] = useState<'back' | 'front'>('back')
+  // Website Settings sections printed under "Good to know" on the back (default: the first three).
+  const infoSections = useMemo(() => (settings?.sections ?? []).filter((x) => x.visible && (x.title.trim() || x.body.trim())), [settings])
+  const [backPick, setBackPick] = useState<Set<string> | null>(null)
+  const backIds = backPick ?? new Set(infoSections.slice(0, 3).map((x) => x.id))
+  const backSections = infoSections.filter((x) => backIds.has(x.id)).map((x) => ({ title: x.title, body: x.body }))
+  const measureHost = useRef<HTMLDivElement>(null)
+  const [fits, setFits] = useState<Record<string, CardFit>>({})
+  const [backFit, setBackFit] = useState<CardFit>({ fit: 1, overflow: false })
   const { links: entLinks } = useEntourageLinks()
   const autoPositions = useMemo(() => entouragePositions(settings?.entourage ?? [], entLinks), [settings, entLinks])
   const effective = (inv: InvitationWithRSVP): InvitationWithRSVP => {
@@ -295,43 +309,81 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
   const respondBy = settings && settings.rsvpShowDeadline && settings.rsvpDeadline && isRsvpOpen(settings) ? formatDeadlineDate(settings.rsvpDeadline) : null
   const shortLink = links.home.replace(/^https?:\/\//, '').replace(/\/$/, '')
   const groups = chunk(chosen, perSheet)
-  const backCard = invitationBackHtml({
-    coupleNames: settings?.coupleNames ?? '',
-    dateText: settings ? formatWeddingDate(settings.weddingDate) : '',
-    monogram: settings ? monogram(settings.coupleNames, '&') : '',
-    theme,
-    size,
-  })
+  const qrOnBack = qrPlace === 'back'
+  const frontFor = (inv: InvitationWithRSVP, fit = 1, sz: CardSize = size, qrSvg = qr[inv.id] ?? '') =>
+    invitationCardHtml({
+      guestName: inv.inviteeName,
+      position: positionOf(inv),
+      withNames: withNamesOf(inv),
+      coupleNames: settings?.coupleNames ?? '',
+      dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
+      ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
+      reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
+      respondBy,
+      qrSvg,
+      shortLink,
+      theme,
+      size: sz,
+      qrOnBack,
+      fit,
+    })
+  const backFor = (inv: InvitationWithRSVP | null, fit = 1, sz: CardSize = size, qrSvg = inv ? qr[inv.id] ?? '' : '') =>
+    invitationBackHtml({
+      coupleNames: settings?.coupleNames ?? '',
+      dateText: settings ? formatWeddingDate(settings.weddingDate) : '',
+      monogram: settings ? monogram(settings.coupleNames, '&') : '',
+      theme,
+      size: sz,
+      ...(qrOnBack ? { qrSvg: qrSvg || QR_PLACEHOLDER, respondBy, shortLink, guestName: inv?.inviteeName } : {}),
+      sections: backSections,
+      fit,
+    })
+
+  // Measure every listed card with the real fonts: shrink text a little when a card is very
+  // full, and flag the ones that still don't fit inside the frame.
+  const measureKey = JSON.stringify([list.map((i) => [i.id, positionOf(i), withNamesOf(i)]), design, qrPlace, backSections, settings?.theme, settings?.coupleNames, respondBy])
+  useEffect(() => {
+    const host = measureHost.current
+    if (!host || !settings) return
+    let cancelled = false
+    const run = () => {
+      if (cancelled) return
+      const next: Record<string, CardFit> = {}
+      for (const inv of list) next[inv.id] = measureCardFit((f) => frontFor(inv, f, '5x7', QR_PLACEHOLDER), host)
+      setFits(next)
+      setBackFit(measureCardFit((f) => backFor(list[0] ?? null, f, '5x7', QR_PLACEHOLDER), host))
+    }
+    void document.fonts.ready.then(run)
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [measureKey])
+  const fitOf = (inv: InvitationWithRSVP) => fits[inv.id] ?? { fit: 1, overflow: false }
+  const overflowing = list.filter((i) => fitOf(i).overflow)
+  const flag = (html: string, bad: boolean) =>
+    bad ? `${html}<div class="screen-only" style="position:absolute;inset:0;outline:0.8mm solid #c0392b;outline-offset:-0.4mm;pointer-events:none"></div>` : html
+
   const layouts = groups.map((group) => layoutRow(s.w, s.h, group.length === perSheet ? perSheet : group.length, card.w, card.h))
   const fronts = groups.map((group, gi) => {
     const pos = layouts[gi]
     const cards = group
-      .map((inv, k) => {
-        const html = invitationCardHtml({
-          guestName: inv.inviteeName,
-          position: positionOf(inv),
-          withNames: withNamesOf(inv),
-          coupleNames: settings?.coupleNames ?? '',
-          dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
-          ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
-          reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
-          respondBy,
-          qrSvg: qr[inv.id] ?? '',
-          shortLink,
-          theme,
-          size,
-        })
-        return `<div style="position:absolute;left:${pos[k].x}mm;top:${pos[k].y}mm">${html}</div>`
-      })
+      .map((inv, k) => `<div style="position:absolute;left:${pos[k].x}mm;top:${pos[k].y}mm">${flag(frontFor(inv, fitOf(inv).fit), fitOf(inv).overflow)}</div>`)
       .join('')
     return cards + cropMarksSvg(s.w, s.h, pos, theme.muted) + orientationMarkHtml('front', gi + 1, groups.length, theme) + calibrationHtml(theme)
   })
-  // Every card back is identical and the row is centred, so each back lands
-  // exactly behind a front whichever way the sheet is turned over.
-  const backs = groups.map((_, gi) => {
+  // Backs are printed in mirrored order (the sheet is turned over left-to-right), so each
+  // guest's back — with their own RSVP QR — lands exactly behind their front.
+  const backs = groups.map((group, gi) => {
     const pos = layouts[gi]
+    const n = group.length
     const inner =
-      pos.map((p) => `<div style="position:absolute;left:${p.x}mm;top:${p.y}mm">${backCard}</div>`).join('') +
+      pos
+        .map((p, k) => {
+          const inv = group[n - 1 - k]
+          return `<div style="position:absolute;left:${p.x}mm;top:${p.y}mm">${flag(backFor(inv, backFit.fit), backFit.overflow)}</div>`
+        })
+        .join('') +
       cropMarksSvg(s.w, s.h, pos, theme.muted) +
       orientationMarkHtml('back', gi + 1, groups.length, theme)
     return rotateBacks ? `<div style="position:absolute;inset:0;transform:rotate(180deg)">${inner}</div>` : inner
@@ -365,7 +417,32 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
 
   return (
     <div className="grid gap-5 print:block xl:grid-cols-[360px_1fr]">
+      <div ref={measureHost} aria-hidden="true" style={{ position: 'fixed', left: -10000, top: 0, visibility: 'hidden', pointerEvents: 'none' }} />
       <aside className="space-y-4 print:hidden">
+        {(overflowing.length > 0 || backFit.overflow) && (
+          <div role="alert" className="rounded-xl border border-rose/40 bg-rose/5 p-4 text-sm text-ink-soft">
+            <p className="flex items-center gap-2 font-medium text-rose">
+              <TriangleAlert aria-hidden="true" className="size-4 shrink-0" />
+              {overflowing.length > 0
+                ? `${overflowing.length} ${overflowing.length === 1 ? 'invitation doesn’t' : 'invitations don’t'} fit inside the border`
+                : 'The back of the card doesn’t fit'}
+            </p>
+            {overflowing.length > 0 && (
+              <>
+                <p className="mt-1">{overflowing.map((i) => i.inviteeName).join(', ')}</p>
+                <p className="mt-1 text-xs text-muted">
+                  Even with smaller text the words reach the border. Shorten the position or the “together with” names, use shorter venue names in Website
+                  Settings{qrOnBack ? '' : ', or move the RSVP QR to the back'}.
+                </p>
+              </>
+            )}
+            {backFit.overflow && (
+              <p className="mt-1 text-xs text-muted">
+                The back: untick a “Good to know” section below, or shorten its text in Website Settings.
+              </p>
+            )}
+          </div>
+        )}
         <section className="rounded-xl border border-line bg-paper p-4 shadow-soft">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-sans text-sm font-semibold text-ink">{showAll ? 'All invitations' : 'Pending — no response yet'}</h2>
@@ -410,6 +487,13 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
                         <span className="block truncate text-xs text-muted">+ {i.guests.filter((g) => g.addedBy === 'admin').map((g) => g.guestName).join(', ')}</span>
                       )}
                     </span>
+                    {fitOf(i).overflow ? (
+                      <span title="Doesn’t fit inside the border" className="flex items-center gap-1 text-xs font-medium text-rose">
+                        <TriangleAlert aria-hidden="true" className="size-3.5" /> Too long
+                      </span>
+                    ) : (
+                      fitOf(i).fit < 1 && <span title="Printed with slightly smaller text so it fits" className="text-xs text-muted">Smaller text</span>
+                    )}
                     {i.printedAt && <Badge tone="gray">Printed {formatDateTime(i.printedAt).split(',')[0]}</Badge>}
                   </label>
                   <PositionPicker
@@ -433,6 +517,63 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
               ))}
             </select>
           </label>
+          <div>
+            <p className="mb-1.5 text-sm text-ink-soft">RSVP QR code</p>
+            <div role="radiogroup" aria-label="RSVP QR code" className="grid grid-cols-2 gap-1 rounded-lg bg-cream p-1">
+              {(
+                [
+                  { v: 'back', l: 'On the back' },
+                  { v: 'front', l: 'On the front' },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.v}
+                  type="button"
+                  role="radio"
+                  aria-checked={qrPlace === o.v}
+                  onClick={() => setQrPlace(o.v)}
+                  className={cn('rounded-md px-2 py-1.5 text-sm transition', qrPlace === o.v ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              {qrOnBack
+                ? 'Recommended: the front stays clean and says “Please turn over to RSVP”. Remember to print the backs too.'
+                : 'Everything a guest needs is on the front, even if you only print fronts.'}
+            </p>
+          </div>
+          {infoSections.length > 0 && (
+            <fieldset>
+              <legend className="mb-1.5 text-sm text-ink-soft">“Good to know” on the back</legend>
+              <div className="space-y-1">
+                {infoSections.map((x) => (
+                  <label key={x.id} className="flex items-center gap-2 text-sm text-ink-soft">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-ink"
+                      checked={backIds.has(x.id)}
+                      onChange={(e) => {
+                        const n = new Set(backIds)
+                        if (e.target.checked) n.add(x.id)
+                        else n.delete(x.id)
+                        setBackPick(n)
+                      }}
+                    />
+                    {x.title || 'Untitled'}
+                  </label>
+                ))}
+              </div>
+              <p className={cn('mt-1 text-xs', backFit.overflow ? 'text-rose' : 'text-muted')}>
+                {backFit.overflow
+                  ? 'Too much for the back — untick a section.'
+                  : backFit.fit < 1
+                    ? 'Fits, with slightly smaller text.'
+                    : 'From Website Settings. Usually 2–3 sections fit nicely.'}
+              </p>
+            </fieldset>
+          )}
           <div>
             <p className="mb-1.5 text-sm text-ink-soft">What to print</p>
             <div role="radiogroup" aria-label="What to print" className="grid grid-cols-3 gap-1 rounded-lg bg-cream p-1">
@@ -520,6 +661,12 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
             <li>Hold it up to a light: both “▲ TOP EDGE” labels should be on the same edge and the corner marks should line up. If the back is upside-down, tick “Turn the backs upside-down”.</li>
           </ol>
           <p className="mt-2 text-xs text-muted">One sheet at a time? Pick it under “Sheets”. The back has no border, so a millimetre of printer drift won’t show.</p>
+          {qrOnBack && (
+            <p className="mt-2 text-xs text-muted">
+              With the QR on the back, every back belongs to one guest. Print the backs for the same sheet you just printed, without shuffling the pages —
+              the back of each card shows the guest’s QR in the right place.
+            </p>
+          )}
         </Tips>
         <Tips>
           <p>
@@ -536,27 +683,8 @@ function InvitationsTab({ paper, design }: { paper: Paper; design: StyleId }) {
             width={box.width}
             widthMm={CARD_SIZES[size].w}
             heightMm={CARD_SIZES[size].h}
-            frontHtml={invitationCardHtml({
-              guestName: chosen[0]?.inviteeName ?? 'Your Guest’s Name',
-              position: chosen[0] ? positionOf(chosen[0]) : 'Maid of Honor',
-              withNames: chosen[0] ? withNamesOf(chosen[0]) : [],
-              coupleNames: settings?.coupleNames ?? '',
-              dateText: settings ? formatWeddingDate(settings.weddingDate, 'full') : '',
-              ceremony: [settings?.churchName, settings?.ceremonyTime].filter(Boolean).join(' · '),
-              reception: [settings?.receptionName, settings?.receptionTime].filter(Boolean).join(' · '),
-              respondBy,
-              qrSvg: (chosen[0] && qr[chosen[0].id]) || '',
-              shortLink,
-              theme,
-              size,
-            })}
-            backHtml={invitationBackHtml({
-              coupleNames: settings?.coupleNames ?? '',
-              dateText: settings ? formatWeddingDate(settings.weddingDate) : '',
-              monogram: settings ? monogram(settings.coupleNames, '&') : '',
-              theme,
-              size,
-            })}
+            frontHtml={chosen[0] ? frontFor(chosen[0], fitOf(chosen[0]).fit) : frontFor(SAMPLE_GUEST as InvitationWithRSVP)}
+            backHtml={backFor(chosen[0] ?? null, backFit.fit)}
           />
         ) : chosen.length === 0 ? (
           <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-line text-sm text-muted print:hidden">

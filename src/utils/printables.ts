@@ -229,6 +229,9 @@ export interface InvitationCardOptions {
   shortLink: string
   theme: PrintTheme
   size: CardSize
+  /** Print the RSVP QR on the back instead (front then says "Please turn over to RSVP"). */
+  qrOnBack?: boolean
+  fit?: number
 }
 
 function joinNames(names: string[]): string {
@@ -237,40 +240,165 @@ function joinNames(names: string[]): string {
 }
 
 /** A personalised invitation card, designed at 5×7 in and scaled for 4×6. */
+/** Space kept clear inside the card edge for each style's frame (mm, at 5×7). */
+export function cardSafeArea(style: StyleId | undefined): { top: number; bottom: number; side: number } {
+  return style === 'heritage' ? { top: 10.5, bottom: 10.5, side: 9.5 } : style === 'deco' ? { top: 9.5, bottom: 9.5, side: 10 } : { top: 9, bottom: 9, side: 9.5 }
+}
+/** Smallest text scale used before a card is reported as not fitting. */
+export const MIN_CARD_FIT = 0.8
+
+function svgBox(w: number, h: number, body: string, css = '') {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${r2(w)}mm" height="${r2(h)}mm" viewBox="0 0 ${w} ${h}" style="display:block;${css}">${body}</svg>`
+}
+
+/** Wraps a card designed at 5×7 in, scaling it for smaller sizes. */
+function sized(inner: string, size: CardSize): string {
+  const base = CARD_SIZES['5x7']
+  const s = CARD_SIZES[size]
+  const k = s.w / base.w
+  if (k === 1) return inner
+  return `<div style="width:${s.w}mm;height:${s.h}mm;overflow:hidden"><div style="transform:scale(${k});transform-origin:top left">${inner}</div></div>`
+}
+
+/**
+ * A personalised invitation card, designed at 5×7 in and scaled for 4×6.
+ * `fit` (0.8–1) shrinks the text slightly when a card is very full; the
+ * measured content area is marked data-card-body / data-card-content.
+ */
 export function invitationCardHtml(o: InvitationCardOptions): string {
   const t = safe(o.theme)
   const base = CARD_SIZES['5x7']
-  const size = CARD_SIZES[o.size]
-  const k = size.w / base.w
   const style = t.style ?? 'classic'
   const ty = styleType(style)
   const c = { ink: t.ink, accent: t.accent, accentLight: t.accentLight, paper: t.paper, line: t.line, serif: t.serif }
-  const svgBox = (w: number, h: number, body: string, css = '') =>
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}" style="display:block;${css}">${body}</svg>`
+  const f = Math.max(MIN_CARD_FIT, Math.min(1, o.fit ?? 1))
+  const z = (v: number) => r2(v * f)
+  const area = cardSafeArea(style)
   const couple = ty.namesCase === 'uppercase' ? coupleHtml(o.coupleNames.toUpperCase(), t) : coupleHtml(o.coupleNames, t)
-  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;padding:${style === 'heritage' ? '11mm 10mm 12mm' : '9mm 10mm 11mm'};background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative;display:flex;flex-direction:column;align-items:center;text-align:center">
+  const bottom = o.qrOnBack
+    ? `<div style="padding-top:${z(4)}mm;display:flex;flex-direction:column;align-items:center">
+        ${svgBox(z(40), z(7), ornamentSvg(style, 20 * f, 4 * f, 32 * f, c))}
+        <div style="margin-top:${z(2.5)}mm;font-size:${z(2.5)}mm;letter-spacing:${z(0.6)}mm;color:${t.muted}">PLEASE TURN OVER TO RSVP</div>
+      </div>`
+    : `<div style="margin-top:auto;padding-top:${z(3)}mm;display:flex;flex-direction:column;align-items:center">
+        ${svgBox(z(40), z(7), ornamentSvg(style, 20 * f, 4 * f, 32 * f, c))}
+        <div style="margin-top:${z(3)}mm;width:${z(24)}mm;height:${z(24)}mm">${o.qrSvg}</div>
+        <div style="margin-top:${z(2)}mm;font-size:${z(3)}mm;letter-spacing:${z(0.5)}mm;color:${t.ink};font-weight:500">SCAN TO RSVP</div>
+        ${o.respondBy ? `<div style="margin-top:${z(1)}mm;font-size:${z(2.7)}mm;color:${t.soft}">Please respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
+        <div style="margin-top:${z(0.8)}mm;word-break:break-all;color:${t.muted};font-size:${z(2.2)}mm">${esc(o.shortLink)}</div>
+      </div>`
+  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative">
     ${svgBox(base.w, base.h, frameSvg(style, 4.5, 4.5, base.w - 9, base.h - 9, c), 'position:absolute;left:0;top:0;pointer-events:none')}
-    <div style="margin-top:4mm;font-size:2.7mm;letter-spacing:${ty.eyebrowTracking}mm;color:${t.accent};position:relative">TOGETHER WITH THEIR FAMILIES</div>
-    <div style="margin-top:5mm;font-family:${t.serif};font-size:${r2(13 * ty.namesScale)}mm;line-height:1.02;font-weight:${ty.namesWeight};letter-spacing:${ty.namesTracking};position:relative">${couple}</div>
-    <div style="margin-top:4mm;font-family:${t.serif};font-style:italic;font-size:4.2mm;color:${t.soft}">request the pleasure of your company</div>
-    <div style="margin-top:4mm">${svgBox(40, 8, ornamentSvg(style, 20, 4.5, 38, c))}</div>
-    <div style="margin-top:5mm;font-size:2.6mm;letter-spacing:0.6mm;color:${t.muted}">DEAR</div>
-    <div style="margin-top:1.5mm;font-family:${t.serif};font-size:7.4mm;line-height:1.1">${esc(o.guestName)}</div>
-    ${o.position ? `<div style="margin-top:1.4mm;font-size:2.7mm;letter-spacing:0.7mm;color:${t.accent};font-weight:500">${esc(o.position.toUpperCase())}</div>` : ''}
-    ${o.withNames.length ? `<div style="margin-top:1.5mm;font-family:${t.serif};font-style:italic;font-size:4mm;color:${t.soft};max-width:95mm">together with ${esc(joinNames(o.withNames))}</div>` : ''}
-    <div style="margin-top:6mm;font-size:3.6mm;letter-spacing:0.9mm;font-weight:500">${esc(o.dateText.toUpperCase())}</div>
-    ${o.ceremony ? `<div style="margin-top:3mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">CEREMONY</span><br/>${esc(o.ceremony)}</div>` : ''}
-    ${o.reception ? `<div style="margin-top:2.5mm;font-size:3.1mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:0.4mm;color:${t.accent}">RECEPTION</span><br/>${esc(o.reception)}</div>` : ''}
-    <div style="margin-top:auto;display:flex;flex-direction:column;align-items:center;text-align:center">
-      ${svgBox(40, 7, ornamentSvg(style, 20, 4, 32, c))}
-      <div style="margin-top:3.5mm;width:24mm;height:24mm">${o.qrSvg}</div>
-      <div style="margin-top:2.2mm;font-size:3mm;letter-spacing:0.5mm;color:${t.ink};font-weight:500">SCAN TO RSVP</div>
-      ${o.respondBy ? `<div style="margin-top:1mm;font-size:2.7mm;color:${t.soft}">Please respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
-      <div style="margin-top:0.8mm;word-break:break-all;color:${t.muted};font-size:2.2mm;max-width:95mm">${esc(o.shortLink)}</div>
+    <div data-card-body style="position:absolute;left:${area.side}mm;right:${area.side}mm;top:${area.top}mm;bottom:${area.bottom}mm;overflow:hidden;display:flex;flex-direction:column">
+    <div data-card-content style="flex:1 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;overflow-wrap:anywhere">
+    <div style="margin-top:${z(3)}mm;font-size:${z(2.7)}mm;letter-spacing:${z(ty.eyebrowTracking)}mm;color:${t.accent}">TOGETHER WITH THEIR FAMILIES</div>
+    <div style="margin-top:${z(4.5)}mm;font-family:${t.serif};font-size:${z(13 * ty.namesScale)}mm;line-height:1.02;font-weight:${ty.namesWeight};letter-spacing:${ty.namesTracking}">${couple}</div>
+    <div style="margin-top:${z(3.5)}mm;font-family:${t.serif};font-style:italic;font-size:${z(4.2)}mm;color:${t.soft}">request the pleasure of your company</div>
+    <div style="margin-top:${z(3.5)}mm">${svgBox(z(40), z(8), ornamentSvg(style, 20 * f, 4.5 * f, 38 * f, c))}</div>
+    <div style="${o.qrOnBack ? 'margin:auto 0;padding-top:' + z(4) + 'mm;' : ''}display:flex;flex-direction:column;align-items:center">
+    <div style="margin-top:${z(o.qrOnBack ? 0 : 4.5)}mm;font-size:${z(2.6)}mm;letter-spacing:${z(0.6)}mm;color:${t.muted}">DEAR</div>
+    <div style="margin-top:${z(1.5)}mm;font-family:${t.serif};font-size:${z(7.4)}mm;line-height:1.1">${esc(o.guestName)}</div>
+    ${o.position ? `<div style="margin-top:${z(1.4)}mm;font-size:${z(2.7)}mm;letter-spacing:${z(0.7)}mm;color:${t.accent};font-weight:500">${esc(o.position.toUpperCase())}</div>` : ''}
+    ${o.withNames.length ? `<div style="margin-top:${z(1.5)}mm;font-family:${t.serif};font-style:italic;font-size:${z(4)}mm;line-height:1.3;color:${t.soft}">together with ${esc(joinNames(o.withNames))}</div>` : ''}
+    <div style="margin-top:${z(5.5)}mm;font-size:${z(3.6)}mm;letter-spacing:${z(0.9)}mm;font-weight:500">${esc(o.dateText.toUpperCase())}</div>
+    ${o.ceremony ? `<div style="margin-top:${z(3)}mm;font-size:${z(3.1)}mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:${z(0.4)}mm;color:${t.accent}">CEREMONY</span><br/>${esc(o.ceremony)}</div>` : ''}
+    ${o.reception ? `<div style="margin-top:${z(2.5)}mm;font-size:${z(3.1)}mm;line-height:1.45;color:${t.soft}"><span style="letter-spacing:${z(0.4)}mm;color:${t.accent}">RECEPTION</span><br/>${esc(o.reception)}</div>` : ''}
     </div>
+    ${bottom}
+    </div></div>
   </div>`
-  if (k === 1) return inner
-  return `<div style="width:${size.w}mm;height:${size.h}mm;overflow:hidden"><div style="transform:scale(${k});transform-origin:top left">${inner}</div></div>`
+  return sized(inner, o.size)
+}
+
+export interface CardBackOptions {
+  coupleNames: string
+  dateText: string
+  monogram: string
+  theme: PrintTheme
+  size: CardSize
+  /** Personal RSVP QR — when given, the RSVP block is printed on the back. */
+  qrSvg?: string
+  respondBy?: string | null
+  shortLink?: string
+  /** Small "Personal QR for …" line, so each back can be matched to its front. */
+  guestName?: string
+  /** Website Settings sections to print under "Good to know". */
+  sections?: { title: string; body: string }[]
+  fit?: number
+}
+
+/**
+ * Back of an invitation card: monogram crest, then (optionally) the RSVP QR
+ * and the wedding details. Frameless and centred, so a millimetre or two of
+ * printer drift when printing the reverse doesn't show.
+ */
+export function invitationBackHtml(o: CardBackOptions): string {
+  const t = safe(o.theme)
+  const base = CARD_SIZES['5x7']
+  const style = t.style ?? 'classic'
+  const ty = styleType(style)
+  const c = { ink: t.ink, accent: t.accent, accentLight: t.paper, paper: t.paper, line: t.line, serif: t.serif }
+  const f = Math.max(MIN_CARD_FIT, Math.min(1, o.fit ?? 1))
+  const z = (v: number) => r2(v * f)
+  const rsvp = Boolean(o.qrSvg)
+  const sections = (o.sections ?? []).filter((x) => x.title.trim() || x.body.trim())
+  const busy = rsvp || sections.length > 0
+  const crestBox = busy ? 22 : 40
+  const crest = sealSvg(style, 20, 20, style === 'deco' ? 11 : 12, o.monogram, c, esc)
+  const names = ty.namesCase === 'uppercase' ? o.coupleNames.toUpperCase() : o.coupleNames
+  const eyebrow = (text: string, mt: number) =>
+    `<div style="margin-top:${z(mt)}mm;font-size:${z(2.5)}mm;letter-spacing:${z(ty.eyebrowTracking * 0.8)}mm;color:${t.accent}">${text}</div>`
+  const divider = (mt: number) => `<div style="margin-top:${z(mt)}mm">${svgBox(z(30), z(6), ornamentSvg(style, 15 * f, 3 * f, 24 * f, c))}</div>`
+
+  const parts: string[] = []
+  parts.push(
+    `<div style="margin-top:auto"><svg xmlns="http://www.w3.org/2000/svg" width="${z(crestBox)}mm" height="${z(crestBox)}mm" viewBox="0 0 40 40" style="display:block">${crest}</svg></div>`,
+  )
+  parts.push(`<div style="margin-top:${z(busy ? 2.5 : 4)}mm;font-family:${t.serif};font-size:${z(busy ? 4.4 : 5)}mm;color:${t.ink};letter-spacing:${ty.namesTracking}">${coupleHtml(names, t)}</div>`)
+  if (!busy) parts.push(divider(2.5))
+  parts.push(`<div style="margin-top:${z(busy ? 1.2 : 2)}mm;font-size:${z(2.5)}mm;letter-spacing:${z(0.8)}mm;color:${t.accent}">${esc(o.dateText.toUpperCase())}</div>`)
+  if (rsvp && sections.length) {
+    // Compact: QR on the left, the RSVP words beside it — leaves room for the details below.
+    parts.push(divider(3.5))
+    parts.push(`<div style="margin-top:${z(3)}mm;display:flex;align-items:center;gap:${z(4)}mm;text-align:left">
+      <div style="flex:none;width:${z(25)}mm;height:${z(25)}mm">${o.qrSvg}</div>
+      <div style="min-width:0">
+        <div style="font-size:${z(2.5)}mm;letter-spacing:${z(ty.eyebrowTracking * 0.8)}mm;color:${t.accent}">KINDLY RSVP</div>
+        <div style="margin-top:${z(1.2)}mm;font-size:${z(3)}mm;letter-spacing:${z(0.4)}mm;color:${t.ink};font-weight:500">SCAN TO RSVP</div>
+        ${o.respondBy ? `<div style="margin-top:${z(1)}mm;font-size:${z(2.6)}mm;line-height:1.35;color:${t.soft}">Please respond on or before<br/><b style="color:${t.ink}">${esc(o.respondBy)}</b></div>` : ''}
+        ${o.shortLink ? `<div style="margin-top:${z(1)}mm;word-break:break-all;color:${t.muted};font-size:${z(2.1)}mm">${esc(o.shortLink)}</div>` : ''}
+        ${o.guestName ? `<div style="margin-top:${z(1)}mm;color:${t.muted};font-size:${z(2.1)}mm;font-style:italic">Personal QR for ${esc(o.guestName)}</div>` : ''}
+      </div>
+    </div>`)
+  } else if (rsvp) {
+    parts.push(divider(4))
+    parts.push(eyebrow('KINDLY RSVP', 3))
+    parts.push(`<div style="margin-top:${z(3)}mm;width:${z(30)}mm;height:${z(30)}mm">${o.qrSvg}</div>`)
+    parts.push(`<div style="margin-top:${z(2)}mm;font-size:${z(3)}mm;letter-spacing:${z(0.5)}mm;color:${t.ink};font-weight:500">SCAN TO RSVP</div>`)
+    if (o.respondBy) parts.push(`<div style="margin-top:${z(1)}mm;font-size:${z(2.7)}mm;color:${t.soft}">Please respond on or before <b style="color:${t.ink}">${esc(o.respondBy)}</b></div>`)
+    if (o.shortLink) parts.push(`<div style="margin-top:${z(0.8)}mm;word-break:break-all;color:${t.muted};font-size:${z(2.2)}mm">${esc(o.shortLink)}</div>`)
+    if (o.guestName) parts.push(`<div style="margin-top:${z(0.8)}mm;color:${t.muted};font-size:${z(2.1)}mm;font-style:italic">Personal QR for ${esc(o.guestName)}</div>`)
+  }
+  if (sections.length) {
+    parts.push(divider(rsvp ? 4.5 : 4))
+    parts.push(eyebrow('GOOD TO KNOW', 2.5))
+    for (const sec of sections) {
+      parts.push(`<div style="margin-top:${z(2.8)}mm;font-family:${t.serif};font-size:${z(3.9)}mm;line-height:1.15;color:${t.ink}">${esc(sec.title)}</div>`)
+      const paras = sec.body.split(/\n+/).map((p) => p.trim()).filter(Boolean)
+      for (const [i, para] of paras.entries()) {
+        parts.push(`<div style="margin-top:${z(i ? 1 : 1.2)}mm;font-size:${z(2.6)}mm;line-height:1.4;color:${t.soft};max-width:${z(100)}mm">${esc(para)}</div>`)
+      }
+    }
+  }
+  parts.push('<div style="margin-bottom:auto"></div>')
+
+  const inner = `<div style="box-sizing:border-box;width:${base.w}mm;height:${base.h}mm;background:${t.paper};color:${t.ink};font-family:${t.sans};position:relative">
+    <div data-card-body style="position:absolute;left:11mm;right:11mm;top:10mm;bottom:10mm;overflow:hidden;display:flex;flex-direction:column">
+    <div data-card-content style="flex:1 0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;overflow-wrap:anywhere">
+    ${parts.join('\n')}
+    </div></div>
+  </div>`
+  return sized(inner, o.size)
 }
 
 /** Thin corner crop marks around a card placed at (x, y) on a sheet (all mm). */
@@ -311,27 +439,6 @@ export function calibrationHtml(theme: PrintTheme): string {
   return `<div style="position:absolute;left:8mm;bottom:5mm;display:flex;align-items:center;gap:2mm;font-family:${t.sans};font-size:2.2mm;color:${t.muted}">
     <div style="width:50mm;height:1.6mm;border:0.2mm solid ${t.muted};border-top:none"></div>
     <span>Print at 100% (Actual size) — this bar should measure 5 cm</span>
-  </div>`
-}
-
-/**
- * Back of an invitation card. Deliberately frameless and centred, so a
- * millimetre or two of printer drift when printing the reverse doesn't show.
- */
-export function invitationBackHtml(o: { coupleNames: string; dateText: string; monogram: string; theme: PrintTheme; size: CardSize }): string {
-  const t = safe(o.theme)
-  const s = CARD_SIZES[o.size]
-  const k = s.w / CARD_SIZES['5x7'].w
-  const style = t.style ?? 'classic'
-  const c = { ink: t.ink, accent: t.accent, accentLight: t.paper, paper: t.paper, line: t.line, serif: t.serif }
-  const box = 40 * k
-  const crest = sealSvg(style, 20, 20, style === 'deco' ? 11 : 12, o.monogram, c, esc)
-  const names = styleType(style).namesCase === 'uppercase' ? o.coupleNames.toUpperCase() : o.coupleNames
-  return `<div style="box-sizing:border-box;width:${s.w}mm;height:${s.h}mm;background:${t.paper};display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:${t.sans}">
-    <svg xmlns="http://www.w3.org/2000/svg" width="${box}mm" height="${box}mm" viewBox="0 0 40 40" style="display:block">${crest}</svg>
-    <div style="margin-top:${4 * k}mm;font-family:${t.serif};font-size:${5 * k}mm;color:${t.ink};letter-spacing:${styleType(style).namesTracking}">${coupleHtml(names, t)}</div>
-    <svg xmlns="http://www.w3.org/2000/svg" width="${30 * k}mm" height="${6 * k}mm" viewBox="0 0 30 6" style="display:block;margin-top:${2.5 * k}mm">${ornamentSvg(style, 15, 3, 24, c)}</svg>
-    <div style="margin-top:${2 * k}mm;font-size:${2.6 * k}mm;letter-spacing:0.8mm;color:${t.accent}">${esc(o.dateText.toUpperCase())}</div>
   </div>`
 }
 
