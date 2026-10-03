@@ -60,7 +60,8 @@ export interface SeatingConfig {
   /** The hall's walls — anything outside is "Outside". */
   room: Rect
   canvas: { width: number; height: number }
-  finder: { mode: FinderMode; from: string | null }
+  /** preassign: guests see seats you've set before they RSVP, coloured by their answer. */
+  finder: { mode: FinderMode; from: string | null; preassign: boolean }
 }
 
 export interface SeatAssignment {
@@ -83,7 +84,7 @@ export interface SeatingNotice {
 export const DEFAULT_SEATING_CONFIG: SeatingConfig = {
   room: { x: 100, y: 100, width: 1400, height: 900 },
   canvas: { width: 1600, height: 1100 },
-  finder: { mode: 'hidden', from: null },
+  finder: { mode: 'hidden', from: null, preassign: false },
 }
 
 export const ITEM_KINDS: { kind: ItemKind; label: string; width: number; height: number }[] = [

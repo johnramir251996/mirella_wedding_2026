@@ -10,12 +10,13 @@ import { toFriendlyMessage } from '../utils/errors'
 import { formatWeddingDate } from '../utils/formatting'
 import { chairsFor, itemLocation } from '../utils/seatingGeometry'
 import { SearchForm } from '../components/rsvp/SearchForm'
-import { FloorPlan } from '../components/seating/FloorPlan'
+import { FloorPlan, type SeatStatus } from '../components/seating/FloorPlan'
 import { PageLoader } from '../components/ui/Spinner'
 import { Ornament } from '../components/ui/Ornament'
 import { PublicHeader } from '../components/wedding/PublicHeader'
 import { Footer } from '../components/wedding/Footer'
 import { CoupleNames } from '../components/wedding/CoupleNames'
+import { cn } from '../components/ui/cn'
 
 /** Guests type their name and see their table on a read-only map. */
 export default function FindSeat() {
@@ -133,7 +134,23 @@ function ResultView({ result: r, rsvpOpen, couple }: { result: SeatSearchResult;
       </Message>
     )
   }
-  if (r.status === 'declined') return <Message title={`We’ll miss you, ${first}!`} text="Thank you for letting us know. You’ll be in our hearts on the day." />
+  if (r.status === 'declined' || (r.rsvp === 'declining' && (r.status === 'unseated' || !r.layout))) {
+    return <Message title={`We’ll miss you, ${first}!`} text="Thank you for letting us know. You’ll be in our hearts on the day." />
+  }
+  if (r.rsvp === 'pending' && (r.status === 'unseated' || !r.layout)) {
+    return (
+      <Message
+        title={`Hi ${first}!`}
+        text={
+          r.tableName
+            ? `${couple} have saved you a place at ${r.tableName}. Please RSVP to confirm your seat. 🤍`
+            : `Please RSVP first. Once you’ve confirmed, ${couple} will assign your seat and it will appear here.`
+        }
+      >
+        <RsvpButton show={rsvpOpen} />
+      </Message>
+    )
+  }
   if (r.status === 'unseated' || !r.layout) {
     return (
       <Message
@@ -146,10 +163,24 @@ function ResultView({ result: r, rsvpOpen, couple }: { result: SeatSearchResult;
       />
     )
   }
-  return <SeatedView r={r} />
+  return <SeatedView r={r} rsvpOpen={rsvpOpen} couple={couple} />
 }
 
-function SeatedView({ r }: { r: SeatSearchResult }) {
+function RsvpButton({ show }: { show: boolean }) {
+  if (!show) return null
+  return (
+    <Link to="/rsvp" className="mt-7 inline-flex min-h-12 items-center rounded-full bg-ink px-8 text-sm font-medium uppercase tracking-[0.24em] text-ivory shadow-card transition hover:bg-ink-soft">
+      RSVP now
+    </Link>
+  )
+}
+
+const SEAT_STATUS: Record<NonNullable<SeatSearchResult['rsvp']>, SeatStatus> = { attending: 'confirmed', declining: 'declined', pending: 'pending' }
+
+function SeatedView({ r, rsvpOpen, couple }: { r: SeatSearchResult; rsvpOpen: boolean; couple: string }) {
+  // Pre-assigned seats are coloured by the party's RSVP: green confirmed, gold waiting, red declined.
+  const status = r.rsvp ? SEAT_STATUS[r.rsvp] : undefined
+  const first = (r.name ?? '').split(' ')[0]
   const { config, tables, items } = r.layout!
   const table = tables.find((t) => t.id === r.tableId)
   const [zoom, setZoom] = useState(1)
@@ -170,8 +201,31 @@ function SeatedView({ r }: { r: SeatSearchResult }) {
   return (
     <div>
       <section className="fine-frame paper-texture mx-auto max-w-md rounded-sm px-7 py-10 text-center shadow-card">
-        <p className="eyebrow">{r.name}, your seat is at</p>
-        <p className="mt-4 font-serif text-[2.8rem] leading-none text-ink">{r.tableName}</p>
+        {status === 'declined' ? (
+          <>
+            <h2 className="text-[2rem] leading-tight text-ink">We’ll miss you, {first}!</h2>
+            <p className="mx-auto mt-3 max-w-sm font-serif text-lg italic leading-relaxed text-ink-soft">
+              Thank you for letting us know. The seat that was saved for you is shown in red — if your plans change, please let {couple} know.
+            </p>
+            <p className="mt-5 font-serif text-[2.2rem] leading-none text-ink/70 line-through decoration-rose/70">{r.tableName}</p>
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">{r.name}, {status === 'pending' ? 'a seat is saved for you at' : 'your seat is at'}</p>
+            <p className="mt-4 font-serif text-[2.8rem] leading-none text-ink">{r.tableName}</p>
+          </>
+        )}
+        {status && (
+          <p
+            className={cn(
+              'mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-[0.18em]',
+              status === 'confirmed' ? 'bg-sage/15 text-sage' : status === 'declined' ? 'bg-rose/10 text-rose' : 'bg-champagne-light/60 text-gold',
+            )}
+          >
+            <span aria-hidden="true" className={cn('size-2 rounded-full', status === 'confirmed' ? 'bg-sage' : status === 'declined' ? 'bg-rose' : 'bg-gold')} />
+            {status === 'confirmed' ? 'Confirmed' : status === 'declined' ? 'Declined' : 'Waiting for your RSVP'}
+          </p>
+        )}
         {typeof r.seat === 'number' && chairCount > 0 && (
           <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-champagne/60 bg-champagne-light/35 px-4 py-1.5 text-sm text-ink-soft">
             <Armchair aria-hidden="true" className="size-4 text-gold" /> Chair {r.seat + 1} of {chairCount}
@@ -188,11 +242,24 @@ function SeatedView({ r }: { r: SeatSearchResult }) {
             <span>Seated with you: {(r.party ?? []).map((p) => p.name).join(', ')}</span>
           </p>
         )}
+        {status === 'pending' && (
+          <>
+            <p className="mx-auto mt-5 max-w-xs text-sm text-ink-soft">Please RSVP to confirm your seat.</p>
+            <RsvpButton show={rsvpOpen} />
+          </>
+        )}
       </section>
 
       <section aria-label="Venue map" className="mt-8 overflow-hidden rounded-xl border border-line bg-paper shadow-soft">
         <div className="flex items-center justify-between border-b border-line px-3 py-2">
           <p className="text-xs uppercase tracking-[0.2em] text-muted">Venue map · your table is highlighted</p>
+          {status && (
+            <span className="hidden items-center gap-3 text-[0.7rem] text-muted sm:inline-flex">
+              <span className="inline-flex items-center gap-1"><span aria-hidden="true" className="size-2.5 rounded-full bg-sage" /> Confirmed</span>
+              <span className="inline-flex items-center gap-1"><span aria-hidden="true" className="size-2.5 rounded-full bg-gold/60 ring-1 ring-gold" /> Waiting</span>
+              <span className="inline-flex items-center gap-1"><span aria-hidden="true" className="size-2.5 rounded-full bg-rose" /> Declined</span>
+            </span>
+          )}
           <div className="flex items-center gap-1">
             <button type="button" aria-label="Zoom out" onClick={() => setZoom((z) => Math.max(1, z - 0.5))} className="flex size-9 items-center justify-center rounded-md hover:bg-cream disabled:opacity-30" disabled={zoom <= 1}>
               <Minus className="size-4" />
@@ -219,9 +286,9 @@ function SeatedView({ r }: { r: SeatSearchResult }) {
               className="h-auto w-full"
               chair={(tid, i) => {
                 if (tid !== r.tableId) return null
-                if (i === r.seat) return { name: r.name ?? 'You', state: 'you' }
+                if (i === r.seat) return { name: r.name ?? 'You', state: 'you', status }
                 const n = partyAt.get(i)
-                return n ? { name: n, state: 'party' } : null
+                return n ? { name: n, state: 'party', status } : null
               }}
             />
           </div>

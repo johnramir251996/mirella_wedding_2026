@@ -32,6 +32,7 @@ import {
   dismissNotices,
   listItems,
   listNotices,
+  preassignReady,
   listSeats,
   listTables,
   saveSeatingConfig,
@@ -52,7 +53,8 @@ import {
 import { toFriendlyMessage } from '../utils/errors'
 import { fromManilaParts, toManilaParts } from '../utils/formatting'
 import { itemLocation, rotatePoint, snap } from '../utils/seatingGeometry'
-import { attendingPeople, type SeatPerson } from '../utils/seatingPeople'
+import { seatablePeople, type SeatPerson } from '../utils/seatingPeople'
+import { STATUS_TEXT, type SeatStatus } from '../components/seating/FloorPlan'
 import { normalizeName } from '../utils/validation'
 import { FloorPlan, type DragAction, type ObjectKind } from '../components/seating/FloorPlan'
 import { Button } from '../components/ui/Button'
@@ -84,6 +86,7 @@ const REASONS: Record<string, string> = {
   guest_removed: 'removed from the invitation',
   invitation_deleted: 'invitation deleted',
   rsvp_removed: 'RSVP deleted',
+  declined_held: 'declined — seat still held (shown in red until you free it)',
 }
 
 const personKey = (invitationId: string, guestId: string | null) => `${invitationId}:${guestId ?? ''}`
@@ -141,7 +144,18 @@ export default function AdminSeating() {
   }, [tables === null])
 
   // ------------------------------------------------------------------ people
-  const people = useMemo(() => attendingPeople(data?.invitations ?? []), [data])
+  const preassign = config.finder.preassign
+  const people = useMemo(() => seatablePeople(data?.invitations ?? [], preassign), [data, preassign])
+  // Each seat's colour when seats are pre-assigned: confirmed, declined or waiting for an RSVP.
+  const statusByInvitation = useMemo(() => new Map((data?.invitations ?? []).map((i) => [i.id, i.status])), [data])
+  const seatStatus = useCallback(
+    (s: SeatAssignment): SeatStatus => {
+      const st = statusByInvitation.get(s.invitationId)
+      return st === 'attending' ? 'confirmed' : st === 'declining' ? 'declined' : 'pending'
+    },
+    [statusByInvitation],
+  )
+  const declinedSeats = useMemo(() => (preassign ? seats.filter((s) => seatStatus(s) === 'declined') : []), [preassign, seats, seatStatus])
   const personByKey = useMemo(() => new Map(people.map((p) => [personKey(p.invitationId, p.guestId), p])), [people])
   const seatByChair = useMemo(() => new Map(seats.map((s) => [`${s.tableId}:${s.seatIndex}`, s])), [seats])
   const seatByPerson = useMemo(() => new Map(seats.map((s) => [personKey(s.invitationId, s.guestId), s])), [seats])
@@ -433,6 +447,24 @@ export default function AdminSeating() {
     }
   }
 
+  // Pre-assigned seats of guests who declined stay (in red) until freed here.
+  const freeDeclined = async () => {
+    setBusy(true)
+    const freed: string[] = []
+    try {
+      for (const st of declinedSeats) {
+        await clearSeat(st.id)
+        freed.push(st.id)
+      }
+      toast.success(`Freed ${freed.length} ${freed.length === 1 ? 'seat' : 'seats'}.`)
+    } catch (e) {
+      toast.error(toFriendlyMessage(e))
+    } finally {
+      setSeats((l) => l.filter((x) => !freed.includes(x.id)))
+      setBusy(false)
+    }
+  }
+
   // ------------------------------------------------------------------ render
   if (error) {
     return (
@@ -478,7 +510,9 @@ export default function AdminSeating() {
           <div className="flex items-start justify-between gap-3">
             <p className="flex items-center gap-2 font-medium text-ink">
               <Bell aria-hidden="true" className="size-4 text-gold" />
-              {notices.length} {notices.length === 1 ? 'seat was' : 'seats were'} freed automatically
+              {notices.some((n) => n.reason === 'declined_held')
+                ? `Seating updates (${notices.length})`
+                : `${notices.length} ${notices.length === 1 ? 'seat was' : 'seats were'} freed automatically`}
             </p>
             <button
               type="button"
@@ -500,6 +534,23 @@ export default function AdminSeating() {
       )}
 
       <FinderCard config={config} onSave={(c) => { setConfig(c); void safe(persistConfig(c).then(() => toast.success('Find My Seat settings saved.'))) }} />
+
+      {preassign && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-line bg-paper px-4 py-3 text-sm text-ink-soft shadow-soft print:hidden">
+          {(['confirmed', 'pending', 'declined'] as const).map((st) => (
+            <span key={st} className="inline-flex items-center gap-2">
+              <span aria-hidden="true" className={cn('size-3 rounded-full', st === 'confirmed' ? 'bg-sage' : st === 'declined' ? 'bg-rose' : 'bg-gold/60 ring-1 ring-gold')} />
+              {STATUS_TEXT[st][0].toUpperCase() + STATUS_TEXT[st].slice(1)}
+              <span className="text-muted">({seats.filter((s) => seatStatus(s) === st).length})</span>
+            </span>
+          ))}
+          {declinedSeats.length > 0 && (
+            <Button size="sm" variant="outline" className="sm:ml-auto" disabled={busy} onClick={() => void freeDeclined()}>
+              Free {declinedSeats.length === 1 ? 'the declined seat' : `all ${declinedSeats.length} declined seats`}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="mb-4 grid grid-cols-3 gap-2 text-center print:hidden sm:max-w-xl">
@@ -567,7 +618,7 @@ export default function AdminSeating() {
                 className="h-auto w-full"
                 chair={(tid, i) => {
                   const s = seatByChair.get(`${tid}:${i}`)
-                  return s ? { name: nameOfSeat(s), state: 'filled' } : null
+                  return s ? { name: nameOfSeat(s), state: 'filled', status: preassign ? seatStatus(s) : undefined } : null
                 }}
                 onObjectPointerDown={onObjectPointerDown}
                 onChairClick={(tableId, seatIndex) => {
@@ -653,7 +704,7 @@ export default function AdminSeating() {
                   <li>Select a table to change its name, shape and number of seats.</li>
                   <li>To delete a table, select it and press Delete, or use the bin next to a table that isn’t on the plan.</li>
                   <li>Use “Seat a whole party” to fill a table in one go.</li>
-                  <li>Only guests who RSVP’d “attending” can be seated.</li>
+                  <li>{preassign ? 'Guests who are attending or haven’t answered yet can be seated (pre-assign is on).' : 'Only guests who RSVP’d “attending” can be seated.'}</li>
                 </ul>
               </Card>
             </>
@@ -1110,10 +1161,10 @@ function SeatPicker({
         )}
         <div className="relative">
           <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-          <input className="input-base pl-9" placeholder="Search guests who are attending" value={q} onChange={(e) => setQ(e.target.value)} autoFocus aria-label="Search guests" />
+          <input className="input-base pl-9" placeholder="Search guests" value={q} onChange={(e) => setQ(e.target.value)} autoFocus aria-label="Search guests" />
         </div>
         {rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">{people.length ? 'No matching guests.' : 'No guests have RSVP’d “attending” yet.'}</p>
+          <p className="py-6 text-center text-sm text-muted">{people.length ? 'No matching guests.' : 'No guests to seat yet.'}</p>
         ) : (
           <ul className="max-h-[50vh] divide-y divide-line overflow-y-auto">
             {rows.map(({ p, seat }) => (
@@ -1124,6 +1175,7 @@ function SeatPicker({
                     <span className="block truncate text-ink">{p.name}</span>
                     <span className="block truncate text-xs text-muted">
                       {p.side === 'bride' ? 'Bride’s side' : 'Groom’s side'} · {p.isInvitee ? 'Invitee' : `With ${p.partyName}`}
+                      {p.pending ? ' · no RSVP yet' : ''}
                       {seat ? ` · now at ${tableName(seat.tableId)}, chair ${seat.seatIndex + 1} (will move)` : ' · not seated'}
                     </span>
                   </span>
@@ -1139,6 +1191,15 @@ function SeatPicker({
 
 function FinderCard({ config, onSave }: { config: SeatingConfig; onSave: (c: SeatingConfig) => void }) {
   const [mode, setMode] = useState(config.finder.mode)
+  // Pre-assigning needs a one-time database update; until then the switch stays off.
+  const [ready, setReady] = useState<boolean | null>(null)
+  useEffect(() => {
+    let alive = true
+    void preassignReady().then((ok) => alive && setReady(ok))
+    return () => {
+      alive = false
+    }
+  }, [])
   const parts = config.finder.from ? toManilaParts(config.finder.from) : null
   const [date, setDate] = useState(parts?.date ?? '')
   const [time, setTime] = useState(parts?.time ?? '09:00')
@@ -1155,6 +1216,25 @@ function FinderCard({ config, onSave }: { config: SeatingConfig; onSave: (c: Sea
       <div className="flex-1">
         <h2 className="font-sans text-sm font-semibold text-ink">“Find My Seat” for guests</h2>
         <p className="mt-0.5 text-sm text-muted">A read-only map where guests type their name to see their table. It only shows their own seat and party.</p>
+        <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 shrink-0 accent-ink"
+            checked={config.finder.preassign}
+            disabled={ready === false && !config.finder.preassign}
+            onChange={(e) => onSave({ ...config, finder: { ...config.finder, preassign: e.target.checked } })}
+          />
+          <span>
+            <span className="font-medium text-ink">Pre-assign seats before guests RSVP</span>
+            <span className="mt-0.5 block text-muted">
+              {ready === false
+                ? 'Needs a one-time database update (migration 020) before it can be switched on.'
+                : config.finder.preassign
+                ? 'On: you can seat guests who haven’t answered yet, and they see their seat in Find My Seat and after they RSVP. Seats show green (confirmed), gold (waiting for RSVP) or red (declined — kept until you free it).'
+                : 'Off: only guests who RSVP’d “attending” can be seated, and a seat is freed automatically when someone declines.'}
+            </span>
+          </span>
+        </label>
       </div>
       <div className="flex flex-wrap items-end gap-2">
         <select className="input-base w-auto" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} aria-label="Find My Seat visibility">
@@ -1170,7 +1250,7 @@ function FinderCard({ config, onSave }: { config: SeatingConfig; onSave: (c: Sea
         )}
         <Button
           disabled={!dirty || (mode === 'scheduled' && !date)}
-          onClick={() => onSave({ ...config, finder: { mode, from: mode === 'scheduled' && date ? fromManilaParts(date, time) : null } })}
+          onClick={() => onSave({ ...config, finder: { ...config.finder, mode, from: mode === 'scheduled' && date ? fromManilaParts(date, time) : null } })}
         >
           Save
         </Button>

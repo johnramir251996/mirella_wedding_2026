@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ExternalLink, Maximize2, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react'
 import { useWeddingSettings } from '../hooks/useWeddingSettings'
 import { useToast } from '../hooks/useToast'
@@ -28,11 +28,55 @@ import { Button } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { Skeleton } from '../components/ui/Skeleton'
 import { cn } from '../components/ui/cn'
+import { BingoGame } from '../components/raffle/BingoGame'
 import { QUICK_SPIN_MS, SLOW_SPIN_MS, SoundControls, SpinStage, type Outcome } from '../components/raffle/RaffleWheel'
 
 type Save = 'idle' | 'saving' | 'saved' | 'error'
+type Game = 'wheel' | 'bingo'
+const GAME_KEY = 'wedding-raffle-game'
 
+/** Raffle games: the prize wheel and Bingo. */
 export default function AdminRaffle() {
+  const [game, setGame] = useState<Game>(() => {
+    try {
+      return localStorage.getItem(GAME_KEY) === 'bingo' ? 'bingo' : 'wheel'
+    } catch {
+      return 'wheel'
+    }
+  })
+  const pick = (g: Game) => {
+    setGame(g)
+    try {
+      localStorage.setItem(GAME_KEY, g)
+    } catch {
+      /* ignore */
+    }
+  }
+  const tabs = (
+    <div role="tablist" aria-label="Game" className="mb-6 inline-flex gap-1 rounded-lg bg-cream p-1">
+      {(
+        [
+          ['wheel', 'Prize wheel'],
+          ['bingo', 'Bingo'],
+        ] as const
+      ).map(([id, label]) => (
+        <button
+          key={id}
+          role="tab"
+          type="button"
+          aria-selected={game === id}
+          onClick={() => pick(id)}
+          className={cn('rounded-md px-4 py-2 text-sm transition', game === id ? 'bg-paper text-ink shadow-soft' : 'text-muted hover:text-ink')}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+  return game === 'bingo' ? <BingoGame tabs={tabs} /> : <WheelRaffle tabs={tabs} />
+}
+
+function WheelRaffle({ tabs }: { tabs: ReactNode }) {
   const { settings } = useWeddingSettings()
   const toast = useToast()
   const [cfg, setCfg] = useState<RaffleSettings | null>(null)
@@ -236,6 +280,7 @@ export default function AdminRaffle() {
           </Button>
         }
       />
+      {tabs}
       {!cfg ? (
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           <Skeleton className="h-96" />

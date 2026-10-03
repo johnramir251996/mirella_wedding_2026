@@ -9,7 +9,7 @@ import type { AttendanceStatus, RSVPFormState } from '../types/rsvp'
 import type { PublicGift } from '../types/wedding'
 import { isFinderOpen, isRsvpOpen } from '../services/settingsService'
 import { getInvitationGift } from '../services/giftService'
-import { getInvitationTable } from '../services/seatingService'
+import { getInvitationSeat } from '../services/seatingService'
 import { GiftCard } from '../components/wedding/GiftCard'
 import { PageLoader } from '../components/ui/Spinner'
 import { CalendarClock, MailOpen } from 'lucide-react'
@@ -52,6 +52,8 @@ export default function RSVP() {
   const [closedByServer, setClosedByServer] = useState(false)
   const [gift, setGift] = useState<PublicGift | null>(null)
   const [tableName, setTableName] = useState<string | null>(null)
+  // Chair number — only when the couple pre-assigned the seat.
+  const [seatNo, setSeatNo] = useState<number | null>(null)
   const submittingRef = useRef(false)
   // The envelope and card (same as the virtual invitation link).
   const [opening, setOpening] = useState(false)
@@ -131,7 +133,9 @@ export default function RSVP() {
     try {
       const payload = toSubmission(invitation.invitationId, form, invitation.maxAdditionalGuests, settings?.rsvpConfig, questions)
       const saved = await submitRSVP(payload)
-      setTableName(saved.attendanceStatus === 'attending' ? await getInvitationTable(invitation.invitationId) : null)
+      const seat = saved.attendanceStatus === 'attending' ? await getInvitationSeat(invitation.invitationId) : null
+      setTableName(seat?.tableName ?? null)
+      setSeatNo(seat?.preassign ? seat.seat : null)
       setConfirmOpen(false)
       setResult({ status: saved.attendanceStatus, guests: payload.additionalGuests.length })
       setStep('success')
@@ -256,6 +260,8 @@ export default function RSVP() {
                 status={result.status}
                 guestName={invitation.inviteeName}
                 tableNumber={tableName}
+                seatIndex={seatNo}
+                showMap={settings ? isFinderOpen(settings.seatingConfig) : false}
                 coupleNames={coupleNames}
                 weddingDate={weddingDate}
                 requestedGuests={result.guests}

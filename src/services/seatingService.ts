@@ -213,13 +213,36 @@ export function parseSeatingConfig(value: Json | null | undefined): SeatingConfi
   return {
     room: { x: num(r.x, d.room.x), y: num(r.y, d.room.y), width: num(r.width, d.room.width), height: num(r.height, d.room.height) },
     canvas: { width: num(c.width, d.canvas.width), height: num(c.height, d.canvas.height) },
-    finder: { mode, from: typeof f.from === 'string' && f.from ? f.from : null },
+    finder: { mode, from: typeof f.from === 'string' && f.from ? f.from : null, preassign: f.preassign === true },
   }
 }
 
 export async function saveSeatingConfig(settingsId: string, config: SeatingConfig): Promise<void> {
   const { error } = await supabase.from('wedding_settings').update({ seating_config: config as unknown as Json }).eq('id', settingsId)
   if (error) fail('saveSeatingConfig', error, 'The seating settings could not be saved. Please try again.')
+}
+
+/** Public: table and chair right after an "attending" RSVP (chair only when seats are pre-assigned). */
+export async function getInvitationSeat(invitationId: string): Promise<{ tableName: string | null; seat: number | null; preassign: boolean } | null> {
+  const { data, error } = await supabase.rpc('get_invitation_seat', { p_invitation_id: invitationId })
+  if (error) {
+    // Before migration 020 is applied, fall back to the table name only.
+    const tableName = await getInvitationTable(invitationId)
+    return tableName ? { tableName, seat: null, preassign: false } : null
+  }
+  const o = (data ?? null) as Record<string, unknown> | null
+  if (!o) return null
+  return {
+    tableName: typeof o.tableName === 'string' && o.tableName ? o.tableName : null,
+    seat: typeof o.seat === 'number' ? o.seat : null,
+    preassign: o.preassign === true,
+  }
+}
+
+/** Is the database ready for pre-assigned seats (migration 020)? */
+export async function preassignReady(): Promise<boolean> {
+  const { error } = await supabase.rpc('get_invitation_seat', { p_invitation_id: '00000000-0000-0000-0000-000000000000' })
+  return !error
 }
 
 /** Public: the guest's table name, only after they RSVP "attending". */
@@ -244,6 +267,8 @@ export interface SeatSearchResult {
   seat?: number | null
   party?: { seat: number; name: string }[]
   layout?: { config: SeatingConfig; tables: SeatingTable[]; items: SeatingItem[] }
+  /** Sent only when seats are pre-assigned: the party's RSVP, to colour the seats. */
+  rsvp?: 'attending' | 'declining' | 'pending'
 }
 
 export async function findMySeat(name: string): Promise<SeatSearchResult> {
@@ -258,6 +283,7 @@ export async function findMySeat(name: string): Promise<SeatSearchResult> {
     tableName: typeof o.tableName === 'string' ? o.tableName : null,
     seat: typeof o.seat === 'number' ? o.seat : null,
     party: Array.isArray(o.party) ? (o.party as { seat: number; name: string }[]) : [],
+    rsvp: o.rsvp === 'attending' || o.rsvp === 'declining' || o.rsvp === 'pending' ? o.rsvp : undefined,
   }
   const l = o.layout as Record<string, unknown> | undefined
   if (l) {

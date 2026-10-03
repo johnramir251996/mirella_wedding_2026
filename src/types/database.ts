@@ -852,6 +852,10 @@ export type Database = {
         Args: { search_name: string }
         Returns: Json
       }
+      get_invitation_seat: {
+        Args: { p_invitation_id: string }
+        Returns: Json
+      }
       get_invitation_gift: {
         Args: { p_invitation_id: string }
         Returns: { title: string | null; message: string | null; qr_image_url: string | null }[]

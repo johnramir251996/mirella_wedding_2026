@@ -11,6 +11,23 @@ export interface ChairInfo {
   name: string
   /** filled = someone sits here · you/party = Find My Seat highlight */
   state: 'filled' | 'you' | 'party'
+  /** Seats pre-assigned before RSVP: green = confirmed, red = declined, gold = waiting for an answer. */
+  status?: SeatStatus
+}
+
+export type SeatStatus = 'confirmed' | 'declined' | 'pending'
+
+const STATUS_FILL: Record<SeatStatus, string> = {
+  confirmed: 'fill-sage stroke-sage',
+  declined: 'fill-rose stroke-rose',
+  pending: 'fill-gold/60 stroke-gold',
+}
+
+function chairFill(info: ChairInfo | null): string {
+  if (info?.status) return STATUS_FILL[info.status]
+  if (info?.state === 'you') return 'fill-gold stroke-gold'
+  if (info?.state === 'party') return 'fill-champagne stroke-gold'
+  return info ? 'fill-ink-soft stroke-ink-soft' : 'fill-paper stroke-champagne'
 }
 
 interface Props {
@@ -34,6 +51,8 @@ interface Props {
   onChairClick?: (tableId: string, index: number) => void
   onBackgroundPointerDown?: () => void
 }
+
+export const STATUS_TEXT: Record<SeatStatus, string> = { confirmed: 'confirmed', declined: 'declined', pending: 'waiting for RSVP' }
 
 const kindLabel = (k: string) => ITEM_KINDS.find((x) => x.kind === k)?.label ?? 'Item'
 
@@ -239,30 +258,17 @@ export function FloorPlan({
                 >
                   <circle r={17} className="fill-transparent" />
                   <g transform={`rotate(${c.facing})`}>
-                    <path
-                      d="M-12 11 C-12 3 -7 1 0 1 C7 1 12 3 12 11 Z"
-                      className={cn(
-                        info?.state === 'you'
-                          ? 'fill-gold stroke-gold'
-                          : info?.state === 'party'
-                            ? 'fill-champagne stroke-gold'
-                            : info
-                              ? 'fill-ink-soft stroke-ink-soft'
-                              : 'fill-paper stroke-champagne',
-                      )}
-                      strokeWidth={1.6}
-                    />
-                    <circle
-                      cy={-6}
-                      r={6}
-                      className={cn(
-                        info?.state === 'you' ? 'fill-gold stroke-gold' : info?.state === 'party' ? 'fill-champagne stroke-gold' : info ? 'fill-ink-soft stroke-ink-soft' : 'fill-paper stroke-champagne',
-                      )}
-                      strokeWidth={1.6}
-                    />
+                    <path d="M-12 11 C-12 3 -7 1 0 1 C7 1 12 3 12 11 Z" className={chairFill(info)} strokeWidth={1.6} />
+                    <circle cy={-6} r={6} className={chairFill(info)} strokeWidth={1.6} />
                   </g>
-                  {info?.state === 'you' && <circle r={22} className="pointer-events-none fill-none stroke-gold motion-safe:animate-pulse" strokeWidth={2.5} />}
-                  <title>{info ? info.name : `Chair ${i + 1} — empty`}</title>
+                  {info?.state === 'you' && (
+                    <circle
+                      r={22}
+                      className={cn('pointer-events-none fill-none motion-safe:animate-pulse', info.status === 'confirmed' ? 'stroke-sage' : info.status === 'declined' ? 'stroke-rose' : 'stroke-gold')}
+                      strokeWidth={2.5}
+                    />
+                  )}
+                  <title>{info ? `${info.name}${info.status ? ` — ${STATUS_TEXT[info.status]}` : ''}` : `Chair ${i + 1} — empty`}</title>
                   {(showNames || info?.state === 'you' || info?.state === 'party') && info && (
                     <text
                       x={(outward.x / len) * 26}

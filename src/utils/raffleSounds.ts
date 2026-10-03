@@ -106,3 +106,62 @@ export function playFanfare() {
   ;[523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, 0.6, 1.6, 'triangle', 0.22))
   tone(1568, 0.62, 1.4, 'sine', 0.1)
 }
+
+// ---------------------------------------------------------------- bingo
+
+let noiseBuf: AudioBuffer | null = null
+function noise(): AudioBuffer | null {
+  if (!ctx) return null
+  if (!noiseBuf) {
+    const len = Math.floor(ctx.sampleRate * 1.5)
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate)
+    const d = noiseBuf.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+  }
+  return noiseBuf
+}
+
+/** One noisy hit (snare or cymbal), `start` seconds from now. */
+function hit(start: number, peak: number, dur: number, freq: number, type: BiquadFilterType = 'bandpass') {
+  if (!ctx || !master || muted) return
+  const buf = noise()
+  if (!buf) return
+  const t0 = ctx.currentTime + start
+  const src = ctx.createBufferSource()
+  src.buffer = buf
+  const f = ctx.createBiquadFilter()
+  f.type = type
+  f.frequency.value = freq
+  f.Q.value = 0.7
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, t0)
+  g.gain.exponentialRampToValueAtTime(peak, t0 + 0.004)
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+  src.connect(f)
+  f.connect(g)
+  g.connect(master)
+  src.start(t0, Math.random() * 0.8, dur + 0.05)
+}
+
+/** A snare drumroll that speeds up and swells for `seconds`, ending on a cymbal and a low drum. */
+export function playDrumroll(seconds = 3) {
+  if (!ctx || !master || muted) return
+  let t = 0
+  let i = 0
+  while (t < seconds) {
+    const p = t / seconds
+    hit(t, 0.06 + 0.3 * p * p, 0.07, 1700 + 600 * Math.random())
+    if (i % 6 === 0) tone(95 + 20 * p, t, 0.18, 'sine', 0.12 + 0.2 * p, 60) // a soft tom underneath
+    t += (0.085 - 0.05 * p) * (0.85 + Math.random() * 0.3)
+    i++
+  }
+  hit(seconds, 0.45, 1.6, 5500, 'highpass')
+  tone(120, seconds, 0.5, 'sine', 0.5, 50)
+}
+
+/** The ball pops out of the drum. */
+export function playBallOut() {
+  tone(520, 0, 0.16, 'sine', 0.3, 1100)
+  tone(1320, 0.12, 0.7, 'sine', 0.18)
+  tone(1760, 0.2, 0.8, 'sine', 0.1)
+}

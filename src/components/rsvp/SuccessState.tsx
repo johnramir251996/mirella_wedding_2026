@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Armchair, MapPin } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import type { AttendanceStatus } from '../../types/rsvp'
 import { formatTable, formatWeddingDate } from '../../utils/formatting'
@@ -11,6 +12,10 @@ interface Props {
   status: AttendanceStatus
   guestName: string
   tableNumber: string | null
+  /** Chair (0-based) when the couple pre-assigned the seat — shows the chair and a map link. */
+  seatIndex?: number | null
+  /** Find My Seat is open to guests. */
+  showMap?: boolean
   coupleNames: string
   weddingDate: string
   requestedGuests: number
@@ -18,7 +23,7 @@ interface Props {
   venues?: Pick<WeddingSettings, 'weddingDate' | 'coupleNames' | 'churchName' | 'ceremonyTime' | 'churchMapUrl' | 'receptionName' | 'receptionTime' | 'receptionMapUrl'>
 }
 
-export function SuccessState({ status, guestName, tableNumber, coupleNames, weddingDate, requestedGuests, venues }: Props) {
+export function SuccessState({ status, guestName, tableNumber, seatIndex = null, showMap = false, coupleNames, weddingDate, requestedGuests, venues }: Props) {
   const reduce = useReducedMotion()
   const attending = status === 'attending'
 
@@ -79,7 +84,24 @@ export function SuccessState({ status, guestName, tableNumber, coupleNames, wedd
           >
             <p className="text-[0.7rem] font-medium uppercase tracking-[0.32em] text-gold">Your seat</p>
             <p className="mt-2 font-serif text-[2.4rem] leading-none text-ink">{formatTable(tableNumber)}</p>
-            <p className="mt-2 text-xs text-muted">Please take note of this for the reception.</p>
+            {seatIndex !== null && tableNumber ? (
+              <>
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sage/15 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-sage">
+                  <Armchair aria-hidden="true" className="size-3.5" /> Chair {seatIndex + 1} · confirmed
+                </p>
+                {showMap && (
+                  <Link
+                    to="/seat"
+                    state={{ name: guestName }}
+                    className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-full border border-champagne bg-paper px-5 text-xs font-medium uppercase tracking-[0.2em] text-ink-soft transition hover:border-gold hover:text-ink"
+                  >
+                    <MapPin aria-hidden="true" className="size-4 text-gold" /> See it on the map
+                  </Link>
+                )}
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-muted">Please take note of this for the reception.</p>
+            )}
           </motion.div>
         )}
 
