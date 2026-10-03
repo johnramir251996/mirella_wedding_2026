@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '../ui/cn'
+import { BigReveal, nameSize } from './BigReveal'
 import { getVolume, isMuted, playChime, playFanfare, playOut, playTick, setMuted, setVolume, unlockSound } from '../../utils/raffleSounds'
 
 const FILLS = ['var(--color-paper)', 'var(--color-champagne-light)', 'var(--color-cream)', 'var(--color-linen)']
@@ -125,6 +126,8 @@ export interface Outcome {
   detail?: string
   /** Shown a moment later (last one standing: the winner after 2nd place). */
   then?: Outcome
+  /** Present: a short full-screen moment for this result (e.g. an "Out" in the finals). */
+  brief?: boolean
 }
 
 interface StageProps {
@@ -139,6 +142,8 @@ interface StageProps {
   /** After an "out", spin again automatically while this says so. */
   autoPlay?: () => boolean
   spinLabel?: string
+  /** Present on a big screen: winners, places (and brief finals) take over the screen. */
+  reveal?: boolean
   onLanded: (realName: string, shownName: string) => Promise<Outcome | null> | Outcome | null
 }
 
@@ -149,7 +154,7 @@ function playFor(o: Outcome) {
 }
 
 /** Wheel + Spin button + the result. The host spins; the caller decides what a landing means and saves it. */
-export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, large, durationMs = SLOW_SPIN_MS, autoPlay, spinLabel = 'Spin', onLanded }: StageProps) {
+export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, large, durationMs = SLOW_SPIN_MS, autoPlay, spinLabel = 'Spin', reveal, onLanded }: StageProps) {
   const reduce = useReducedMotion()
   // The wheel keeps the names it was spun with until the next spin, so it doesn't
   // redraw (and move the pointer) when the result changes the list.
@@ -191,7 +196,9 @@ export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, 
     return () => cancelAnimationFrame(raf)
   }, [spinning, real.length])
 
+  const [big, setBig] = useState<{ o: Outcome; key: string } | null>(null)
   const show = (o: Outcome) => {
+    if (reveal && (o.tone !== 'out' || o.brief)) setBig({ o, key: `${o.title}-${o.name}-${Date.now()}` })
     setOutcome(o)
     playFor(o)
     if (o.tone === 'winner') setConfetti((c) => c + 1)
@@ -236,7 +243,38 @@ export function SpinStage({ shown: liveShown, real: liveReal, centre, disabled, 
 
   return (
     <div className="relative flex w-full flex-col items-center">
-      <Confetti burst={confetti} />
+      <Confetti burst={reveal ? 0 : confetti} />
+      <BigReveal
+        revealKey={reveal && big ? big.key : null}
+        level={big && big.o.tone !== 'out' ? 'full' : 'soft'}
+        autoHideMs={big?.o.tone === 'out' ? 2600 : undefined}
+        onClose={() => setBig(null)}
+      >
+        {big && (
+          <>
+            <p
+              className="font-medium uppercase"
+              style={{ fontSize: 'clamp(1.2rem, 3.2vw, 3.4rem)', letterSpacing: '0.35em', color: big.o.tone === 'out' ? 'rgba(255,255,255,0.6)' : 'var(--color-champagne)' }}
+            >
+              {big.o.tone === 'winner' ? 'Winner' : big.o.title}
+            </p>
+            <p
+              className={cn('mt-[2vh] font-serif leading-[1.05] text-white', big.o.tone === 'out' && 'line-through decoration-[0.04em] opacity-80')}
+              style={{
+                fontSize: nameSize(big.o.name),
+                textShadow: big.o.tone === 'out' ? 'none' : '0 0 0.25em color-mix(in srgb, var(--color-champagne) 70%, transparent), 0 0.04em 0.12em rgba(0,0,0,0.5)',
+              }}
+            >
+              {big.o.name}
+            </p>
+            {big.o.detail && (
+              <p className="mt-[3vh] font-serif italic text-white/85" style={{ fontSize: 'clamp(1.4rem, 3.6vw, 4rem)' }}>
+                {big.o.detail}
+              </p>
+            )}
+          </>
+        )}
+      </BigReveal>
       <div className={cn('w-full', large ? 'max-w-[min(72vh,92vw)]' : 'max-w-md')}>
         <RaffleWheel names={shown} rotation={rotation} spinning={spinning} durationMs={duration} centre={centre} groupRef={group} onSpinEnd={() => void finish()} />
       </div>

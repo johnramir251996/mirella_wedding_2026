@@ -23,6 +23,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { cn } from '../ui/cn'
 import { BingoDrum } from './BingoDrum'
 import { SoundControls } from './RaffleWheel'
+import { BigReveal } from './BigReveal'
 
 type Phase = 'idle' | 'mixing' | 'exiting'
 const MIX_SECONDS = 3
@@ -39,6 +40,10 @@ export function BingoGame({ tabs }: { tabs: ReactNode }) {
   const [present, setPresent] = useState(false)
   const [askNew, setAskNew] = useState(false)
   const [card, setCard] = useState('')
+  // Present: the number just called, full screen.
+  const [reveal, setReveal] = useState<{ n: number; key: string } | null>(null)
+  const presentRef = useRef(false)
+  presentRef.current = present
   const timers = useRef<number[]>([])
   const autoRef = useRef(false)
   const gameRef = useRef(game)
@@ -47,7 +52,7 @@ export function BingoGame({ tabs }: { tabs: ReactNode }) {
   const called = game.called
   const remaining = useMemo(() => remainingNumbers(called), [called])
   const current = called.length ? called[called.length - 1] : null
-  const recent = called.slice(-6, -1).reverse()
+  const recent = (phase === 'idle' ? called.slice(-6, -1) : called.slice(-5)).reverse()
   const busy = phase !== 'idle'
   const done = remaining.length === 0
 
@@ -76,6 +81,7 @@ export function BingoGame({ tabs }: { tabs: ReactNode }) {
         setExiting(null)
         setGame((g) => (g.called.includes(n) ? g : { ...g, called: [...g.called, n] }))
         setPhase('idle')
+        if (presentRef.current) setReveal({ n, key: `${n}-${Date.now()}` })
         // Auto-draw: the next ball after a pause, until it's stopped or the drum is empty.
         if (autoRef.current && gameRef.current.called.length + 1 < BINGO_MAX) {
           later(() => autoRef.current && document.dispatchEvent(new Event('bingo:auto')), gameRef.current.autoSeconds * 1000)
@@ -178,10 +184,10 @@ export function BingoGame({ tabs }: { tabs: ReactNode }) {
               </div>
 
               <div className="flex flex-col items-center text-center">
-                <p className="text-xs uppercase tracking-[0.32em] text-muted">{phase === 'mixing' ? 'Mixing the balls…' : current ? 'Last number called' : 'Ready when you are'}</p>
+                <p className="text-xs uppercase tracking-[0.32em] text-muted">{phase === 'mixing' ? 'Mixing the balls…' : phase === 'exiting' ? 'Here it comes…' : current ? 'Last number called' : 'Ready when you are'}</p>
                 <div className={cn('relative mt-3 grid place-items-center', present ? 'size-56 sm:size-64' : 'size-44 sm:size-48')}>
                   <AnimatePresence mode="popLayout">
-                    {current && phase !== 'mixing' ? (
+                    {current && phase === 'idle' ? (
                       <BigBall key={current} n={current} reduce={reduce} />
                     ) : (
                       <motion.div
@@ -191,7 +197,7 @@ export function BingoGame({ tabs }: { tabs: ReactNode }) {
                         exit={{ opacity: 0 }}
                         className="grid size-full place-items-center rounded-full border-2 border-dashed border-line text-5xl text-line"
                       >
-                        {phase === 'mixing' && !reduce ? (
+                        {phase !== 'idle' && !reduce ? (
                           <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: 'linear' }} className="text-gold">
                             ✦
                           </motion.span>
@@ -301,6 +307,14 @@ export function BingoGame({ tabs }: { tabs: ReactNode }) {
         </aside>
       </div>
 
+      <BigReveal
+        revealKey={present && reveal ? reveal.key : null}
+        autoHideMs={auto ? Math.max(2500, Math.min(5000, game.autoSeconds * 1000 - 1500)) : undefined}
+        onClose={() => setReveal(null)}
+      >
+        {reveal && <RevealBall n={reveal.n} />}
+      </BigReveal>
+
       <ConfirmDialog
         open={askNew}
         title="Start a new game?"
@@ -346,6 +360,38 @@ function BigBall({ n, reduce }: { n: number; reduce: boolean }) {
         </div>
       </div>
     </motion.div>
+  )
+}
+
+const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen']
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy']
+/** 42 → "forty-two" (1–75). */
+function inWords(n: number): string {
+  if (n < 20) return ONES[n]
+  const t = TENS[Math.floor(n / 10)]
+  return n % 10 ? `${t}-${ONES[n % 10]}` : t
+}
+
+/** Present: the called ball filling the screen, letter and number big enough for the back tables. */
+function RevealBall({ n }: { n: number }) {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="grid place-items-center rounded-full" style={{ ...ballStyle(n), width: 'min(62vh, 80vw)', height: 'min(62vh, 80vw)', boxShadow: `0 0 12vmin color-mix(in srgb, ${colorFor(n)} 55%, transparent), 0 2vmin 5vmin rgba(0,0,0,0.5)` }}>
+        <div className="grid size-[64%] place-items-center rounded-full bg-white shadow-inner">
+          <div className="text-center leading-none">
+            <div className="font-bold" style={{ color: colorFor(n), fontSize: 'min(9vh, 11vw)', letterSpacing: '0.12em' }}>
+              {letterFor(n)}
+            </div>
+            <div className="font-serif font-semibold text-ink" style={{ fontSize: 'min(24vh, 30vw)', lineHeight: 0.95 }}>
+              {n}
+            </div>
+          </div>
+        </div>
+      </div>
+      <p className="mt-[3vh] font-serif capitalize text-white" style={{ fontSize: 'min(7vh, 8vw)', textShadow: '0 0.05em 0.2em rgba(0,0,0,0.6)' }}>
+        {letterFor(n)} · {inWords(n)}
+      </p>
+    </div>
   )
 }
 

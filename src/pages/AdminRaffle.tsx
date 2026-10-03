@@ -222,7 +222,7 @@ function WheelRaffle({ tabs }: { tabs: ReactNode }) {
       }
       return place
         ? { tone: 'place', title: `${ordinal(place)} place`, name: shownName, detail: placePrize || undefined, then }
-        : { tone: 'out', title: 'Out', name: shownName, detail: `${remaining - 1} left`, then }
+        : { tone: 'out', title: 'Out', name: shownName, detail: `${remaining - 1} left`, then, brief: remaining <= cfg.finalsAt }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [cfg, prize, names, eliminated, masked],
@@ -528,6 +528,7 @@ function WheelRaffle({ tabs }: { tabs: ReactNode }) {
                   disabled={roundDone}
                   autoPlay={keepAutoPlaying}
                   spinLabel={lastMode && names.length > finalsAt ? 'Quick spin' : 'Spin'}
+                  reveal={present}
                   onLanded={onLanded}
                 />
                 {present && <SoundControls className="mt-2" />}
